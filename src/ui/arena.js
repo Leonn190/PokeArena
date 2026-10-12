@@ -5,6 +5,7 @@ import { createSpriteRenderer } from './renderer.mjs';
 import { BY_ID, SHOP_IDS, EVOLVES_TO } from '../../server/game/pokemon.mjs';
 import { MOVES_BY_ID, movePool, initialLoadout } from '../../server/game/moves.mjs';
 import { fieldLimitForBattle } from '../../server/game/rules.mjs';
+import { aliveCount, combatForPlayer, phaseRemainingSeconds, startLocalMatchCycle, updateLocalMatchCycle } from '../../server/game/match-cycle.mjs';
 import { BOARD, TAU, cellAtWorld, isBenchCell, benchTeamForCell, tilePosition, validCellForTeam, maxActiveForRound, effectiveStats, createBattle, syncLineups, startBattle, updateBattle } from '../../server/game/battle.mjs';
 
 const $ = id => document.getElementById(id);
@@ -40,11 +41,13 @@ const evolutionEffects = [];
 let state = createSandboxState();
 let mode = 'menu';
 let localMatch = null;
+let localObservedPlayerId = null;
 let savedTest = null;
 
 function openMenu() {
   if (mode === 'test') savedTest = {state,battle,selectedId};
   mode = 'menu';
+  localObservedPlayerId = null;
   $('entry-screen').hidden = false;
   $('mode-choice').hidden = false;
   $('match-setup').hidden = true;
@@ -59,6 +62,7 @@ function openMenu() {
 function enterTest() {
   mode = 'test';
   localMatch = null;
+  localObservedPlayerId = null;
   if (savedTest) {
     ({state,battle,selectedId} = savedTest);
   }
@@ -70,13 +74,14 @@ function enterTest() {
 function enterLocalMatch() {
   const count = Number($('player-count').value);
   const sessionId = `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
-  localMatch = createLocalMatchState(count,sessionId);
+  localMatch = startLocalMatchCycle(createLocalMatchState(count,sessionId),performance.now()/1000);
+  localObservedPlayerId = localMatch.ownerId;
   if (mode === 'test') savedTest = {state,battle,selectedId};
   state = createSandboxState();
   state.round = localMatch.round;
   state.gold = localMatch.players[0].gold;
   state.infiniteGold = false;
-  // Nenhuma oferta, unidade, ação de bot ou batalha é gerada na Etapa 01.
+  // Nenhuma oferta, unidade ou ação de bot é gerada nesta etapa.
   battle = createBattle([[],[]]);
   selectedId = null;
   resultAnnounced = false;
@@ -90,22 +95,80 @@ function enterLocalMatch() {
 function updateModeDisplay() {
   document.querySelector('.game-shell').dataset.mode = mode;
   $('hp-stat').hidden = mode !== 'local';
+  $('alive-stat').hidden = mode !== 'local';
+  $('timer-stat').hidden = mode !== 'local';
   $('match-panel').hidden = mode !== 'local';
   $('shop-mode-note').textContent = mode === 'local' ? 'Loja: Etapa 04' : 'Ouro infinito ativo';
   $('reroll-shop').disabled = mode !== 'test';
   if (mode !== 'local') return;
-  $('match-id-label').textContent = `${localMatch.players.length} jogadores`;
-  $('match-players').innerHTML = '';
+  const observed = observedParticipant();
+  $('match-id-label').textContent = `${aliveCount(localMatch)}/${localMatch.players.length} vivos`;
+  $('match-panel-note').textContent = observedLocalStatus();
+  $('back-own-arena').hidden = localObservedPlayerId === localMatch.ownerId;
+  $('back-own-arena').disabled = localObservedPlayerId === localMatch.ownerId;
+  const list = $('match-players');
+  list.innerHTML = '';
   for (const participant of localMatch.players) {
-    const item = document.createElement('div');
-    item.className = `match-player${participant.isBot ? '' : ' human'}`;
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = `match-player${participant.isBot ? '' : ' human'}${participant.id === localObservedPlayerId ? ' observed' : ''}${participant.eliminated ? ' eliminated' : ''}`;
+    item.dataset.playerId = participant.id;
+    item.setAttribute('aria-pressed', participant.id === localObservedPlayerId ? 'true' : 'false');
     const name = document.createElement('b');
     name.textContent = participant.isBot ? participant.name : 'Você';
+    const meta = document.createElement('span');
+    meta.className = 'match-player-meta';
     const hp = document.createElement('small');
-    hp.textContent = `${participant.hp} HP`;
-    item.append(name,hp);
-    $('match-players').append(item);
+    hp.textContent = participant.eliminated ? '0 HP' : `${participant.hp} HP`;
+    const bar = document.createElement('span');
+    bar.className = 'match-hp-bar';
+    bar.innerHTML = `<i style="width:${clamp(participant.hp,0,100)}%"></i>`;
+    meta.append(hp,bar);
+    item.append(name,meta);
+    item.addEventListener('click', () => observeLocalPlayer(participant.id));
+    list.append(item);
   }
+  $('observed-label').textContent = observed ? (observed.isBot ? observed.name : 'Sua arena') : 'Arena';
+}
+function humanParticipant() {
+  return localMatch?.players.find(player => player.id === localMatch.ownerId) || null;
+}
+function observedParticipant() {
+  return localMatch?.players.find(player => player.id === localObservedPlayerId) || humanParticipant();
+}
+function observeLocalPlayer(playerId) {
+  if (mode !== 'local' || !localMatch?.players.some(player => player.id === playerId)) return;
+  localObservedPlayerId = playerId;
+  selectedId = null;
+  drag = null;
+  pan = null;
+  shopPointer = null;
+  fitCamera();
+  renderHud();
+}
+function localCanEditObservedArena() {
+  return mode === 'local'
+    && localMatch?.phase === 'preparation'
+    && localObservedPlayerId === localMatch.ownerId;
+}
+function observedCombat() {
+  return mode === 'local' ? combatForPlayer(localMatch, localObservedPlayerId) : null;
+}
+function observedLocalStatus() {
+  const combat = observedCombat();
+  if (localMatch?.phase === 'combat' && combat?.status === 'running') return 'Observando combate local calculado pelo mesmo motor de batalha.';
+  if (localMatch?.phase === 'combat' && combat?.status === 'unavailable') return 'Confronto indisponivel: faltam duas equipes validas.';
+  if (localMatch?.phase === 'combat' && combat?.status === 'bye') return 'Este participante esta de folga provisoria nesta rodada.';
+  if (localMatch?.phase === 'finished') return localMatch.lastMessage || 'Partida local encerrada.';
+  return localMatch?.lastMessage || 'Partida local em memoria.';
+}
+function displayedBattle() {
+  if (mode === 'local') return observedCombat()?.battle || null;
+  return battle;
+}
+function phaseForInput() {
+  if (mode === 'local') return localMatch?.phase || 'preparation';
+  return battle.phase;
 }
 function newMon(speciesId, team = 0) {
   warmPokemon(BY_ID[speciesId]);
@@ -115,15 +178,22 @@ function maxActive() {
   return maxActiveForRound(state.round);
 }
 function fieldUnits() {
+  if (mode === 'local') return observedParticipant()?.board || [];
   return [...state.playerBoard, ...state.enemyBoard];
 }
 function allUnits() {
+  if (mode === 'local') {
+    const participant = observedParticipant();
+    return participant ? [...participant.board, ...participant.bench.filter(Boolean)] : [];
+  }
   return [...fieldUnits(), ...state.playerBench.filter(Boolean), ...state.enemyBench.filter(Boolean)];
 }
 function listForTeam(team) {
+  if (mode === 'local') return team === 0 ? (observedParticipant()?.board || []) : [];
   return team ? state.enemyBoard : state.playerBoard;
 }
 function benchForTeam(team) {
+  if (mode === 'local') return team === 0 ? (observedParticipant()?.bench || []) : Array(10).fill(null);
   return team ? state.enemyBench : state.playerBench;
 }
 function selectedMon() {
@@ -133,6 +203,10 @@ function findMon(id) {
   return allUnits().find(mon => mon.instanceId === id) || null;
 }
 function monCell(mon) {
+  if (mode === 'local') {
+    const participant = observedParticipant();
+    if (participant?.bench.includes(mon)) return { col: participant.bench.indexOf(mon), row: BOARD.playerBenchRow };
+  }
   if (state.playerBench.includes(mon)) return { col: state.playerBench.indexOf(mon), row: BOARD.playerBenchRow };
   if (state.enemyBench.includes(mon)) return { col: state.enemyBench.indexOf(mon), row: BOARD.enemyBenchRow };
   return { col: mon.col, row: mon.row };
@@ -143,6 +217,12 @@ function monWorld(mon) {
   return tilePosition(cell.col, cell.row);
 }
 function benchIndex(mon) {
+  if (mode === 'local') {
+    const participant = observedParticipant();
+    const slot = participant?.bench.findIndex(item => item === mon) ?? -1;
+    if (slot >= 0) return { team:0, slot };
+    return null;
+  }
   const playerSlot = state.playerBench.findIndex(item => item === mon);
   if (playerSlot >= 0) return { team:0, slot:playerSlot };
   const enemySlot = state.enemyBench.findIndex(item => item === mon);
@@ -150,6 +230,15 @@ function benchIndex(mon) {
   return null;
 }
 function removeFromContainers(mon) {
+  if (mode === 'local') {
+    for (const participant of localMatch?.players || []) {
+      const slot = participant.bench.indexOf(mon);
+      if (slot !== -1) participant.bench[slot] = null;
+      const index = participant.board.indexOf(mon);
+      if (index !== -1) participant.board.splice(index, 1);
+    }
+    return;
+  }
   removeFromSandbox(state,mon);
 }
 function boardOccupant(team, col, row, except = null) {
@@ -178,7 +267,8 @@ function firstBenchSlot(team = 0) {
   return benchForTeam(team).findIndex(item => !item);
 }
 function placeBench(mon, team, slot, swap = true) {
-  if (!mon || battle.phase !== 'setup') return false;
+  if (!mon || phaseForInput() !== 'setup' && phaseForInput() !== 'preparation') return false;
+  if (mode === 'local' && (!localCanEditObservedArena() || team !== 0)) return false;
   const target = clamp(slot, 0, 9);
   const other = benchOccupant(team, target, mon);
   const origin = snapshot(mon);
@@ -201,11 +291,13 @@ function restoreOtherToOrigin(other, origin) {
   else listForTeam(other.team).push(other);
 }
 function placeBoard(mon, team, cell, swap = true) {
-  if (!mon || battle.phase !== 'setup' || !validCellForTeam(team, cell)) return false;
+  if (!mon || phaseForInput() !== 'setup' && phaseForInput() !== 'preparation' || !validCellForTeam(team, cell)) return false;
+  if (mode === 'local' && (!localCanEditObservedArena() || team !== 0)) return false;
   const list = listForTeam(team);
   const alreadyInList = list.includes(mon);
-  if (!alreadyInList && list.length >= maxActive()) {
-    showToast(`Limite do campo: ${maxActive()} em campo.`);
+  const limit = mode === 'local' ? fieldLimitForBattle(localMatch.round) : maxActive();
+  if (!alreadyInList && list.length >= limit) {
+    showToast(`Limite do campo: ${limit} em campo.`);
     return false;
   }
   const other = boardOccupant(team, cell.col, cell.row, mon);
@@ -328,6 +420,7 @@ function rerollMove(slot) {
 }
 
 function syncBattle() {
+  if (mode === 'local') return true;
   syncLineups(battle, [state.playerBoard, state.enemyBoard]);
 }
 function beginBattle() {
@@ -386,6 +479,7 @@ function hitUnit(world) {
   return hit;
 }
 function pointerTeamForCell(cell) {
+  if (mode === 'local') return 0;
   if (!cell) return 0;
   if (isBenchCell(cell)) return benchTeamForCell(cell);
   return validCellForTeam(1, cell) ? 1 : 0;
@@ -396,12 +490,16 @@ function dropUnit(mon, cell, origin) {
     return;
   }
   if (isBenchCell(cell)) {
-    placeBench(mon, benchTeamForCell(cell), cell.col);
+    if (mode === 'local' && cell.row !== BOARD.playerBenchRow) {
+      restore(mon, origin);
+      return;
+    }
+    placeBench(mon, mode === 'local' ? 0 : benchTeamForCell(cell), cell.col);
     return;
   }
   const team = pointerTeamForCell(cell);
   if (!placeBoard(mon, team, cell, true)) restore(mon, origin);
-  else evolveTeam(team);
+  else if (mode === 'test') evolveTeam(team);
 }
 function dropShopOffer(index, cell) {
   if (!buyOfferToCell(index, cell)) showToast('Solte em um banco ou campo valido.');
@@ -416,7 +514,8 @@ canvas.addEventListener('pointerdown', e => {
     e.preventDefault();
     return;
   }
-  if (mode !== 'test' || e.button !== 0 || battle.phase !== 'setup') return;
+  const canEditArena = mode === 'test' || localCanEditObservedArena();
+  if (!canEditArena || e.button !== 0 || phaseForInput() !== 'setup' && phaseForInput() !== 'preparation') return;
   const hit = hitUnit(world);
   if (hit) {
     selectedId = hit.instanceId;
@@ -433,7 +532,7 @@ canvas.addEventListener('pointerdown', e => {
 canvas.addEventListener('pointermove', e => {
   const screenPos = screenPoint(e.clientX, e.clientY);
   const world = screenToWorld(screenPos);
-  hovered = mode === 'test' && battle.phase === 'setup' ? cellAtWorld(world.x, world.y) : null;
+  hovered = (mode === 'test' || localCanEditObservedArena()) && (phaseForInput() === 'setup' || phaseForInput() === 'preparation') ? cellAtWorld(world.x, world.y) : null;
   if (pan?.pointer === e.pointerId) {
     camera.x = pan.x + screenPos.x - pan.start.x;
     camera.y = pan.y + screenPos.y - pan.start.y;
@@ -518,21 +617,36 @@ window.addEventListener('keyup', e => {
 });
 
 function renderHud() {
-  $('round-label').textContent = String(state.round);
-  $('limit-label').textContent = `${state.playerBoard.length}/${mode === 'local' ? fieldLimitForBattle(localMatch.round) : maxActive()}`;
-  $('gold-label').textContent = state.infiniteGold ? '∞' : String(state.gold);
-  $('phase-label').textContent = mode === 'local' ? 'Partida local · Etapa 01' : battle.phase === 'setup' ? 'Preparação · Teste' : battle.phase === 'finished' ? 'Resultado · Teste' : battle.paused ? 'Pausado · Teste' : 'Combate · Teste';
-  $('hp-label').textContent = mode === 'local' ? String(localMatch.players[0].hp) : '';
+  const now = performance.now()/1000;
+  const human = humanParticipant();
+  const observed = observedParticipant();
+  const phaseLabel = localMatch?.phase === 'preparation'
+    ? 'Preparação · Local'
+    : localMatch?.phase === 'combat'
+      ? 'Combate · Local'
+      : localMatch?.phase === 'finished'
+        ? 'Resultado · Local'
+        : 'Partida local';
+  $('round-label').textContent = String(mode === 'local' ? localMatch.round : state.round);
+  $('limit-label').textContent = mode === 'local'
+    ? `${observed?.board.length || 0}/${fieldLimitForBattle(localMatch.round)}`
+    : `${state.playerBoard.length}/${maxActive()}`;
+  $('gold-label').textContent = mode === 'local' ? String(human?.gold ?? 0) : state.infiniteGold ? '∞' : String(state.gold);
+  $('phase-label').textContent = mode === 'local' ? phaseLabel : battle.phase === 'setup' ? 'Preparação · Teste' : battle.phase === 'finished' ? 'Resultado · Teste' : battle.paused ? 'Pausado · Teste' : 'Combate · Teste';
+  $('hp-label').textContent = mode === 'local' ? String(human?.hp ?? 0) : '';
+  $('alive-label').textContent = mode === 'local' ? `${aliveCount(localMatch)}/${localMatch.players.length}` : '';
+  $('timer-label').textContent = mode === 'local' ? `${phaseRemainingSeconds(localMatch,now)}s` : '';
   $('start').disabled = mode !== 'test' || battle.phase !== 'setup' || !state.playerBoard.length || !state.enemyBoard.length;
   $('pause').disabled = mode !== 'test' || battle.phase !== 'fighting';
   $('pause').textContent = battle.paused ? '▶' : 'Ⅱ';
   $('prepare').disabled = mode !== 'test' || battle.phase === 'setup';
   $('reroll-shop').disabled = mode !== 'test';
   renderDetails();
-  renderShop();
+  if (mode === 'test' || !$('shop-slots').children.length) renderShop();
+  updateModeDisplay();
 }
 function renderDetails() {
-  const mon = mode === 'test' ? selectedMon() : null;
+  const mon = mode === 'test' || mode === 'local' ? selectedMon() : null;
   const panel = $('detail-panel');
   panel.classList.toggle('collapsed', !mon);
   if (!mon) return;
@@ -546,7 +660,7 @@ function renderDetails() {
   const b = benchIndex(mon);
   $('selected-place').textContent = b ? `Slot ${b.slot + 1}` : `Posição ${mon.col + 1},${mon.row + 1}`;
   $('selected-iv').textContent = `IV geral ${mon.iv}%`;
-  $('sell-value').textContent = mon.team === 0 ? `Venda: ${p.price} ouro` : 'Remover inimigo';
+  $('sell-value').textContent = mode === 'local' ? 'Somente preparacao propria' : mon.team === 0 ? `Venda: ${p.price} ouro` : 'Remover inimigo';
   drawSmallSprite($('selected-avatar'), p, mon.team ? 0 : 4);
   $('stats-list').innerHTML = keys.map(k => {
     const baseValue = p.stats[k];
@@ -558,10 +672,10 @@ function renderDetails() {
     return `<div class="move-row"><button type="button" class="move-card" tabindex="-1"><b>${move.name}</b><small>${move.category === 'atk' ? 'Fisico' : 'Especial'} · ${move.damage} · ${move.range.toFixed(1)}</small></button><button type="button" class="move-reroll" data-slot="${i}" title="Rerollar ${move.name}" aria-label="Rerollar ${move.name}">↻</button></div>`;
   }).join('');
   $('moves-active').querySelectorAll('.move-reroll').forEach(btn => {
-    btn.disabled = battle.phase !== 'setup';
+    btn.disabled = mode !== 'test' || battle.phase !== 'setup';
     btn.addEventListener('click', () => rerollMove(Number(btn.dataset.slot)));
   });
-  $('sell-selected').disabled = battle.phase !== 'setup';
+  $('sell-selected').disabled = mode !== 'test' || battle.phase !== 'setup';
 }
 function setShopSellMode(selling) {
   const shop = $('shop-slots').closest('.bottom-hud');
@@ -681,14 +795,16 @@ function drawBoard(t) {
   ctx.fillRect(BOARD.x, BOARD.y + BOARD.playerFieldStart * BOARD.tile, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
   ctx.fillStyle = 'rgba(185,75,94,.10)';
   ctx.fillRect(BOARD.x, BOARD.y + BOARD.enemyFieldStart * BOARD.tile, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
-  const showGrid = battle.phase === 'setup' && (drag || hovered);
+  const showGrid = (phaseForInput() === 'setup' || phaseForInput() === 'preparation') && (drag || hovered);
   ctx.strokeStyle = showGrid ? 'rgba(238,255,214,.45)' : 'rgba(238,255,214,.18)';
   ctx.lineWidth = 1;
   for (let col = 0; col <= BOARD.columns; col++) line(BOARD.x + col * BOARD.tile, BOARD.y, BOARD.x + col * BOARD.tile, BOARD.y + BOARD.rows * BOARD.tile, ctx.strokeStyle);
   for (let row = 0; row <= BOARD.rows; row++) line(BOARD.x, BOARD.y + row * BOARD.tile, BOARD.x + BOARD.columns * BOARD.tile, BOARD.y + row * BOARD.tile, ctx.strokeStyle);
-  if (hovered && battle.phase === 'setup') {
+  if (hovered && (phaseForInput() === 'setup' || phaseForInput() === 'preparation')) {
     const team = pointerTeamForCell(hovered);
-    const isValid = isBenchCell(hovered) || validCellForTeam(team, hovered);
+    const isValid = mode === 'local'
+      ? (hovered.row === BOARD.playerBenchRow || validCellForTeam(0, hovered))
+      : (isBenchCell(hovered) || validCellForTeam(team, hovered));
     ctx.fillStyle = isValid ? 'rgba(255,245,171,.24)' : 'rgba(255,90,105,.24)';
     ctx.fillRect(BOARD.x + hovered.col * BOARD.tile, BOARD.y + hovered.row * BOARD.tile, BOARD.tile, BOARD.tile);
   }
@@ -729,8 +845,8 @@ function drawBattleUnit(u) {
   ctx.fillRect(u.x - bw / 2 + 1, py + 1, (bw - 2) * health, bh - 2);
 }
 
-function drawEffects() {
-  for (const p of battle.projectiles) {
+function drawEffects(activeBattle) {
+  for (const p of activeBattle.projectiles) {
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.rotate(Math.atan2(p.vy, p.vx));
@@ -742,7 +858,7 @@ function drawEffects() {
     ellipse(4, 0, 7, 4, '#f8fdff');
     ctx.restore();
   }
-  for (const e of battle.effects) {
+  for (const e of activeBattle.effects) {
     const a = 1 - e.time / e.total;
     ctx.save();
     ctx.globalAlpha = 1 - a;
@@ -753,7 +869,7 @@ function drawEffects() {
     }
     ctx.restore();
   }
-  for (const f of battle.floaters) {
+  for (const f of activeBattle.floaters) {
     const a = 1 - f.time / f.total;
     ctx.save();
     ctx.globalAlpha = Math.min(1, f.time * 4);
@@ -800,19 +916,20 @@ function drawEvolutionEffects() {
   }
 }
 function draw() {
+  const activeBattle = displayedBattle();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, screen.w, screen.h);
   ctx.fillStyle = '#16351e';
   ctx.fillRect(0, 0, screen.w, screen.h);
   ctx.setTransform(dpr * camera.scale, 0, 0, dpr * camera.scale, dpr * camera.x, dpr * camera.y);
   drawBoard(visualTime);
-  if (battle.phase === 'setup') {
+  if (!activeBattle || activeBattle.phase === 'setup') {
     allUnits().slice().sort((a, b) => monWorld(a).y - monWorld(b).y).forEach(drawSetupUnit);
     if (drag?.kind === 'shop') drawShopGhost(drag);
     drawEvolutionEffects();
   } else {
-    battle.units.filter(u => !u.dead).slice().sort((a, b) => a.y - b.y).forEach(drawBattleUnit);
-    drawEffects();
+    activeBattle.units.filter(u => !u.dead).slice().sort((a, b) => a.y - b.y).forEach(drawBattleUnit);
+    drawEffects(activeBattle);
   }
 }
 function frame(timestamp) {
@@ -823,6 +940,18 @@ function frame(timestamp) {
   updateCamera(dt);
   updateEvolutionEffects(dt);
   if (mode === 'test') updateBattle(battle, dt);
+  if (mode === 'local') {
+    const beforePhase = localMatch.phase;
+    const beforeRound = localMatch.round;
+    updateLocalMatchCycle(localMatch, dt, timestamp/1000);
+    state.round = localMatch.round;
+    state.gold = humanParticipant()?.gold ?? state.gold;
+    if (beforePhase !== localMatch.phase || beforeRound !== localMatch.round) {
+      selectedId = null;
+      drag = null;
+      renderHud();
+    }
+  }
   if (mode === 'test' && battle.phase === 'finished' && !resultAnnounced) {
     resultAnnounced = true;
     $('result-title').textContent = battle.winner === null ? 'Empate' : battle.winner === 0 ? 'Vitoria do seu time' : 'Derrota';
@@ -830,6 +959,15 @@ function frame(timestamp) {
     $('outcome').hidden = false;
     renderHud();
   }
+  if (mode === 'local' && localMatch.phase === 'finished' && !resultAnnounced) {
+    resultAnnounced = true;
+    const champion = localMatch.players.find(player => player.id === localMatch.championId);
+    $('result-title').textContent = champion ? `${champion.isBot ? champion.name : 'Você'} venceu` : 'Sem vencedor';
+    $('result-note').textContent = 'Resultado local em memória, sem partida oficial online.';
+    $('outcome').hidden = false;
+    renderHud();
+  }
+  if (mode === 'local') renderHud();
   draw();
   requestAnimationFrame(frame);
 }
@@ -866,6 +1004,7 @@ $('back-to-modes').addEventListener('click', () => {
 });
 $('confirm-match').addEventListener('click', enterLocalMatch);
 $('return-menu').addEventListener('click', openMenu);
+$('back-own-arena').addEventListener('click', () => observeLocalPlayer(localMatch?.ownerId));
 
 const starter = newMon('0004', 0);
 const enemy = newMon('0007', 1);

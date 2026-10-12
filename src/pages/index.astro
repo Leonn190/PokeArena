@@ -32,7 +32,7 @@ const base = import.meta.env.BASE_URL;
       </div>
       <div class="entry-panel match-setup" id="match-setup" hidden>
         <h1>Partida local</h1>
-        <p>Você e os bots começam com 100 HP e 9 de ouro. Os ciclos competitivos serão ativados nas próximas etapas.</p>
+        <p>Você e os bots começam com 100 HP e 9 de ouro em uma partida local com preparação, combate e arenas observáveis.</p>
         <label for="player-count">Quantidade de participantes</label>
         <select id="player-count" name="player-count">
           <option value="3">3 jogadores · 2 bots</option>
@@ -58,6 +58,8 @@ const base = import.meta.env.BASE_URL;
       <div class="hud-stat"><small>Unidades</small><b id="limit-label">1/6</b></div>
       <div class="hud-stat gold"><small>Ouro</small><b id="gold-label">∞</b></div>
       <div class="hud-stat" id="hp-stat" hidden><small>Vida</small><b id="hp-label">100</b></div>
+      <div class="hud-stat" id="alive-stat" hidden><small>Vivos</small><b id="alive-label">1/1</b></div>
+      <div class="hud-stat" id="timer-stat" hidden><small>Tempo</small><b id="timer-label">45s</b></div>
       <div class="hud-actions">
         <button id="start" class="icon-button primary" type="button" title="Iniciar batalha" aria-label="Iniciar batalha">▶</button>
         <button id="pause" class="icon-button" type="button" title="Pausar ou continuar" aria-label="Pausar ou continuar">Ⅱ</button>
@@ -72,9 +74,10 @@ const base = import.meta.env.BASE_URL;
     </section>
 
     <aside id="match-panel" class="match-panel" hidden aria-label="Participantes da partida local">
-      <div class="match-panel-heading"><b>Partida local</b><small id="match-id-label">Offline</small></div>
+      <div class="match-panel-heading"><div><b>Participantes</b><small id="observed-label">Sua arena</small></div><small id="match-id-label">Offline</small></div>
       <div id="match-players" class="match-players"></div>
-      <p class="match-pending">Etapa 01: sala preparada em memória. Batalhas, bots ativos e economia serão implementados nas próximas etapas.</p>
+      <button id="back-own-arena" class="back-own-arena" type="button" hidden>Voltar à minha arena</button>
+      <p class="match-pending" id="match-panel-note">Partida local em memória. Bots completos, economia e loja competitiva ficam para etapas futuras.</p>
     </aside>
 
     <section class="side-hud collapsed" id="detail-panel" aria-label="Ficha do Pokémon selecionado">

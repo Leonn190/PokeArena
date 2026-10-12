@@ -228,7 +228,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   .shop-footer{min-height:28px}
 }
 
-/* Etapa 01 — menu sobre o mesmo Canvas; sem outro motor, página ou framework. */
+/* Etapas 01-02: menu e partida local sobre o mesmo Canvas. */
 [hidden]{display:none!important}
 .game-shell[data-mode="menu"] .top-hud,
 .game-shell[data-mode="menu"] .bottom-hud,
@@ -253,19 +253,26 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .setup-actions button{min-height:44px;border:1px solid #7a9e75;border-radius:8px;background:#23402c;color:#f3f9ed;font-weight:900}
 .setup-actions .confirm-local{background:#f2d367;color:#21321a;border-color:#ffe9a5}
 .return-menu{border:1px solid rgba(234,255,198,.24);border-radius:6px;background:#1b3525;color:#eaf9dd;font-weight:900;font-size:11px;min-height:40px;padding:0 10px}
-.match-panel{position:absolute;top:84px;left:12px;z-index:3;width:210px;max-height:calc(100dvh - 270px);overflow-y:auto;padding:12px;border-radius:10px;border:1px solid rgba(234,255,198,.30);background:linear-gradient(180deg,rgba(23,45,28,.93),rgba(10,22,16,.88));box-shadow:0 14px 44px rgba(0,0,0,.3)}
-.match-panel-heading{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13px;margin-bottom:10px}
-.match-panel-heading small{color:#ffe28d;font-size:9px;font-weight:900;white-space:nowrap}
+.match-panel{position:absolute;top:84px;right:12px;z-index:3;width:232px;max-height:calc(100dvh - 270px);overflow-y:auto;padding:12px;border-radius:10px;border:1px solid rgba(234,255,198,.30);background:linear-gradient(180deg,rgba(23,45,28,.93),rgba(10,22,16,.88));box-shadow:0 14px 44px rgba(0,0,0,.3)}
+.match-panel-heading{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px}
+.match-panel-heading small{display:block;color:#ffe28d;font-size:9px;font-weight:900;white-space:nowrap;text-transform:uppercase;letter-spacing:.4px}
 .match-players{display:grid;gap:5px}
-.match-player{display:flex;justify-content:space-between;gap:8px;padding:8px;border-radius:6px;background:rgba(7,24,14,.6);font-size:11px}
+.match-player{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;border:1px solid transparent;border-radius:6px;background:rgba(7,24,14,.6);color:#f2f7e8;font-size:11px;text-align:left}
 .match-player.human{border:1px solid rgba(244,219,109,.55)}
+.match-player.observed{border-color:#7edcff;background:rgba(27,70,63,.76);box-shadow:inset 3px 0 0 #7edcff}
+.match-player.eliminated{opacity:.55;filter:saturate(.6)}
 .match-player b{font-size:11px;max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.match-player small{font-size:10px;color:#c0d5ad;white-space:nowrap}
+.match-player small{font-size:10px;color:#c0d5ad;white-space:nowrap;text-align:right}
+.match-player-meta{display:grid;gap:3px;justify-items:end;min-width:58px}
+.match-hp-bar{display:block;width:56px;height:5px;border-radius:999px;background:#233322;overflow:hidden}
+.match-hp-bar i{display:block;height:100%;background:linear-gradient(90deg,#8fe36e,#ffe477)}
+.back-own-arena{width:100%;min-height:32px;margin-top:8px;border:1px solid rgba(255,226,130,.45);border-radius:6px;background:#263f2b;color:#fff0ad;font-size:11px;font-weight:900}
 .match-pending{font-size:10px;line-height:1.55;color:#c0d5ad;margin:12px 0 0}
 .game-shell[data-mode="local"] .hud-actions{display:none}
 .game-shell[data-mode="local"] .shop-card.empty{opacity:.48}
+.game-shell[data-mode="local"] .side-hud{left:12px;right:auto}
 @media(max-width:720px){
-  .match-panel{top:61px;left:8px;width:156px;max-height:calc(100dvh - 190px);padding:8px}
+  .match-panel{top:61px;right:8px;width:168px;max-height:calc(100dvh - 190px);padding:8px}
   .match-panel-heading{font-size:11px}
   .match-panel-heading small{font-size:8px}
   .match-player{padding:6px 4px;gap:3px}
