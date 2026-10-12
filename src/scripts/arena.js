@@ -1,4 +1,4 @@
-import { POKEMON, BY_ID, SHOP_IDS, EVOLVES_TO, getFrame, spritePath, spriteUrl, applySpriteManifest } from './pokemon.mjs';
+import { POKEMON, BY_ID, SHOP_IDS, EVOLVES_TO, getFrame, spritePath, spriteUrl, artworkUrl, applySpriteManifest } from './pokemon.mjs';
 import { MOVES_BY_ID, movePool, initialLoadout } from './moves.mjs';
 import { BOARD, TAU, cellAtWorld, isBenchCell, benchTeamForCell, tilePosition, validCellForTeam, maxActiveForRound, effectiveStats, createBattle, syncLineups, startBattle, updateBattle } from './battle.mjs';
 
@@ -10,6 +10,11 @@ const keys = ['vida', 'atk', 'def', 'spa', 'spd', 'vel'];
 const stageName = { 1:'Base', 2:'Evoluido', 3:'Final' };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const spriteMap = new Map();
+// Dimensões *pintadas* dos quadros, ignorando margens transparentes das sprites PMD.
+const frameBounds = new Map();
+const pokemonScale = new Map();
+const sampleCanvas = document.createElement('canvas');
+const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently:true });
 const hash = (x, y, z = 0) => {
   let v = Math.imul(x * 374761393 ^ y * 668265263 ^ z * 1274126177, 1597334677);
   v ^= v >>> 13;
@@ -80,7 +85,7 @@ function benchForTeam(team) {
   return team ? state.enemyBench : state.playerBench;
 }
 function selectedMon() {
-  return findMon(selectedId) || allUnits()[0] || null;
+  return findMon(selectedId);
 }
 function findMon(id) {
   return allUnits().find(mon => mon.instanceId === id) || null;
@@ -191,7 +196,7 @@ function removeUnit(mon, grantGold = false) {
   const p = BY_ID[mon.speciesId];
   removeFromContainers(mon);
   if (grantGold && mon.team === 0 && !state.infiniteGold) state.gold += p.price;
-  if (selectedId === mon.instanceId) selectedId = allUnits()[0]?.instanceId ?? null;
+  if (selectedId === mon.instanceId) selectedId = null;
   syncBattle();
   renderHud();
   showToast(mon.team === 0 ? `${p.name} vendido por ${p.price}.` : `${p.name} removido.`);
@@ -356,12 +361,14 @@ function fitCamera() {
     w: BOARD.columns * BOARD.tile + 68,
     h: BOARD.rows * BOARD.tile + 80
   };
-  const usableH = Math.max(280, screen.h - 136);
-  const scale = clamp(Math.min((screen.w - 34) / world.w, usableH / world.h), .55, 1.9);
+  const topReserved = Math.max(82, $('start').closest('.top-hud').getBoundingClientRect().height + 22);
+  const bottomReserved = Math.max(155, $('shop-slots').closest('.bottom-hud').getBoundingClientRect().height + 24);
+  const usableH = Math.max(190, screen.h - topReserved - bottomReserved);
+  const scale = clamp(Math.min((screen.w - 30) / world.w, usableH / world.h), .28, 1.9);
   camera.scale = scale;
   camera.targetScale = scale;
   camera.x = (screen.w - world.w * scale) / 2 - world.x * scale;
-  camera.y = 78 + (usableH - world.h * scale) / 2 - world.y * scale;
+  camera.y = topReserved + (usableH - world.h * scale) / 2 - world.y * scale;
   camera.targetX = camera.x;
   camera.targetY = camera.y;
 }
@@ -387,10 +394,10 @@ function cellAtClient(clientX, clientY) {
 }
 function hitUnit(world) {
   let hit = null;
-  let proximity = 34;
+  let proximity = 36;
   for (const mon of allUnits()) {
     const p = monWorld(mon);
-    const d = Math.hypot(world.x - p.x, world.y - p.y + 14);
+    const d = Math.hypot(world.x - p.x, world.y - p.y + 15);
     if (d < proximity) {
       hit = mon;
       proximity = d;
@@ -449,6 +456,10 @@ canvas.addEventListener('pointerdown', e => {
     const p = monWorld(hit);
     drag = { kind:'unit', pointer:e.pointerId, mon:hit, origin:snapshot(hit), offset:{ x:world.x - p.x, y:world.y - p.y }, world:p, moved:false };
     canvas.setPointerCapture(e.pointerId);
+    setShopSellMode(true);
+  } else {
+    selectedId = null;
+    renderDetails();
   }
 });
 canvas.addEventListener('pointermove', e => {
@@ -465,6 +476,7 @@ canvas.addEventListener('pointermove', e => {
   if (drag?.pointer === e.pointerId) {
     drag.world = { x:world.x - drag.offset.x, y:world.y - drag.offset.y };
     drag.moved = true;
+    if (drag.kind === 'unit') updateShopSellHover(e.clientX, e.clientY);
   }
 });
 canvas.addEventListener('pointerup', e => {
@@ -475,7 +487,9 @@ canvas.addEventListener('pointerup', e => {
   if (!drag || drag.pointer !== e.pointerId) return;
   const activeDrag = drag;
   drag = null;
-  if (document.elementFromPoint(e.clientX, e.clientY)?.closest?.('#sell-zone,#shop-slots,.shop-meta,.bottom-hud')) {
+  const soldOnShopSlot = !!document.elementFromPoint(e.clientX, e.clientY)?.closest?.('.shop-card');
+  setShopSellMode(false);
+  if (activeDrag.kind === 'unit' && soldOnShopSlot) {
     removeUnit(activeDrag.mon, activeDrag.mon.team === 0);
     return;
   }
@@ -483,6 +497,7 @@ canvas.addEventListener('pointerup', e => {
 });
 canvas.addEventListener('pointercancel', () => {
   if (drag?.kind === 'unit') restore(drag.mon, drag.origin);
+  setShopSellMode(false);
   drag = null;
   pan = null;
   shopPointer = null;
@@ -559,7 +574,7 @@ function renderDetails() {
   $('selected-type').textContent = `${p.type} · ${stageName[p.stage]}`;
   $('selected-type').style.color = p.color;
   const b = benchIndex(mon);
-  $('selected-place').textContent = b ? `${b.team ? 'Banco inimigo' : 'Banco'} ${b.slot + 1}` : mon.team ? `Inimigo ${mon.col + 1},${mon.row}` : `Aliado ${mon.col + 1},${mon.row - BOARD.playerFieldStart + 1}`;
+  $('selected-place').textContent = b ? `Slot ${b.slot + 1}` : `Posição ${mon.col + 1},${mon.row + 1}`;
   $('selected-iv').textContent = `IV geral ${mon.iv}%`;
   $('sell-value').textContent = mon.team === 0 ? `Venda: ${p.price} ouro` : 'Remover inimigo';
   drawSmallSprite($('selected-avatar'), p, mon.team ? 0 : 4);
@@ -603,17 +618,45 @@ function renderTeamTools() {
   $('pick-enemy').classList.toggle('picked', teamPick === 1);
   $('delete-mode').classList.toggle('picked', deleteMode);
 }
+function setShopSellMode(selling) {
+  const shop = $('shop-slots').closest('.bottom-hud');
+  shop.classList.toggle('selling', !!selling);
+  if (!selling) shop.querySelectorAll('.sell-hover').forEach(card => card.classList.remove('sell-hover'));
+}
+function updateShopSellHover(x, y) {
+  const slots = $('shop-slots');
+  const hoveredSlot = document.elementFromPoint(x, y)?.closest?.('.shop-card');
+  slots.querySelectorAll('.sell-hover').forEach(card => card.classList.remove('sell-hover'));
+  if (hoveredSlot && slots.contains(hoveredSlot)) hoveredSlot.classList.add('sell-hover');
+}
+const coinSvg = '<svg class="coin-icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#e1a62d" stroke="#fff1a2" stroke-width="1.3"/><circle cx="10" cy="10" r="6.4" fill="#ffdb68" stroke="#b47717" stroke-width=".8"/><path d="M12.8 6.8c-.7-.7-4.7-1-4.7 1.2 0 2 4.5 1.2 4.5 3.3 0 2.2-3.8 2.2-5.2 1" fill="none" stroke="#935e12" stroke-width="1.5" stroke-linecap="round"/><path d="M10 5.3v9.4" stroke="#935e12" stroke-width="1"/></svg>';
 function renderShop() {
   const slots = $('shop-slots');
   slots.innerHTML = state.shop.map((id, i) => {
-    if (!id) return `<button type="button" class="shop-card empty" data-index="${i}"><span>${i < 2 ? 'Flex' : 'Mon'}</span><b>Vazio</b></button>`;
+    if (!id) return `<button type="button" class="shop-card empty" data-index="${i}" disabled aria-label="Slot vazio"><span class="shop-portrait"><span class="empty-mark">＋</span></span><span class="shop-footer"><b>Vazio</b></span></button>`;
     const p = BY_ID[id];
-    return `<button type="button" class="shop-card" data-index="${i}"><span>${i < 2 ? 'Flex' : 'Mon'}</span><canvas width="48" height="44" aria-hidden="true"></canvas><b>${p.name}</b><small>${p.price} ouro</small></button>`;
+    return `<button type="button" class="shop-card" data-index="${i}" aria-label="Comprar ${p.name} por ${p.price} ouro"><span class="shop-portrait"><img src="${artworkUrl(p)}" alt="" draggable="false" loading="eager" decoding="async" /><canvas class="portrait-fallback visible" width="70" height="70" aria-hidden="true"></canvas></span><span class="shop-footer"><b>${p.name}</b><span class="shop-price">${coinSvg}<span>${p.price}</span></span></span></button>`;
   }).join('');
   slots.querySelectorAll('.shop-card').forEach(card => {
     const index = Number(card.dataset.index);
     const id = state.shop[index];
-    if (id) drawSmallSprite(card.querySelector('canvas'), BY_ID[id], 0);
+    if (id) {
+      const img = card.querySelector('img');
+      const fallback = card.querySelector('canvas');
+      drawSmallSprite(fallback, BY_ID[id], 0);
+      img.addEventListener('load', () => {
+        img.classList.add('ready');
+        fallback.classList.remove('visible');
+      });
+      img.addEventListener('error', () => {
+        img.classList.add('unavailable');
+        fallback.classList.add('visible');
+      });
+      if (img.complete && img.naturalWidth) {
+        img.classList.add('ready');
+        fallback.classList.remove('visible');
+      }
+    }
     card.addEventListener('click', () => {
       if (suppressShopClick) return;
       buyOffer(index);
@@ -621,6 +664,7 @@ function renderShop() {
     card.addEventListener('pointerdown', e => startShopPointer(e, index));
   });
 }
+
 function startShopPointer(e, index) {
   if (e.button !== 0 || battle.phase !== 'setup' || !state.shop[index]) return;
   shopPointer = {
@@ -774,19 +818,71 @@ function drawBoard(t) {
     ctx.fillStyle = isValid ? 'rgba(255,245,171,.24)' : 'rgba(255,90,105,.24)';
     ctx.fillRect(BOARD.x + hovered.col * BOARD.tile, BOARD.y + hovered.row * BOARD.tile, BOARD.tile, BOARD.tile);
   }
-  ctx.font = '900 12px system-ui';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#f6ffe8';
-  ctx.shadowColor = '#16371f';
-  ctx.shadowBlur = 6;
-  ctx.fillText('BANCO INIMIGO', BOARD.x + BOARD.columns * BOARD.tile / 2, BOARD.y - 18);
-  ctx.fillText('INIMIGO', BOARD.x + BOARD.columns * BOARD.tile / 2, BOARD.y + BOARD.enemyFieldStart * BOARD.tile - 12);
-  ctx.fillText('SEU CAMPO', BOARD.x + BOARD.columns * BOARD.tile / 2, BOARD.y + BOARD.playerBenchRow * BOARD.tile + 22);
-  ctx.fillText('BANCO', BOARD.x - 46, BOARD.y + BOARD.playerBenchRow * BOARD.tile + 34);
-  ctx.shadowBlur = 0;
   ctx.restore();
   for (let i = 0; i < 18; i++) {
     ellipse(BOARD.x + 20 + hash(i, 9) * (BOARD.columns * BOARD.tile - 40), BOARD.y + 20 + hash(9, i) * (BOARD.rows * BOARD.tile - 40), 1.3, 1.3, `rgba(255,247,183,${.18 + .16 * Math.sin(t + i)})`);
+  }
+}
+// Descobre a área opaca de cada quadro, em sua própria direção. Os arquivos PMD
+// têm padding muito diferente entre Charmander, Charmeleon, Squirtle etc.
+function visibleFrameBounds(p, action, frame, direction) {
+  const key = `${p.id}:${action}:${frame}:${direction}`;
+  if (frameBounds.has(key)) return frameBounds.get(key);
+  const { image, meta } = getImageMeta(p, action);
+  if (!image?.naturalWidth || !meta) return null;
+  const directions = Math.floor(image.naturalHeight / meta.height);
+  const dir = directions === 8 ? direction : 0;
+  const w = meta.width, h = meta.height;
+  sampleCanvas.width = w;
+  sampleCanvas.height = h;
+  sampleCtx.clearRect(0, 0, w, h);
+  sampleCtx.drawImage(image, frame * w, dir * h, w, h, 0, 0, w, h);
+  let bounds;
+  try {
+    const data = sampleCtx.getImageData(0, 0, w, h).data;
+    let left = w, right = 0, top = h, bottom = 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] < 20) continue;
+      left = Math.min(left, x); right = Math.max(right, x + 1);
+      top = Math.min(top, y); bottom = Math.max(bottom, y + 1);
+    }
+    bounds = bottom > top && right > left ? { left, top, right, bottom, width:right - left, height:bottom - top } : null;
+  } catch {
+    // Se o sprite remoto estiver sem CORS, ainda é possível desenhá-lo.
+    bounds = { left:0, top:0, right:w, bottom:h - 8, width:w, height:h - 8 };
+  }
+  frameBounds.set(key, bounds);
+  return bounds;
+}
+function unitScale(p) {
+  if (pokemonScale.has(p.id)) return pokemonScale.get(p.id);
+  const front = visibleFrameBounds(p, 'Idle', 0, 0);
+  const back = visibleFrameBounds(p, 'Idle', 0, 4);
+  // Altura do desenho VISÍVEL; evoluções devem de fato parecer maiores.
+  const target = [0, 43, 57, 72][p.stage] || 43;
+  // Não armazenar o tamanho provisório antes de o PNG terminar de carregar.
+  if (!front && !back) return target / 22;
+  const height = Math.max(front?.height ?? 1, back?.height ?? 1, 1);
+  const scale = clamp(target / height, 1.05, 3.7);
+  pokemonScale.set(p.id, scale);
+  return scale;
+}
+function groundShadow(p, x, y, highlight = null) {
+  const bounds = visibleFrameBounds(p, 'Idle', 0, 0);
+  const width = (bounds?.width || 18) * unitScale(p);
+  const radiusX = clamp(width * .35, 9, 23);
+  const radiusY = clamp(radiusX * .28, 3, 6);
+  // Sombra curta e semi-transparente, posicionada junto aos pés.
+  ellipse(x, y + 9, radiusX, radiusY, 'rgba(12,38,22,.25)');
+  if (highlight) {
+    ctx.save();
+    ctx.strokeStyle = highlight;
+    ctx.globalAlpha = .82;
+    ctx.lineWidth = 1.65;
+    ctx.beginPath();
+    ctx.ellipse(x, y + 9, radiusX + 2.5, radiusY + 1.7, 0, 0, TAU);
+    ctx.stroke();
+    ctx.restore();
   }
 }
 function drawUnitSprite(type, x, y, stateName, facing, stateTime, castElapsed = 0, cast = null) {
@@ -794,64 +890,54 @@ function drawUnitSprite(type, x, y, stateName, facing, stateTime, castElapsed = 
   if (image?.naturalWidth && meta) {
     const direction = Math.floor(image.naturalHeight / meta.height) === 8 ? facing : 0;
     const frame = getFrame(meta.durations, cast ? castElapsed : stateTime, !cast && stateName !== 'Hurt');
-    const scale = clamp(64 / type.sprites.Idle.height, 1.18, 2.05);
+    const bounds = visibleFrameBounds(type, stateName, frame, direction) || visibleFrameBounds(type, 'Idle', 0, direction);
+    const scale = unitScale(type);
+    // Alinhar o último pixel opaco aos pés, sem contar o padding transparente.
+    const footY = y + 7;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(image, frame * meta.width, direction * meta.height, meta.width, meta.height, Math.round(x - meta.width * scale / 2), Math.round(y + 16 - meta.height * scale), Math.round(meta.width * scale), Math.round(meta.height * scale));
+    ctx.drawImage(image, frame * meta.width, direction * meta.height, meta.width, meta.height,
+      Math.round(x - meta.width * scale / 2), Math.round(footY - (bounds?.bottom ?? meta.height) * scale),
+      Math.round(meta.width * scale), Math.round(meta.height * scale));
     ctx.imageSmoothingEnabled = true;
   } else {
-    ellipse(x, y - 15, 24, 25, type.color);
+    ellipse(x, y - 14, 18, 22, type.color);
     ctx.fillStyle = '#17331f';
     ctx.font = 'bold 10px system-ui';
     ctx.textAlign = 'center';
-    ctx.fillText(type.name.slice(0, 3).toUpperCase(), x, y + 2);
+    ctx.fillText(type.name.slice(0, 3).toUpperCase(), x, y);
   }
 }
+
 function drawSetupUnit(mon) {
   const p = BY_ID[mon.speciesId];
   const pos = monWorld(mon);
-  const color = mon.team === 0 ? '#72d2ff' : '#ff9cac';
-  ellipse(pos.x, pos.y + 11, 30, 10, '#17371f88');
-  ctx.save();
-  ctx.strokeStyle = selectedId === mon.instanceId ? '#ffe177' : color;
-  ctx.lineWidth = selectedId === mon.instanceId ? 3 : 2;
-  ctx.beginPath();
-  ctx.ellipse(pos.x, pos.y + 11, 29, 10, 0, 0, TAU);
-  ctx.stroke();
-  ctx.restore();
+  groundShadow(p, pos.x, pos.y, selectedId === mon.instanceId ? '#ffe177' : null);
   drawUnitSprite(p, pos.x, pos.y, 'Idle', mon.team ? 0 : 4, visualTime);
 }
 function drawShopGhost(activeDrag) {
   const p = BY_ID[state.shop[activeDrag.index] || activeDrag.speciesId];
   if (!p || !activeDrag.world) return;
   ctx.save();
-  ctx.globalAlpha = .82;
-  ellipse(activeDrag.world.x, activeDrag.world.y + 14, 30, 10, '#17371f88');
+  ctx.globalAlpha = .8;
+  groundShadow(p, activeDrag.world.x, activeDrag.world.y);
   drawUnitSprite(p, activeDrag.world.x, activeDrag.world.y, 'Idle', 4, visualTime);
   ctx.restore();
 }
 function drawBattleUnit(u) {
   if (u.dead) return;
-  const color = u.team === 0 ? '#72d2ff' : '#ff9cac';
-  ellipse(u.x, u.y + 11, u.radius + 9, 10, '#17371f88');
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.globalAlpha = .88;
-  ctx.beginPath();
-  ctx.ellipse(u.x, u.y + 11, u.radius + 6, 10, 0, 0, TAU);
-  ctx.stroke();
-  ctx.restore();
-  if (u.hitFlash > 0) ellipse(u.x, u.y - 16, 37, 32, `rgba(255,250,210,${u.hitFlash * 1.9})`);
+  groundShadow(u.type, u.x, u.y, selectedId === u.uid ? (u.team === 0 ? '#70cfff' : '#ffaaa0') : null);
+  if (u.hitFlash > 0) ellipse(u.x, u.y - 16, 32, 28, `rgba(255,250,210,${u.hitFlash * 1.9})`);
   drawUnitSprite(u.type, u.x, u.y, u.state, u.facing, u.stateTime, u.cast?.elapsed ?? 0, u.cast);
-  const bw = 52;
-  const bh = 7;
-  const py = u.y - 72;
+  const bw = clamp(32 + unitScale(u.type) * 4, 38, 50);
+  const bh = 6;
+  const py = u.y - ([0, 48, 64, 79][u.type.stage]);
   const health = clamp(u.health / u.maxHealth, 0, 1);
   ctx.fillStyle = '#142b1cdd';
   ctx.fillRect(u.x - bw / 2, py, bw, bh);
   ctx.fillStyle = health > .35 ? '#87e26f' : '#ffbd66';
   ctx.fillRect(u.x - bw / 2 + 1, py + 1, (bw - 2) * health, bh - 2);
 }
+
 function drawEffects() {
   for (const p of battle.projectiles) {
     ctx.save();
@@ -986,7 +1072,7 @@ const starter = newMon('0004', 0);
 const enemy = newMon('0007', 1);
 placeBoard(starter, 0, { col:4, row:8 }, false);
 placeBoard(enemy, 1, { col:5, row:3 }, false);
-selectedId = starter.instanceId;
+selectedId = window.matchMedia('(max-width:720px)').matches ? null : starter.instanceId;
 refillShop();
 sizeCanvas();
 renderSpeciesTools();

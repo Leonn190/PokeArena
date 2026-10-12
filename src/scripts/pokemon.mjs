@@ -37,6 +37,9 @@ export const EVOLVES_TO = Object.freeze({
   '0004':'0005', '0005':'0006',
   '0007':'0008', '0008':'0009'
 });
+// Ilustrações oficiais em vez dos sprites PMD: CDN da PokéAPI.
+// Não é necessário consultar a API a cada atualização de loja; a URL é estável.
+export const artworkUrl = p => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p.number}.png`;
 export const spritePath = (p, animation) => `${p.id}/${animation}-Anim.png`;
 export const spriteUrl = (p, animation) => `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/${spritePath(p,animation)}`;
 

@@ -22,7 +22,7 @@ const base = import.meta.env.BASE_URL;
         <div><b>Pokémon TFT</b><small id="phase-label">Preparação</small></div>
       </div>
       <div class="hud-stat"><small>Rodada</small><b id="round-label">1</b></div>
-      <div class="hud-stat"><small>Campo</small><b id="limit-label">1/6</b></div>
+      <div class="hud-stat"><small>Unidades</small><b id="limit-label">1/6</b></div>
       <div class="hud-stat gold"><small>Ouro</small><b id="gold-label">∞</b></div>
       <div class="hud-actions">
         <button id="start" class="icon-button primary" type="button" title="Iniciar batalha" aria-label="Iniciar batalha">▶</button>
@@ -58,13 +58,12 @@ const base = import.meta.env.BASE_URL;
     </section>
 
     <section class="bottom-hud" aria-label="Loja">
-      <div class="sell-zone" id="sell-zone">Vender</div>
       <div class="shop-meta">
         <b>Loja</b>
         <small>Ouro infinito ativo</small>
         <button id="reroll-shop" type="button">Reroll 2</button>
       </div>
-      <div id="shop-slots" class="shop-slots" aria-label="Loja de 6 slots"></div>
+      <div id="shop-slots" class="shop-slots" aria-label="Loja de 6 slots. Arraste um Pokémon do mapa para um slot da loja para vender."></div>
     </section>
 
     <div id="toast" class="toast" hidden></div>
