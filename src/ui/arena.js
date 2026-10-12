@@ -9,7 +9,7 @@ import { fieldLimitForBattle, shopOddsForBattle, RULES } from '../../server/game
 import { aliveCount, combatForPlayer, phaseRemainingSeconds, startLocalMatchCycle, updateLocalMatchCycle } from '../../server/game/match-cycle.mjs';
 import { BOARD, TAU, cellAtWorld, tilePosition, validCellForTeam, effectiveUnitStats } from '../../server/game/battle.mjs';
 import {calculateCompass,ALL_TYPES} from '../../server/game/compass.mjs';
-import {TERRAIN,STRUCTURE_BY_ID,STRUCTURE_CAPACITY,terrainInfluence,structureInfluence,recipeInfluence,paintTerrain,buyStructure,placeStructure,movePlacedStructure,removeStructure,discardStructure,structurePoints,fieldEffects} from '../../server/game/terrain.mjs';
+import {TERRAIN,STRUCTURE_BY_ID,STRUCTURE_CAPACITY,terrainModifiers,paintTerrain,buyStructure,placeStructure,movePlacedStructure,removeStructure,discardStructure,structurePoints,fieldEffects} from '../../server/game/terrain.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('arena');
@@ -516,66 +516,74 @@ function renderHud() {
   renderDetails();
   renderShop();
 }
-let compassPieSlices=[];
-let compassTypeSources=null;
-let compassFirstType=null;
+let synergySignature='';
 const TYPE_COLORS={Normal:'#a7a794',Lutador:'#d17e57',Voador:'#aabde4',Venenoso:'#b783bf',Terrestre:'#c59c62',Pedra:'#a69c87',Inseto:'#a9c46a',Fantasma:'#8575be',Aço:'#a5bac2',Fogo:'#f28a54',Água:'#60b5e3',Grama:'#80ca73',Elétrico:'#f2d868',Psíquico:'#e894be',Gelo:'#a4e3ee',Dragão:'#7881d6',Sombrio:'#7c8195',Fada:'#f1a5cf'};
+const pointsText=value=>Number(value.toFixed(1)).toLocaleString('pt-BR');
+const percentText=value=>Number(value.toFixed(2)).toLocaleString('pt-BR');
+const STAT_LABELS={vida:'vida',atk:'ataque físico',def:'defesa física',spa:'ataque especial',spd:'defesa especial',vel:'velocidade',attackSpeed:'velocidade de ataque',defenses:'defesas física e especial'};
 function renderCompass(player,compass) {
   const signature=`${player.id}:${ALL_TYPES.map(type=>compass[type].toFixed(3)).join(':')}`;
   if(signature===compassSignature)return;
   compassSignature=signature;
-  const ranked=ALL_TYPES.map(type=>({type,score:compass[type]||0})).sort((a,b)=>b.score-a.score);
-  const leaders=ranked.filter(entry=>entry.score>0).slice(0,5);
-  const total=leaders.reduce((sum,entry)=>sum+entry.score,0);
+  const entries=ALL_TYPES.map(type=>({type,score:compass[type]||0})).filter(e=>e.score>0).sort((a,b)=>b.score-a.score);
+  const total=entries.reduce((sum,e)=>sum+e.score,0);
   let angle=0;
-  compassPieSlices=[];
-  const segments=leaders.map((entry,i)=>{
+  const icons=[];
+  const segments=entries.map((entry,i)=>{
     const from=angle;
-    angle=i===leaders.length-1?360:angle+entry.score/total*360;
-    compassPieSlices.push({type:entry.type,from,to:angle});
-    return `${TYPE_COLORS[entry.type]} ${from.toFixed(2)}deg ${angle.toFixed(2)}deg`;
+    angle=i===entries.length-1?360:angle+entry.score/total*360;
+    const midpoint=(from+angle)/2*Math.PI/180;
+    const x=50+Math.sin(midpoint)*34,y=50-Math.cos(midpoint)*34;
+    const size=Math.max(6,Math.min(17,(angle-from)*.5));
+    icons.push(`<span class="compass-slice-icon" style="left:${x}%;top:${y}%;width:${size}px;height:${size}px">${typeIcon(entry.type)}</span>`);
+    return `${TYPE_COLORS[entry.type]} ${from}deg ${angle}deg`;
   });
-  $('compass-ring').style.background=segments.length?`conic-gradient(${segments.join(',')})`:'conic-gradient(#667b72 0deg 360deg)';
-  $('compass-lead').innerHTML=leaders[0]?typeIcon(leaders[0].type):'Neutra';
-  $('compass-widget').setAttribute('aria-label',leaders.length?`Bússola: ${leaders.map(x=>`${x.type} ${x.score.toFixed(1)} pontos`).join(', ')}`:'Bússola neutra, nenhuma influência');
-  $('compass-breakdown').innerHTML=ranked.map(({type,score})=>
-    `<div class="compass-entry" data-type="${type}" style="--type-color:${TYPE_COLORS[type]}">${typeIcon(type)}<b>${+score.toFixed(1)}</b></div>`).join('');
-  const direct=(units,points)=>{
-    const out={};
-    for(const mon of units||[]) {
-      const types=BY_ID[mon?.speciesId]?.types||[];
-      for(const type of types)out[type]=(out[type]||0)+points/types.length;
-    }
-    return out;
-  };
-  compassTypeSources=[
-    ['Pokémon no campo',direct(player.board,5)],
-    ['Pokémon no banco',direct(player.bench.filter(Boolean),2)],
-    ['Terrenos',terrainInfluence(player)],
-    ['Estruturas',structureInfluence(player)],
-    ['Combinações',recipeInfluence(player)]
-  ];
-  compassFirstType=leaders[0]?.type||null;
-  showCompassType(compassFirstType);
-}
-function showCompassType(type){
-  const selected=type||compassFirstType;
-  $('compass-lead').innerHTML=selected?typeIcon(selected):'Neutra';
-  $('compass-breakdown').querySelectorAll('.compass-entry').forEach(row=>{
-    row.classList.toggle('highlighted',row.dataset.type===selected);
-  });
-  $('compass-sources').innerHTML=(compassTypeSources||[]).map(([label,scores])=>
-    `<div><span>${label}</span><b>${+((scores[selected]||0).toFixed(1))} pts</b></div>`).join('');
+  $('compass-ring').style.background=segments.length?`conic-gradient(${segments.join(',')})`:'#667b72';
+  $('compass-icons').innerHTML=icons.join('');
+  $('compass-widget').setAttribute('aria-label',entries.length?`Pontos da bússola: ${entries.map(e=>`${e.type} ${pointsText(e.score)}`).join(', ')}`:'Bússola neutra');
 }
 function renderEnvironment() {
   const player=observedParticipant();
   if(!player||!localMatch)return;
   const compass=calculateCompass(player);
-  player.compass=compass; // Snapshot local recalculado ao consultar; nunca altera chances de raridade.
+  player.compass=compass;
   renderCompass(player,compass);
   $('capacity-label').textContent=`${structurePoints(player)}/${STRUCTURE_CAPACITY}`;
-  const effects=fieldEffects(player);
-  $('environment-effects').innerHTML=effects.length ? effects.map(e=>`<div>${typeIcon(e.type)} · ${e.stat==='regen'?`${(e.bonus*100).toFixed(2)}% HP/s`:`+${(e.bonus*100).toFixed(1)}% ${e.stat}`}<small>${e.sources.join(', ')} · 1,5× perto</small></div>`).join('') : '<div>Nenhuma estrutura posicionada</div>';
+  const battle=displayedBattle();
+  const combat=observedCombat();
+  const sides=battle&&battle.phase!=='finished'?combat.playerIds.map(id=>localMatch.players.find(p=>p.id===id)).filter(Boolean):[player];
+  const effects=fieldEffects({structures:sides.flatMap(p=>p.structures||[])});
+  const terrains=[...new Set(sides.flatMap(p=>p.terrain||[]))];
+  const signature=JSON.stringify([player.id,compass,effects,terrains]);
+  if(signature===synergySignature)return;
+  synergySignature=signature;
+  const entries=ALL_TYPES.map(type=>{
+    const score=compass[type]||0;
+    const extra=effects.filter(e=>e.type===type).map(e=>{
+      const bonus=e.stat==='regen'?`${percentText(e.bonus*100)}% de vida por segundo`:`+${percentText(e.bonus*100)}% de ${STAT_LABELS[e.stat]||e.stat}`;
+      return `${e.sources.join(', ')}: ${bonus}. Efeito 1,5× perto da estrutura, respeitando os limites de 12% por atributo e 1,2% de regeneração por segundo.`;
+    });
+    for(const id of terrains){
+      const mods=terrainModifiers(id,[type]),baseline=terrainModifiers(id,['Normal']);
+      if(mods.regen>0)extra.push(`${TERRAIN[id].name}: recupera ${percentText(mods.regen*100)}% de vida por segundo sobre esse terreno.`);
+      if(mods.def>0)extra.push(`${TERRAIN[id].name}: +${pointsText(mods.def*100)}% de defesa física sobre esse terreno.`);
+      if(mods.speed>1)extra.push(`${TERRAIN[id].name}: +${pointsText((mods.speed-1)*100)}% de velocidade sobre esse terreno.`);
+      else if(mods.speed>baseline.speed)extra.push(`${TERRAIN[id].name}: ${mods.speed===1?'ignora a redução':'sofre apenas '+pointsText((1-mods.speed)*100)+'% de redução'} de velocidade sobre esse terreno.`);
+    }
+    return {type,score,extra};
+  }).filter(e=>e.score>0||e.extra.length).sort((a,b)=>b.score-a.score);
+  $('environment-effects').replaceChildren();
+  for(const entry of entries){
+    const row=document.createElement('button');
+    row.type='button';row.className='synergy-row';
+    row.style.setProperty('--type-color',TYPE_COLORS[entry.type]);
+    const text=`O tipo ${entry.type} tem ${pointsText(entry.score)} pontos de vantagem da bússola.`;
+    row.title=[text,...entry.extra].join('\n\n');
+    row.setAttribute('aria-label',row.title);
+    row.innerHTML=`${typeIcon(entry.type)}<b>${pointsText(entry.score)}</b>${entry.extra.length?'<span class="synergy-bonus" aria-hidden="true">✦</span>':''}`;
+    $('environment-effects').append(row);
+  }
+  if(!entries.length)$('environment-effects').textContent='Nenhum tipo ativo';
 }
 function renderTerrainTools() {
   if(!localMatch||activeTab!=='terrain')return;
@@ -688,56 +696,165 @@ const {prepareSprites:loadSprites,getImageMeta,drawPortrait,warmPokemon}=createS
 async function prepareSprites() {await loadSprites(()=>renderHud());}
 function ellipse(x,y,rx,ry,color) {ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU);ctx.fill();}
 function line(x,y,toX,toY,color,width=1) {ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(toX,toY);ctx.stroke();}
-// Somente imagens locais de public: nenhuma textura ou estrutura procedural.
-const sceneryImages=new Map();
-const sceneryPreviews=new Map();
-function sceneryImage(kind,id) {
-  const key=`${kind}/${id}`;
-  if(sceneryImages.has(key))return sceneryImages.get(key);
-  const image=new Image();
-  sceneryImages.set(key,image);
-  image.onload=()=>{for(const redraw of sceneryPreviews.get(key)||[])redraw();};
-  image.src=`${base}assets/${kind}/${id}.png`;
-  return image;
+// Arte vetorial do cenário compartilhada entre arena, loja e ferramentas.
+const tileDrawings=new Map();
+const structureDrawings=new Map();
+const TILE_PALETTES={
+  neutro:['#d4d9c8','#eff1e2','#a8b7a3'],grama:['#648a55','#b2ca79','#3d6546'],
+  rosa:['#b07a96','#f0bad0','#795b7e'],terra:['#ad8865','#dfbb87','#795d48'],
+  lama:['#746758','#a59472','#4b5146'],areia:['#dcc38b','#fff0bc','#b29361'],
+  neve:['#dae9e8','#ffffff','#a4c9d4'],rochoso:['#8d9a92','#c4cfc0','#5b706d'],
+  metalico:['#8da5a6','#d0e0d8','#536f78'],rasa:['#64aeb7','#b5eddf','#3f889e'],
+  funda:['#386783','#84c8d2','#27465f']
+};
+function artEllipse(c,x,y,rx,ry,fill){
+  c.fillStyle=fill;c.beginPath();c.ellipse(x,y,rx,ry,0,0,TAU);c.fill();
 }
-function tileArt(id){return sceneryImage('terrenos',TERRAIN[id]?id:'neutro');}
-function drawTile(c,id,x,y,w=BOARD.tile,h=BOARD.tile){
-  const image=tileArt(id);
-  if(image.naturalWidth){c.imageSmoothingEnabled=false;c.drawImage(image,x,y,w,h);}
+function artPath(c,points,fill,stroke='#263d3b',width=2){
+  c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();
+  c.fillStyle=fill;c.fill();if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.lineJoin='round';c.stroke();}
 }
-function registerPreview(kind,id,redraw){
-  const key=`${kind}/${id}`;
-  const previews=sceneryPreviews.get(key)||new Set();
-  // Elementos removidos da loja não permanecem no cache.
-  for(const callback of previews)if(!callback.canvas.isConnected)previews.delete(callback);
-  previews.add(redraw);sceneryPreviews.set(key,previews);
-  redraw();
+function artLine(c,points,color,width=2){
+  c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));
+  c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.lineJoin='round';c.stroke();
 }
+function tileArt(id){
+  id=TERRAIN[id]?id:'neutro';
+  if(tileDrawings.has(id))return tileDrawings.get(id);
+  const tile=document.createElement('canvas');tile.width=58;tile.height=58;
+  const c=tile.getContext('2d'),[ground,light,dark]=TILE_PALETTES[id];
+  const wash=c.createLinearGradient(0,0,58,58);wash.addColorStop(0,light);wash.addColorStop(.18,ground);wash.addColorStop(1,dark);
+  c.fillStyle=wash;c.fillRect(0,0,58,58);
+  c.fillStyle=ground;c.globalAlpha=.6;c.fillRect(2,2,54,54);c.globalAlpha=1;
+  for(const [x,y] of [[11,12],[38,9],[23,31],[46,42],[8,47]]){
+    if(id==='grama'||id==='rosa'){
+      artLine(c,[[x-3,y+4],[x,y-3],[x+1,y+4],[x+5,y]],light,1.5);
+      if(id==='rosa'){artEllipse(c,x+3,y-3,3,3,'#f3d0db');artEllipse(c,x+3,y-3,1,1,'#fce6a6');}
+    }else if(id==='rasa'||id==='funda'){
+      c.strokeStyle=light;c.lineWidth=1.4;c.beginPath();c.moveTo(x-4,y);c.quadraticCurveTo(x,y-3,x+5,y);c.stroke();
+      artEllipse(c,x+7,y+5,1,1,light);
+    }else if(id==='rochoso'){
+      artPath(c,[[x-5,y+3],[x-3,y-3],[x+3,y-5],[x+6,y+2],[x+1,y+5]],dark,null);
+      artLine(c,[[x-3,y-3],[x+2,y-4],[x+4,y]],light,1.5);
+    }else if(id==='neve'){
+      artLine(c,[[x-3,y],[x+3,y]],light,1.5);artLine(c,[[x,y-3],[x,y+3]],light,1.5);
+    }else if(id==='lama'){
+      artEllipse(c,x,y,6,3,dark);artLine(c,[[x-3,y-1],[x+2,y-1]],light,1);
+    }else if(id==='areia'){
+      c.strokeStyle=light;c.lineWidth=1;c.beginPath();c.moveTo(x-5,y+2);c.quadraticCurveTo(x,y-4,x+6,y);c.stroke();
+    }else if(id==='terra'){
+      artEllipse(c,x,y,2,1.3,dark);artEllipse(c,x+3,y+2,1,1,light);
+    }
+  }
+  if(id==='metalico'){
+    artLine(c,[[29,1],[29,57]],dark,1.5);artLine(c,[[1,29],[57,29]],dark,1.5);
+    for(const x of [7,51])for(const y of [7,51]){artEllipse(c,x,y,2,2,dark);artEllipse(c,x-.5,y-.5,1,1,light);}
+  }else if(id==='neutro'){
+    artLine(c,[[1,29],[57,29]],dark,1);artLine(c,[[29,1],[29,29]],dark,1);artLine(c,[[15,29],[15,57]],dark,1);
+  }
+  artLine(c,[[1,57],[1,1],[57,1]],'#ffffff35',1);artLine(c,[[57,1],[57,57],[1,57]],'#102a2926',1);
+  tileDrawings.set(id,tile);return tile;
+}
+function drawTile(c,id,x,y,w=BOARD.tile,h=BOARD.tile){c.drawImage(tileArt(id),x,y,w,h);}
 function paintTilePreview(canvas,id){
   if(!canvas)return;
-  const redraw=()=>{
-    const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);
-    drawTile(c,id,0,0,canvas.width/2,canvas.height);
-    drawTile(c,id,canvas.width/2,0,canvas.width/2,canvas.height);
+  const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);
+  drawTile(c,id,0,0,canvas.width/2,canvas.height);
+  drawTile(c,id,canvas.width/2,0,canvas.width/2,canvas.height);
+}
+function structureArt(item){
+  if(structureDrawings.has(item.id))return structureDrawings.get(item.id);
+  const image=document.createElement('canvas');image.width=96;image.height=96;
+  const c=image.getContext('2d');c.translate(48,48);
+  const accent=TYPE_COLORS[item.type],edge='#263d3b',ivory='#e3e6ce';
+  artEllipse(c,0,33,34,9,'#0c232838');
+  artPath(c,[[-30,22],[0,13],[30,22],[30,29],[0,38],[-30,29]],'#607a70',edge);
+  artPath(c,[[-30,22],[0,13],[30,22],[0,31]],'#adbc99',edge);
+  const stone=(x,y,size=1)=>{
+    c.save();c.translate(x,y);c.scale(size,size);
+    artPath(c,[[-19,12],[-22,-6],[-8,-20],[13,-16],[22,4],[14,15]],'#738b85');
+    artPath(c,[[-22,-6],[-8,-20],[2,-7],[-7,5]],'#b9c8b1',null);
+    artLine(c,[[2,-7],[13,-16],[21,4]],'#d3d9bf',1.5);c.restore();
   };
-  redraw.canvas=canvas;registerPreview('terrenos',id,redraw);
+  const tree=ancient=>{
+    artPath(c,[[-8,25],[-5,-12],[5,-12],[9,25]],'#94724d');
+    artLine(c,[[0,20],[0,-8]],'#c9a471',2);
+    for(const [x,y,r] of [[-17,-9,17],[16,-13,17],[0,-26,20]]){
+      artEllipse(c,x,y,r,r*.82,ancient?'#4a7d69':'#659460');
+      artEllipse(c,x-4,y-5,r*.55,r*.35,'#b0ca83');
+    }
+    if(ancient)for(const [x,y] of [[-15,-13],[11,-27],[18,-8]])artEllipse(c,x,y,2.5,3,'#f3dea0');
+  };
+  const fountain=()=>{
+    artEllipse(c,0,19,24,8,'#668c99');artEllipse(c,0,16,20,5,'#90d2d1');
+    artPath(c,[[-6,15],[-4,-15],[4,-15],[6,15]],ivory);
+    for(const side of [-1,1]){
+      c.strokeStyle='#b8f0e1';c.lineWidth=3;c.beginPath();c.moveTo(0,-17);c.quadraticCurveTo(side*21,-32,side*16,13);c.stroke();
+    }
+    artEllipse(c,0,-18,4,5,'#d8faf0');
+  };
+  switch(item.id){
+    case 'planta':
+      artLine(c,[[0,23],[0,-23]],'#436957',4);
+      for(const [x,y] of [[-9,7],[9,-3],[-8,-12],[7,-21]]){
+        artEllipse(c,x,y,10,5,accent);artLine(c,[[0,y+6],[x,y]],'#b7d499',1.5);
+      }break;
+    case 'flores':
+      for(const [x,y] of [[-15,0],[0,-19],[15,-4]]){
+        artLine(c,[[x,23],[x,y]],'#66865e',3);
+        for(let i=0;i<5;i++){const a=i*TAU/5;artEllipse(c,x+Math.cos(a)*6,y+Math.sin(a)*6,4,4,accent);}
+        artEllipse(c,x,y,3,3,'#f7e6a3');
+      }break;
+    case 'pedra':stone(0,3);break;
+    case 'arvorezinha':tree(false);break;
+    case 'arvore-ancestral':tree(true);break;
+    case 'cacto':
+      artLine(c,[[0,23],[0,-25]],'#568566',11);
+      artLine(c,[[0,5],[-16,5],[-16,-10]],'#568566',8);
+      artLine(c,[[0,-4],[15,-4],[15,-18]],'#568566',8);
+      artLine(c,[[2,19],[2,-20]],'#c2d08b',2);artEllipse(c,0,-26,5,3,'#efb2c2');break;
+    case 'antena':
+      artPath(c,[[-18,24],[-5,-24],[5,-24],[18,24]],'#82989d');
+      for(const y of [-8,5,17])artLine(c,[[-y*.25-7,y],[y*.25+7,y]],'#d7e2d3',2);
+      artLine(c,[[0,-24],[0,-34]],ivory,3);artEllipse(c,0,-34,5,5,accent);break;
+    case 'fonte':fountain();break;
+    case 'colmeia':
+      for(const [y,rx] of [[-21,11],[-12,18],[-2,22],[8,20],[17,15]]){
+        artEllipse(c,0,y,rx,7,'#8b6e47');artEllipse(c,-1,y-2,rx-1,5,'#d5b972');
+      }
+      artEllipse(c,2,6,6,7,edge);break;
+    case 'cristal-gelo':
+      for(const [x,y,h] of [[-15,10,26],[14,14,31],[0,18,52]]){
+        artPath(c,[[x-9,y],[x-6,y-h+12],[x,y-h],[x+7,y-h+12],[x+10,y]],accent);
+        artPath(c,[[x-6,y-h+12],[x,y-h],[x,y],[x-9,y]],'#daf4ef',null);
+      }break;
+    case 'braseiro':
+      artPath(c,[[-21,9],[21,9],[13,23],[-13,23]],'#8f7c66');
+      artPath(c,[[-15,8],[-16,-9],[-7,-3],[-2,-30],[8,-13],[16,-21],[15,8]],accent);
+      artPath(c,[[-7,8],[-4,-8],[1,-19],[8,8]],'#ffe4a1',null);break;
+    case 'obelisco':
+      artPath(c,[[-18,24],[-13,-18],[0,-37],[13,-18],[18,24]],'#73879d');
+      artPath(c,[[-13,-18],[0,-37],[0,23],[-18,24]],'#b2c2bb',null);
+      artLine(c,[[2,-22],[-3,-8],[5,-8],[0,10]],accent,3);break;
+    case 'templo-mares':
+      for(const x of [-19,0,19])artPath(c,[[x-4,23],[x-4,-10],[x+4,-10],[x+4,23]],ivory);
+      artPath(c,[[-30,-10],[0,-31],[30,-10]],'#a5c5bc');
+      artLine(c,[[-26,26],[26,26]],accent,4);
+      artEllipse(c,0,-17,4,4,accent);break;
+    case 'santuario-glacial':
+      artPath(c,[[-26,23],[-26,-7],[0,-34],[26,-7],[26,23]],accent);
+      artPath(c,[[-26,-7],[0,-34],[3,-8],[-26,23]],'#e4f3e9',null);
+      artPath(c,[[-9,23],[-9,1],[0,-10],[9,1],[9,23]],'#4f778c');
+      artLine(c,[[-29,26],[29,26]],ivory,4);break;
+  }
+  structureDrawings.set(item.id,image);return image;
 }
-function drawStructureArt(c,item,x,y,w,h){
-  if(!item)return;
-  const image=sceneryImage('estruturas',item.id);
-  if(!image.naturalWidth)return;
-  const scale=Math.min(w/image.naturalWidth,h/image.naturalHeight);
-  const width=image.naturalWidth*scale,height=image.naturalHeight*scale;
-  c.imageSmoothingEnabled=false;
-  c.drawImage(image,x+(w-width)/2,y+(h-height)/2,width,height);
-}
+function drawStructureArt(c,item,x,y,w,h){if(item)c.drawImage(structureArt(item),x,y,w,h);}
 function drawStructurePreview(canvas,item){
   if(!canvas||!item)return;
-  const redraw=()=>{
-    const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);
-    drawStructureArt(c,item,0,0,canvas.width,canvas.height);
-  };
-  redraw.canvas=canvas;registerPreview('estruturas',item.id,redraw);
+  const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);
+  const size=Math.min(canvas.width,canvas.height);
+  drawStructureArt(c,item,(canvas.width-size)/2,(canvas.height-size)/2,size,size);
 }
 function drawArenaFloor(){
   ctx.fillStyle='#182e22';ctx.fillRect(0,0,BOARD.width,BOARD.height);
@@ -1000,14 +1117,6 @@ function sizeCanvas() {
   canvas.height=Math.round(screen.h*dpr);
   fitCamera();
 }
-$('compass-ring').addEventListener('pointermove',e=>{
-  const box=$('compass-ring').getBoundingClientRect();
-  const x=e.clientX-(box.left+box.width/2),y=e.clientY-(box.top+box.height/2);
-  const degrees=(Math.atan2(x,-y)*180/Math.PI+360)%360;
-  const slice=compassPieSlices.find(segment=>degrees>=segment.from&&degrees<segment.to);
-  if(slice)showCompassType(slice.type);
-});
-$('compass-widget').addEventListener('pointerleave',()=>showCompassType(compassFirstType));
 $('remove-placed').addEventListener('click',()=>{terrainTool='remove';selectedStructure=null;terrainSignature='';renderHud();});
 $('tab-pokemon').addEventListener('click',()=>{activeTab='pokemon';terrainPainting=null;renderHud();});
 $('tab-terrain').addEventListener('click',()=>{activeTab='terrain';drag=null;shopPointer=null;terrainSignature='';renderHud();});

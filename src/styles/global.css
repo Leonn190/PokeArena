@@ -276,7 +276,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 /* Loja TFT: opções em uma bandeja compacta, controles laterais e bússola saliente. */
 .bottom-hud{
   left:calc(50% - 22px);
-  width:min(1120px,calc(100vw - 110px));
+  width:min(820px,calc(100vw - 110px));
   padding:9px 12px 10px 9px;
   display:grid;
   grid-template-columns:144px minmax(0,1fr);
@@ -339,41 +339,22 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .shop-card .structure-preview{display:block;width:72px;height:72px;image-rendering:auto;max-width:95%;max-height:92%;pointer-events:none}
 .shop-card .structure-preview:empty{display:none}
 .bottom-hud.selling .shop-card{transform:none}
-/* Bússola: as cinco maiores fatias representam toda a distribuição; demais no hover. */
-.compass-widget{position:absolute;z-index:5;right:-46px;top:35%;transform:translateY(-50%);
-  width:109px;height:109px;display:grid;place-items:center;outline:none}
-.compass-ring{width:104px;height:104px;border-radius:50%;padding:10px;
-  background:conic-gradient(#697a75 0deg 360deg);border:3px solid #d4be7e;
-  box-shadow:0 0 0 4px #0c1816,0 0 0 5px #b4a06e9c,0 10px 30px #000b;
-  transition:filter .2s;position:relative}
-.compass-ring::after{content:'';position:absolute;inset:4px;pointer-events:none;border:1px solid #fff8e040;border-radius:50%}
-.compass-ring-inner{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  border-radius:50%;background:radial-gradient(circle at 37% 29%,#334f41,#10241e 70%);border:1px solid #e0c987aa;
-  box-shadow:0 0 0 2px #07181185,inset 0 2px 10px #000a;text-align:center}
-.compass-star{font-size:20px;color:#f6d98b;line-height:1.1}
-.compass-ring-inner strong{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#f1efd5}
-.compass-ring-inner small{font-size:9px;color:#dfdbb4;max-width:70px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.compass-widget:hover .compass-ring,.compass-widget:focus-visible .compass-ring,.compass-widget:focus-within .compass-ring{filter:brightness(1.16)}
-.compass-tooltip{position:absolute;bottom:calc(100% + 12px);right:-2px;width:330px;max-width:calc(100vw - 20px);
-  padding:14px;border:1px solid #cab784c4;border-radius:10px;
-  background:linear-gradient(145deg,#25392e,#0d211d 68%);box-shadow:0 18px 55px #000d;
-  opacity:0;visibility:hidden;pointer-events:none;transform:translateY(6px);transition:opacity .16s,transform .16s,visibility .16s;
-  color:#eff4e8}
-.compass-widget:hover .compass-tooltip,.compass-widget:focus-visible .compass-tooltip,.compass-widget:focus-within .compass-tooltip{opacity:1;visibility:visible;transform:translateY(0)}
-.compass-tooltip-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:9px;border-bottom:1px solid #dde6bd30}
-.compass-tooltip-head strong{font-size:12px;color:#fff4c1}
-.compass-tooltip-head small{font-size:9px;color:#b8c7b5;text-align:right}
-.compass-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:11px 0 8px}
-.compass-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;align-items:center;
-  font-size:10px;color:#dcead8}
-.compass-entry .type-color{width:7px;height:7px;border-radius:2px;background:var(--type-color)}
-.compass-entry.highlighted{color:#fff5c8;background:#d2c88a20;border-radius:3px}
-.compass-entry b{font-variant-numeric:tabular-nums;color:#fff6c2;font-size:10px}
-.compass-sources{padding:9px 0 1px;border-top:1px solid #dee8cc33;display:grid;gap:5px}
-.compass-sources div{display:flex;justify-content:space-between;gap:12px;color:#bcd2c1;font-size:10px}
-.compass-sources b{color:#f6e3a7;font-variant-numeric:tabular-nums}
-/* Terrenos e estruturas compartilham a mesma grade de 2 × 8. */
-.terrain-pane{min-width:0;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:6px;flex:1}
+/* Fatias representam todos os pontos; detalhes ficam na lista de tipos. */
+.compass-widget{position:absolute;z-index:5;right:-40px;top:8%;transform:translateY(-50%);
+  width:94px;height:94px;display:grid;place-items:center;pointer-events:none}
+.compass-ring{width:90px;height:90px;border-radius:50%;position:relative;
+  border:2px solid #e0c88c;background:#667b72;
+  box-shadow:0 0 0 3px #10241f,0 0 0 4px #b49e6e88,0 8px 20px #0008}
+.compass-ring::after{content:'';position:absolute;inset:2px;border:1px solid #fff8e050;border-radius:50%;pointer-events:none}
+.compass-ring-inner{position:absolute;width:25%;height:25%;left:37.5%;top:37.5%;
+  display:grid;place-items:center;border-radius:50%;background:#17332b;
+  border:2px solid #e1cf91;box-shadow:0 2px 5px #0008}
+.compass-star{font-size:13px;color:#f9df98;line-height:1}
+.compass-icons{position:absolute;inset:0}
+.compass-slice-icon{position:absolute;transform:translate(-50%,-50%);display:block;filter:drop-shadow(0 1px 2px #173029)}
+.compass-slice-icon .type-icon{display:block;width:100%;height:100%;margin:0}
+.structure-capacity{grid-column:1/-1;color:#c9d5ba;font-size:10px;display:flex;justify-content:space-between}
+.terrain-pane{min-width:0;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:auto repeat(2,minmax(0,1fr));gap:6px;flex:1}
 .terrain-tools,.structure-inventory{display:contents}
 .terrain-tool,.structure-slot{
   position:relative;min-width:0;min-height:70px;overflow:hidden;display:flex;flex-direction:column;
@@ -393,27 +374,33 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .structure-slot.empty{background:repeating-linear-gradient(135deg,#192b24,#192b24 8px,#1e3329 8px,#1e3329 16px);border-style:dashed}
 .structure-slot.empty small{color:#657e72}
 .structure-slot.empty canvas{opacity:.1}
-.environment-panel{position:absolute;z-index:3;left:12px;top:82px;width:190px;
+.environment-panel{position:absolute;z-index:3;left:12px;top:82px;width:128px;
   max-height:calc(100dvh - 260px);overflow-y:auto;padding:9px;
   border-radius:8px;border:1px solid #b1ce8a45;
-  background:linear-gradient(#173021ed,#0e2519df);box-shadow:0 12px 32px #0006;font-size:11px}
+  background:#10241bba;box-shadow:0 12px 32px #0004;font-size:11px}
 .environment-title{display:flex;align-items:center;justify-content:space-between;color:#ffe394;font-weight:900;margin:3px 0 8px}
 .environment-title small{color:#c5dbb0;font-size:10px}
 .environment-effects{display:grid;gap:4px}
-.environment-effects div{padding:5px;background:#183827;border:1px solid #cedcab2f;border-radius:5px;line-height:1.45}
-.environment-effects small{display:block;color:#abc49d}
-.game-shell[data-mode="local"] .side-hud{left:211px;right:auto;max-height:calc(100dvh - 268px)}
+.synergy-row{width:100%;display:flex;align-items:center;gap:10px;padding:7px 8px;
+  border:1px solid color-mix(in srgb,var(--type-color),transparent 55%);border-left:3px solid var(--type-color);
+  border-radius:5px;background:linear-gradient(100deg,color-mix(in srgb,var(--type-color),#10241d 85%),#132b23);
+  color:#f3f1d8;cursor:help;text-align:left}
+.synergy-row:hover,.synergy-row:focus-visible{background:#304536;border-color:var(--type-color);outline:none}
+.synergy-row .type-icon{width:26px;height:26px;margin:0}
+.synergy-row b{font-size:17px;font-variant-numeric:tabular-nums}
+.synergy-bonus{margin-left:auto;font-size:11px;color:#e8d595}
+.game-shell[data-mode="local"] .side-hud{left:150px;right:auto;max-height:calc(100dvh - 268px)}
 @media(max-width:950px){
-  .bottom-hud{width:calc(100vw - 88px);grid-template-columns:120px minmax(0,1fr);gap:6px}
-  .compass-widget{right:-40px;width:91px;height:91px}
-  .compass-ring{width:86px;height:86px;padding:8px}
+  .bottom-hud{width:min(820px,calc(100vw - 88px));grid-template-columns:120px minmax(0,1fr);gap:6px}
+  .compass-widget{right:-34px;width:82px;height:82px}
+  .compass-ring{width:78px;height:78px}
   .shop-portrait{min-height:69px}.shop-card{min-height:105px}
   .shop-gold{padding:4px 7px}
   .terrain-tool,.structure-slot{min-height:62px}
   .terrain-tool canvas,.structure-slot canvas{height:40px}
   .terrain-tool small,.structure-slot small{font-size:9px}
-  .environment-panel{width:155px;left:7px}
-  .game-shell[data-mode="local"] .side-hud{left:172px;max-width:210px}
+  .environment-panel{width:114px;left:7px}
+  .game-shell[data-mode="local"] .side-hud{left:132px;max-width:210px}
 }
 @media(max-width:700px){
   .bottom-hud{left:50%;bottom:6px;width:calc(100vw - 12px);grid-template-columns:96px minmax(0,1fr);gap:4px;padding:5px 6px}
@@ -429,11 +416,10 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   .terrain-pane{gap:2px}.terrain-tool,.structure-slot{min-height:54px}
   .terrain-tool canvas,.structure-slot canvas{height:34px}
   .terrain-tool small,.structure-slot small{font-size:7px;padding:3px 0}
-  .compass-widget{right:2px;top:-53px;width:73px;height:73px}
-  .compass-ring{width:69px;height:69px;padding:6px;border-width:2px}
-  .compass-star{font-size:13px}.compass-ring-inner strong{font-size:8px}.compass-ring-inner small{font-size:7px}
-  .compass-tooltip{bottom:calc(100% + 3px);right:0;width:298px}
-  .environment-panel{top:60px;left:7px;width:137px;max-height:25dvh}
+  .compass-widget{right:2px;top:-20px;width:73px;height:73px}
+  .compass-ring{width:69px;height:69px;border-width:2px}
+  .compass-star{font-size:10px}
+  .environment-panel{top:60px;left:7px;width:104px;max-height:25dvh}
   .game-shell[data-mode="local"] .side-hud{left:7px;top:calc(25dvh + 68px);max-height:25dvh;width:200px}
 }
 @media(max-height:640px){
@@ -445,12 +431,11 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 
 .shop-card,.structure-slot{touch-action:none}
 .type-icon{display:inline-block;width:20px;height:20px;vertical-align:middle;object-fit:contain;margin-right:4px}
-.compass-entry .type-icon{width:19px;height:19px}
 .shop-slots{grid-template-columns:repeat(6,minmax(0,100px));justify-content:center;align-items:start}
 .shop-card{min-height:0!important;align-self:start}
 .shop-portrait{flex:none;aspect-ratio:1!important;min-height:0!important}
 .shop-portrait .portrait-fallback{inset:0;width:100%;height:100%}
-.shop-card .structure-preview{image-rendering:pixelated}
+.shop-card .structure-preview,.terrain-tool canvas,.structure-slot canvas{image-rendering:auto}
 
 /* Ouro é exibido na própria loja, como no TFT. */
 .game-shell[data-mode="local"] .top-hud .hud-stat.gold{display:none}
