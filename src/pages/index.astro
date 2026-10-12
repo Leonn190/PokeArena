@@ -13,8 +13,41 @@ const base = import.meta.env.BASE_URL;
   <link rel="icon" href={`${base}favicon.svg`} />
 </head>
 <body>
-  <main class="game-shell">
+  <main class="game-shell" data-mode="menu">
     <canvas id="arena" width="1000" height="760" data-base={base} aria-label="Arena Pokémon TFT com inimigos no topo, seu time embaixo e banco físico no mapa." tabindex="0"></canvas>
+
+    <section class="entry-screen" id="entry-screen" aria-label="Escolha o modo do jogo">
+      <div class="entry-panel" id="mode-choice">
+        <div class="entry-emblem" aria-hidden="true"><span class="pokeball-mark"></span> POKÉARENA</div>
+        <h1>Sua arena Pokémon</h1>
+        <p>Monte sua equipe e prepare o campo de batalha.</p>
+        <div class="mode-options">
+          <button id="choose-test" class="mode-option" type="button">
+            <b>MODO TESTE</b><small>Simulador livre · Pokémon, loja e combates</small>
+          </button>
+          <button id="choose-match" class="mode-option accent" type="button">
+            <b>PUXAR PARTIDA</b><small>Sessão local com bots · sem conexão online</small>
+          </button>
+        </div>
+      </div>
+      <div class="entry-panel match-setup" id="match-setup" hidden>
+        <h1>Partida local</h1>
+        <p>Você e os bots começam com 100 HP e 9 de ouro. Os ciclos competitivos serão ativados nas próximas etapas.</p>
+        <label for="player-count">Quantidade de participantes</label>
+        <select id="player-count" name="player-count">
+          <option value="3">3 jogadores · 2 bots</option>
+          <option value="4">4 jogadores · 3 bots</option>
+          <option value="5">5 jogadores · 4 bots</option>
+          <option value="6">6 jogadores · 5 bots</option>
+          <option value="7">7 jogadores · 6 bots</option>
+          <option value="8">8 jogadores · 7 bots</option>
+        </select>
+        <div class="setup-actions">
+          <button id="back-to-modes" type="button">Voltar</button>
+          <button id="confirm-match" class="confirm-local" type="button">Criar partida local</button>
+        </div>
+      </div>
+    </section>
 
     <section class="top-hud" aria-label="Estado e controles">
       <div class="hud-brand">
@@ -24,6 +57,7 @@ const base = import.meta.env.BASE_URL;
       <div class="hud-stat"><small>Rodada</small><b id="round-label">1</b></div>
       <div class="hud-stat"><small>Unidades</small><b id="limit-label">1/6</b></div>
       <div class="hud-stat gold"><small>Ouro</small><b id="gold-label">∞</b></div>
+      <div class="hud-stat" id="hp-stat" hidden><small>Vida</small><b id="hp-label">100</b></div>
       <div class="hud-actions">
         <button id="start" class="icon-button primary" type="button" title="Iniciar batalha" aria-label="Iniciar batalha">▶</button>
         <button id="pause" class="icon-button" type="button" title="Pausar ou continuar" aria-label="Pausar ou continuar">Ⅱ</button>
@@ -34,7 +68,14 @@ const base = import.meta.env.BASE_URL;
         <button id="zoom-out" type="button" title="Afastar" aria-label="Afastar">−</button>
         <button id="camera-reset" type="button" title="Resetar visão" aria-label="Resetar visão">Reset</button>
       </div>
+      <button id="return-menu" class="return-menu" type="button">Menu</button>
     </section>
+
+    <aside id="match-panel" class="match-panel" hidden aria-label="Participantes da partida local">
+      <div class="match-panel-heading"><b>Partida local</b><small id="match-id-label">Offline</small></div>
+      <div id="match-players" class="match-players"></div>
+      <p class="match-pending">Etapa 01: sala preparada em memória. Batalhas, bots ativos e economia serão implementados nas próximas etapas.</p>
+    </aside>
 
     <section class="side-hud collapsed" id="detail-panel" aria-label="Ficha do Pokémon selecionado">
       <div class="panel-title"><span id="selected-number">#004</span><b id="selected-name">Charmander</b></div>
@@ -60,7 +101,7 @@ const base = import.meta.env.BASE_URL;
     <section class="bottom-hud" aria-label="Loja">
       <div class="shop-meta">
         <b>Loja</b>
-        <small>Ouro infinito ativo</small>
+        <small id="shop-mode-note">Ouro infinito ativo</small>
         <button id="reroll-shop" type="button">Reroll 2</button>
       </div>
       <div id="shop-slots" class="shop-slots" aria-label="Loja de 6 slots. Arraste um Pokémon do mapa para um slot da loja para vender."></div>

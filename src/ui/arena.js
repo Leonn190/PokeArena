@@ -1,9 +1,10 @@
-import { createSandboxState, createSandboxPokemon, removeFromSandbox, nextSandboxFusion } from '../../server/game/roster.mjs';
+import { createSandboxState, createSandboxPokemon, removeFromSandbox, nextSandboxFusion, createLocalMatchState } from '../../server/game/roster.mjs';
 import { createCamera } from './camera.mjs';
 import { createSpriteCache } from './sprites.mjs';
 import { createSpriteRenderer } from './renderer.mjs';
-import { BY_ID, SHOP_IDS, EVOLVES_TO, artworkUrl } from '../../server/game/pokemon.mjs';
+import { BY_ID, SHOP_IDS, EVOLVES_TO } from '../../server/game/pokemon.mjs';
 import { MOVES_BY_ID, movePool, initialLoadout } from '../../server/game/moves.mjs';
+import { fieldLimitForBattle } from '../../server/game/rules.mjs';
 import { BOARD, TAU, cellAtWorld, isBenchCell, benchTeamForCell, tilePosition, validCellForTeam, maxActiveForRound, effectiveStats, createBattle, syncLineups, startBattle, updateBattle } from '../../server/game/battle.mjs';
 
 const $ = id => document.getElementById(id);
@@ -36,7 +37,76 @@ let toastTimer = 0;
 let dpr = 1;
 let screen = { w: 1000, h: 760 };
 const evolutionEffects = [];
-const state = createSandboxState();
+let state = createSandboxState();
+let mode = 'menu';
+let localMatch = null;
+let savedTest = null;
+
+function openMenu() {
+  if (mode === 'test') savedTest = {state,battle,selectedId};
+  mode = 'menu';
+  $('entry-screen').hidden = false;
+  $('mode-choice').hidden = false;
+  $('match-setup').hidden = true;
+  $('outcome').hidden = true;
+  drag = null;
+  pan = null;
+  shopPointer = null;
+  selectedId = null;
+  setShopSellMode(false);
+  updateModeDisplay();
+}
+function enterTest() {
+  mode = 'test';
+  localMatch = null;
+  if (savedTest) {
+    ({state,battle,selectedId} = savedTest);
+  }
+  $('entry-screen').hidden = true;
+  updateModeDisplay();
+  renderHud();
+  sizeCanvas();
+}
+function enterLocalMatch() {
+  const count = Number($('player-count').value);
+  const sessionId = `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+  localMatch = createLocalMatchState(count,sessionId);
+  if (mode === 'test') savedTest = {state,battle,selectedId};
+  state = createSandboxState();
+  state.round = localMatch.round;
+  state.gold = localMatch.players[0].gold;
+  state.infiniteGold = false;
+  // Nenhuma oferta, unidade, ação de bot ou batalha é gerada na Etapa 01.
+  battle = createBattle([[],[]]);
+  selectedId = null;
+  resultAnnounced = false;
+  mode = 'local';
+  $('entry-screen').hidden = true;
+  $('outcome').hidden = true;
+  updateModeDisplay();
+  renderHud();
+  sizeCanvas();
+}
+function updateModeDisplay() {
+  document.querySelector('.game-shell').dataset.mode = mode;
+  $('hp-stat').hidden = mode !== 'local';
+  $('match-panel').hidden = mode !== 'local';
+  $('shop-mode-note').textContent = mode === 'local' ? 'Loja: Etapa 04' : 'Ouro infinito ativo';
+  $('reroll-shop').disabled = mode !== 'test';
+  if (mode !== 'local') return;
+  $('match-id-label').textContent = `${localMatch.players.length} jogadores`;
+  $('match-players').innerHTML = '';
+  for (const participant of localMatch.players) {
+    const item = document.createElement('div');
+    item.className = `match-player${participant.isBot ? '' : ' human'}`;
+    const name = document.createElement('b');
+    name.textContent = participant.isBot ? participant.name : 'Você';
+    const hp = document.createElement('small');
+    hp.textContent = `${participant.hp} HP`;
+    item.append(name,hp);
+    $('match-players').append(item);
+  }
+}
 function newMon(speciesId, team = 0) {
   warmPokemon(BY_ID[speciesId]);
   return createSandboxPokemon(speciesId,team,`mon-${Date.now().toString(36)}-${idSeq++}`);
@@ -156,6 +226,7 @@ function placeBoard(mon, team, cell, swap = true) {
   return true;
 }
 function removeUnit(mon, grantGold = false) {
+  if (mode !== 'test') return;
   if (!mon || battle.phase !== 'setup') return;
   const p = BY_ID[mon.speciesId];
   removeFromContainers(mon);
@@ -166,6 +237,7 @@ function removeUnit(mon, grantGold = false) {
   showToast(mon.team === 0 ? `${p.name} vendido por ${p.price}.` : `${p.name} removido.`);
 }
 function buyOffer(index) {
+  if (mode !== 'test') return;
   if (battle.phase !== 'setup') return;
   const speciesId = state.shop[index];
   if (!speciesId) return;
@@ -187,6 +259,7 @@ function buyOffer(index) {
   renderHud();
 }
 function buyOfferToCell(index, cell) {
+  if (mode !== 'test') return false;
   if (battle.phase !== 'setup') return false;
   const speciesId = state.shop[index];
   if (!speciesId || !cell) return false;
@@ -241,6 +314,7 @@ function evolveTeam(team) {
   }
 }
 function rerollMove(slot) {
+  if (mode !== 'test') return;
   const mon = selectedMon();
   if (!mon || battle.phase !== 'setup') return;
   const moveSlot = clamp(slot, 0, mon.slots - 1);
@@ -257,6 +331,7 @@ function syncBattle() {
   syncLineups(battle, [state.playerBoard, state.enemyBoard]);
 }
 function beginBattle() {
+  if (mode !== 'test') return;
   if (!state.playerBoard.length || !state.enemyBoard.length) {
     showToast('Coloque pelo menos uma unidade de cada lado.');
     return;
@@ -268,6 +343,7 @@ function beginBattle() {
   }
 }
 function prepareSameTeams() {
+  if (mode !== 'test') return;
   battle = createBattle([state.playerBoard, state.enemyBoard]);
   resultAnnounced = false;
   $('outcome').hidden = true;
@@ -331,6 +407,7 @@ function dropShopOffer(index, cell) {
   if (!buyOfferToCell(index, cell)) showToast('Solte em um banco ou campo valido.');
 }
 canvas.addEventListener('pointerdown', e => {
+  if (mode === 'menu') return;
   const screenPos = screenPoint(e.clientX, e.clientY);
   const world = screenToWorld(screenPos);
   if (e.button === 1 || e.button === 2 || (spaceDown && e.button === 0)) {
@@ -339,7 +416,7 @@ canvas.addEventListener('pointerdown', e => {
     e.preventDefault();
     return;
   }
-  if (e.button !== 0 || battle.phase !== 'setup') return;
+  if (mode !== 'test' || e.button !== 0 || battle.phase !== 'setup') return;
   const hit = hitUnit(world);
   if (hit) {
     selectedId = hit.instanceId;
@@ -356,7 +433,7 @@ canvas.addEventListener('pointerdown', e => {
 canvas.addEventListener('pointermove', e => {
   const screenPos = screenPoint(e.clientX, e.clientY);
   const world = screenToWorld(screenPos);
-  hovered = battle.phase === 'setup' ? cellAtWorld(world.x, world.y) : null;
+  hovered = mode === 'test' && battle.phase === 'setup' ? cellAtWorld(world.x, world.y) : null;
   if (pan?.pointer === e.pointerId) {
     camera.x = pan.x + screenPos.x - pan.start.x;
     camera.y = pan.y + screenPos.y - pan.start.y;
@@ -404,7 +481,7 @@ document.addEventListener('pointermove', e => {
   }
   if (shopPointer.dragging && drag?.kind === 'shop') {
     drag.world = clientToWorld(e.clientX, e.clientY);
-    hovered = battle.phase === 'setup' ? cellAtClient(e.clientX, e.clientY) : null;
+    hovered = mode === 'test' && battle.phase === 'setup' ? cellAtClient(e.clientX, e.clientY) : null;
   }
 });
 document.addEventListener('pointerup', e => {
@@ -431,7 +508,7 @@ canvas.addEventListener('wheel', e => {
 }, { passive:false });
 window.addEventListener('keydown', e => {
   if (e.code === 'Space') spaceDown = true;
-  if (e.key === 'Delete' || e.key === 'Backspace') {
+  if (mode === 'test' && (e.key === 'Delete' || e.key === 'Backspace')) {
     const mon = selectedMon();
     if (mon) removeUnit(mon, mon.team === 0);
   }
@@ -442,18 +519,20 @@ window.addEventListener('keyup', e => {
 
 function renderHud() {
   $('round-label').textContent = String(state.round);
-  $('limit-label').textContent = `${state.playerBoard.length}/${maxActive()}`;
+  $('limit-label').textContent = `${state.playerBoard.length}/${mode === 'local' ? fieldLimitForBattle(localMatch.round) : maxActive()}`;
   $('gold-label').textContent = state.infiniteGold ? '∞' : String(state.gold);
-  $('phase-label').textContent = battle.phase === 'setup' ? 'Preparação' : battle.phase === 'finished' ? 'Resultado' : battle.paused ? 'Pausado' : 'Combate';
-  $('start').disabled = battle.phase !== 'setup' || !state.playerBoard.length || !state.enemyBoard.length;
-  $('pause').disabled = battle.phase !== 'fighting';
+  $('phase-label').textContent = mode === 'local' ? 'Partida local · Etapa 01' : battle.phase === 'setup' ? 'Preparação · Teste' : battle.phase === 'finished' ? 'Resultado · Teste' : battle.paused ? 'Pausado · Teste' : 'Combate · Teste';
+  $('hp-label').textContent = mode === 'local' ? String(localMatch.players[0].hp) : '';
+  $('start').disabled = mode !== 'test' || battle.phase !== 'setup' || !state.playerBoard.length || !state.enemyBoard.length;
+  $('pause').disabled = mode !== 'test' || battle.phase !== 'fighting';
   $('pause').textContent = battle.paused ? '▶' : 'Ⅱ';
-  $('prepare').disabled = battle.phase === 'setup';
+  $('prepare').disabled = mode !== 'test' || battle.phase === 'setup';
+  $('reroll-shop').disabled = mode !== 'test';
   renderDetails();
   renderShop();
 }
 function renderDetails() {
-  const mon = selectedMon();
+  const mon = mode === 'test' ? selectedMon() : null;
   const panel = $('detail-panel');
   panel.classList.toggle('collapsed', !mon);
   if (!mon) return;
@@ -501,27 +580,13 @@ function renderShop() {
   slots.innerHTML = state.shop.map((id, i) => {
     if (!id) return `<button type="button" class="shop-card empty" data-index="${i}" disabled aria-label="Slot vazio"><span class="shop-portrait"><span class="empty-mark">＋</span></span><span class="shop-footer"><b>Vazio</b></span></button>`;
     const p = BY_ID[id];
-    return `<button type="button" class="shop-card" data-index="${i}" aria-label="Comprar ${p.name} por ${p.price} ouro"><span class="shop-portrait"><img src="${artworkUrl(p)}" alt="" draggable="false" loading="eager" decoding="async" /><canvas class="portrait-fallback visible" width="70" height="70" aria-hidden="true"></canvas></span><span class="shop-footer"><b>${p.name}</b><span class="shop-price">${coinSvg}<span>${p.price}</span></span></span></button>`;
+    return `<button type="button" class="shop-card" data-index="${i}" aria-label="Comprar ${p.name} por ${p.price} ouro"><span class="shop-portrait"><canvas class="portrait-fallback visible" width="70" height="70" aria-hidden="true"></canvas></span><span class="shop-footer"><b>${p.name}</b><span class="shop-price">${coinSvg}<span>${p.price}</span></span></span></button>`;
   }).join('');
   slots.querySelectorAll('.shop-card').forEach(card => {
     const index = Number(card.dataset.index);
     const id = state.shop[index];
     if (id) {
-      const img = card.querySelector('img');
-      const fallback = card.querySelector('canvas');
-      drawSmallSprite(fallback, BY_ID[id], 0);
-      img.addEventListener('load', () => {
-        img.classList.add('ready');
-        fallback.classList.remove('visible');
-      });
-      img.addEventListener('error', () => {
-        img.classList.add('unavailable');
-        fallback.classList.add('visible');
-      });
-      if (img.complete && img.naturalWidth) {
-        img.classList.add('ready');
-        fallback.classList.remove('visible');
-      }
+      drawSmallSprite(card.querySelector('canvas'), BY_ID[id], 0);
     }
     card.addEventListener('click', () => {
       if (suppressShopClick) return;
@@ -532,7 +597,7 @@ function renderShop() {
 }
 
 function startShopPointer(e, index) {
-  if (e.button !== 0 || battle.phase !== 'setup' || !state.shop[index]) return;
+  if (mode !== 'test' || e.button !== 0 || battle.phase !== 'setup' || !state.shop[index]) return;
   shopPointer = {
     pointer:e.pointerId,
     index,
@@ -542,7 +607,9 @@ function startShopPointer(e, index) {
   };
 }
 
-const {prepareSprites:loadSprites,getImageMeta,drawSmallSprite,warmPokemon} = createSpriteCache(base);
+const {prepareSprites:loadSprites,getImageMeta,drawSmallSprite,warmPokemon} = createSpriteCache(base, () => {
+  if (mode === 'test') { renderDetails(); renderShop(); }
+});
 async function prepareSprites() {
   await loadSprites(() => {renderHud();});
 }
@@ -755,8 +822,8 @@ function frame(timestamp) {
   visualTime += dt;
   updateCamera(dt);
   updateEvolutionEffects(dt);
-  updateBattle(battle, dt);
-  if (battle.phase === 'finished' && !resultAnnounced) {
+  if (mode === 'test') updateBattle(battle, dt);
+  if (mode === 'test' && battle.phase === 'finished' && !resultAnnounced) {
     resultAnnounced = true;
     $('result-title').textContent = battle.winner === null ? 'Empate' : battle.winner === 0 ? 'Vitoria do seu time' : 'Derrota';
     $('result-note').textContent = 'Volte para preparação e ajuste as formações.';
@@ -782,12 +849,23 @@ $('again').addEventListener('click', prepareSameTeams);
 $('zoom-in').addEventListener('click', () => zoomAt({ x:screen.w / 2, y:screen.h / 2 }, 1.15));
 $('zoom-out').addEventListener('click', () => zoomAt({ x:screen.w / 2, y:screen.h / 2 }, .87));
 $('camera-reset').addEventListener('click', fitCamera);
-$('reroll-shop').addEventListener('click', () => { if (battle.phase === 'setup') refillShop(); });
+$('reroll-shop').addEventListener('click', () => { if (mode === 'test' && battle.phase === 'setup') refillShop(); });
 $('sell-selected').addEventListener('click', () => {
   const mon = selectedMon();
   if (mon) removeUnit(mon, mon.team === 0);
 });
 window.addEventListener('resize', sizeCanvas);
+$('choose-test').addEventListener('click', enterTest);
+$('choose-match').addEventListener('click', () => {
+  $('mode-choice').hidden = true;
+  $('match-setup').hidden = false;
+});
+$('back-to-modes').addEventListener('click', () => {
+  $('match-setup').hidden = true;
+  $('mode-choice').hidden = false;
+});
+$('confirm-match').addEventListener('click', enterLocalMatch);
+$('return-menu').addEventListener('click', openMenu);
 
 const starter = newMon('0004', 0);
 const enemy = newMon('0007', 1);
@@ -795,6 +873,9 @@ placeBoard(starter, 0, { col:4, row:8 }, false);
 placeBoard(enemy, 1, { col:5, row:3 }, false);
 selectedId = window.matchMedia('(max-width:720px)').matches ? null : starter.instanceId;
 refillShop();
+// Guardar o simulador original mesmo se a primeira escolha for Puxar Partida.
+savedTest = {state,battle,selectedId};
+updateModeDisplay();
 sizeCanvas();
 renderHud();
 prepareSprites();

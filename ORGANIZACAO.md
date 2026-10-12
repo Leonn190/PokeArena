@@ -4,6 +4,15 @@
 
 Este documento prevalece sobre sugestões genéricas de estrutura e sobre o plano antigo de Codex **quanto à arquitetura e à forma de executar alterações**. Para regras de jogo, consultar o `GAME_DESIGN_POKEMON_TFT_v0_4_Multiplayer_Economia_Combate.md` disponibilizado pelo criador; este arquivo NÃO precisa ser copiado para a raiz. O plano de implementação é `PLANO_CODEX_POKEARENA_v0_5.md`. **Se houver conflito, avisar o criador e não inventar regras.**
 
+## Regra prioritária de execução — desenvolvimento OFFLINE em TODAS as etapas
+
+**Esta decisão do criador, de 12/10/2026, substitui provisoriamente qualquer instrução abaixo que exija API, HTTP, Render, PostgreSQL, autenticação remota ou partida servidor-autoritária ativa.** Nas etapas 01 a 11, inclusive a integração final, implementar e usar somente simulação local em memória. O site não deve chamar endpoints para iniciar partidas; nenhuma funcionalidade de partida pode exigir servidor ou banco de dados. Não iniciar, implementar ou testar a API durante a Etapa 01. As referências a deploy, contrato HTTP, transações e servidor nas seções seguintes documentam **exclusivamente a arquitetura futura**, não instruem ativá-los agora.
+
+- `server/game/` permanece independente de navegador/Node/HTTP e concentra regras reutilizáveis. O frontend poderá importar esse domínio diretamente para a simulação local provisória, sem reivindicar autoridade competitiva online.
+- `server/` deve continuar autossuficiente para migração futura, mas `server/index.mjs`, `server/match.mjs`, `server/store.mjs` e `src/services/api.mjs` não participam do fluxo offline até nova decisão explícita do criador.
+- **Etapa 01:** menu com Modo Teste preservado e Puxar Partida criando sessão local de 3–8 participantes (um humano e bots), 100 HP, nove ouros, rodada 1. Não executar batalhas, IA, compras competitivas, economia ou rodadas prematuramente.
+- **Etapas 02–11:** evoluir a simulação local e suas regras puras nas respectivas etapas, mantendo a separação que permitirá posteriormente transferir a autoridade ao servidor. Nunca tratar resultados locais como partidas oficiais online.
+
 ## 1. Objetivo irrevogável
 
 - **Frontend**: site Astro estático no GitHub Pages, Canvas 2D, animações PMDCollab, interface, câmera, renderização, entradas de usuário e Modo Teste (simulador offline).

@@ -227,3 +227,51 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   .shop-portrait img{padding:2px 2px 0}
   .shop-footer{min-height:28px}
 }
+
+/* Etapa 01 — menu sobre o mesmo Canvas; sem outro motor, página ou framework. */
+[hidden]{display:none!important}
+.game-shell[data-mode="menu"] .top-hud,
+.game-shell[data-mode="menu"] .bottom-hud,
+.game-shell[data-mode="menu"] .side-hud,
+.game-shell[data-mode="menu"] .match-panel{display:none}
+.entry-screen{position:absolute;inset:0;z-index:10;display:grid;place-items:center;padding:20px;background:linear-gradient(160deg,rgba(8,28,17,.78),rgba(4,15,10,.76));backdrop-filter:blur(5px)}
+.entry-panel{width:min(470px,100%);max-height:min(88dvh,700px);overflow-y:auto;border:1px solid rgba(235,255,190,.43);border-radius:16px;padding:clamp(22px,4vw,38px);background:linear-gradient(160deg,rgba(37,73,43,.96),rgba(11,29,21,.97));box-shadow:0 20px 75px rgba(0,0,0,.45);text-align:center}
+.entry-emblem{display:flex;align-items:center;justify-content:center;gap:10px;font-weight:950;color:#ffe784;letter-spacing:2.8px;font-size:13px}
+.entry-emblem .pokeball-mark{flex-shrink:0}
+.entry-panel h1{margin:17px 0 8px;font-size:clamp(25px,5vw,36px);letter-spacing:-.9px}
+.entry-panel p{margin:0 auto 25px;color:#cce0be;font-size:13px;line-height:1.6;max-width:340px}
+.mode-options{display:grid;gap:12px}
+.mode-option{display:flex;flex-direction:column;align-items:flex-start;gap:5px;width:100%;text-align:left;padding:17px 19px;border:1px solid #80ad75;border-radius:10px;color:#f2ffdf;background:linear-gradient(100deg,#3d6b43,#274631);transition:filter .15s,transform .15s}
+.mode-option.accent{background:linear-gradient(110deg,#f2d367,#cda544);border-color:#ffeda3;color:#263319}
+.mode-option b{font-size:16px;font-weight:950;letter-spacing:.3px}
+.mode-option small{font-size:11px;font-weight:650;opacity:.8;line-height:1.4}
+.mode-option:hover{filter:brightness(1.1);transform:translateY(-2px)}
+.match-setup h1{margin-top:0}
+.match-setup label{display:block;text-align:left;font-weight:900;font-size:12px;margin-bottom:8px;color:#ffe58b}
+.match-setup select{width:100%;min-height:46px;padding:0 11px;background:#132b1d;color:#eefbe4;border:1px solid #9cc78c;border-radius:8px;font:inherit}
+.setup-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:18px}
+.setup-actions button{min-height:44px;border:1px solid #7a9e75;border-radius:8px;background:#23402c;color:#f3f9ed;font-weight:900}
+.setup-actions .confirm-local{background:#f2d367;color:#21321a;border-color:#ffe9a5}
+.return-menu{border:1px solid rgba(234,255,198,.24);border-radius:6px;background:#1b3525;color:#eaf9dd;font-weight:900;font-size:11px;min-height:40px;padding:0 10px}
+.match-panel{position:absolute;top:84px;left:12px;z-index:3;width:210px;max-height:calc(100dvh - 270px);overflow-y:auto;padding:12px;border-radius:10px;border:1px solid rgba(234,255,198,.30);background:linear-gradient(180deg,rgba(23,45,28,.93),rgba(10,22,16,.88));box-shadow:0 14px 44px rgba(0,0,0,.3)}
+.match-panel-heading{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13px;margin-bottom:10px}
+.match-panel-heading small{color:#ffe28d;font-size:9px;font-weight:900;white-space:nowrap}
+.match-players{display:grid;gap:5px}
+.match-player{display:flex;justify-content:space-between;gap:8px;padding:8px;border-radius:6px;background:rgba(7,24,14,.6);font-size:11px}
+.match-player.human{border:1px solid rgba(244,219,109,.55)}
+.match-player b{font-size:11px;max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.match-player small{font-size:10px;color:#c0d5ad;white-space:nowrap}
+.match-pending{font-size:10px;line-height:1.55;color:#c0d5ad;margin:12px 0 0}
+.game-shell[data-mode="local"] .hud-actions{display:none}
+.game-shell[data-mode="local"] .shop-card.empty{opacity:.48}
+@media(max-width:720px){
+  .match-panel{top:61px;left:8px;width:156px;max-height:calc(100dvh - 190px);padding:8px}
+  .match-panel-heading{font-size:11px}
+  .match-panel-heading small{font-size:8px}
+  .match-player{padding:6px 4px;gap:3px}
+  .match-player b,.match-player small{font-size:9px}
+  .match-player b{max-width:83px}
+  .match-pending{font-size:9px}
+  .return-menu{min-height:36px;padding:0 6px;font-size:10px}
+  .entry-panel{padding:23px 18px}
+}

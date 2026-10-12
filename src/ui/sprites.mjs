@@ -1,27 +1,23 @@
-import { POKEMON, applySpriteManifest, spritePath, spriteUrl } from '../../server/game/pokemon.mjs';
+import { POKEMON, applySpriteManifest, spritePath } from '../../server/game/pokemon.mjs';
 import { TAU } from '../../server/game/battle.mjs';
 
 // Cache e demanda por sprites são assuntos de apresentação, não de regras.
-export function createSpriteCache(base) {
+export function createSpriteCache(base, onImageReady = () => {}) {
   const images = new Map();
   const loading = new Set();
+  const missing = new Set();
   let manifestReady = false;
 
   async function loadImage(p, action) {
     const key = `${p.id}:${action}`;
-    if (images.has(key) || loading.has(key)) return;
+    if (images.has(key) || loading.has(key) || missing.has(key)) return;
     loading.add(key);
     const image = new Image();
     image.decoding = 'async';
     await new Promise(resolve => {
-      let remote = false;
-      image.onload = () => { images.set(key,image); resolve(); };
-      image.onerror = () => {
-        if(remote) { resolve(); return; }
-        remote = true;
-        image.crossOrigin = 'anonymous';
-        image.src = spriteUrl(p,action);
-      };
+      image.onload = () => { images.set(key,image); if (action === 'Idle') onImageReady(); resolve(); };
+      // Etapas offline: usar somente sprites presentes em public/sprites/.
+      image.onerror = () => { missing.add(key); resolve(); };
       image.src = `${base}sprites/${spritePath(p,action)}`;
     });
     loading.delete(key);

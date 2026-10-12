@@ -50,3 +50,23 @@ export function nextSandboxFusion(units,evolvesTo) {
   // O competitivo segue a tabela de fusão POR ESPÉCIE do GDD §5.4.
   return [...groups.entries()].find(([,group])=>group.length>=3)||null;
 }
+
+// Fundação de sessão em memória para o protótipo OFFLINE das etapas 01–11.
+// O estado usa o mesmo participante e regras do domínio; não representa
+// uma partida competitiva oficial e não depende de HTTP, DOM ou Node.
+export function createLocalMatchState(playerCount, sessionId) {
+  if (!Number.isInteger(playerCount) || playerCount < RULES.minPlayers || playerCount > RULES.maxPlayers) {
+    throw new RangeError(`A partida local aceita ${RULES.minPlayers} a ${RULES.maxPlayers} participantes.`);
+  }
+  const ownerId = `${sessionId}-player`;
+  const players = [createParticipant({id:ownerId,name:'Jogador',isBot:false})];
+  for (let i=1; i<playerCount; i++) {
+    players.push(createParticipant({id:`${sessionId}-bot-${i}`,name:`Bot ${i}`,isBot:true}));
+  }
+  return {
+    id:sessionId,ownerId,ruleset:RULES.version,revision:0,round:1,
+    phase:'awaiting-match-engine',players,
+    outcomes:[],championId:null,pool:{},pairings:[],phaseDeadline:null,
+    localOnly:true
+  };
+}
