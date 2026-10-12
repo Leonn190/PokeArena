@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {POKEMON,spritePath,spriteUrl} from '../src/scripts/pokemon.mjs';
-import {animationCandidates} from '../src/scripts/moves.mjs';
+import {POKEMON,spritePath,spriteUrl} from '../server/game/pokemon.mjs';
+import {animationCandidates} from '../server/game/moves.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const output=path.join(root,'public','sprites');
 const defaultAnims=['Idle','Walk','Attack','Hurt'];

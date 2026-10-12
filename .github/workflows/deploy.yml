@@ -23,6 +23,8 @@ jobs:
       - name: Instalar dependencias
         run: npm install --no-audit --no-fund
       - name: Gerar site (incluindo sprites locais)
+        env:
+          PUBLIC_POKEARENA_API_URL: ${{ vars.POKEARENA_API_URL }}
         run: npm run build
       - name: Enviar arquivos para Pages
         uses: actions/upload-pages-artifact@v3
