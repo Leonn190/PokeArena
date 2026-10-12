@@ -5,6 +5,7 @@ import { prepareLocalBots } from './ai.mjs';
 
 export const LOCAL_PHASES = Object.freeze({
   PREPARATION: 'preparation',
+  INTRO: 'intro',
   COMBAT: 'combat',
   FINISHED: 'finished'
 });
@@ -75,9 +76,9 @@ export function startLocalMatchCycle(match, nowSeconds = 0) {
 }
 
 export function startCombatPhase(match, nowSeconds = 0) {
-  match.phase = LOCAL_PHASES.COMBAT;
+  match.phase = LOCAL_PHASES.INTRO;
   match.phaseStartedAt = nowSeconds;
-  match.phaseDeadline = nowSeconds + RULES.battleSeconds;
+  match.phaseDeadline = nowSeconds + RULES.battleIntroSeconds;
   match.pairings = makePairings(match);
   match.combats = match.pairings.map(pairing => {
     if (pairing.bye) {
@@ -108,20 +109,16 @@ export function startCombatPhase(match, nowSeconds = 0) {
       {terrain:left.terrain,structures:left.structures},
       {terrain:right.terrain,structures:right.structures}
     ]);
-    startBattle(battle);
     return { ...pairing, status:'running', battle, result:null };
   });
   match.previousPairs = match.pairings
     .filter(pairing => pairing.playerIds.length === 2)
     .map(pairing => pairKey(pairing.playerIds[0], pairing.playerIds[1]));
   const hasRunningCombat = match.combats.some(combat => combat.status === 'running');
-  if (!hasRunningCombat) match.phaseDeadline = nowSeconds + 3;
   match.lastMessage = hasRunningCombat
-    ? 'Combates locais em andamento.'
+    ? 'Entrada dos adversários: o combate começa em 3 segundos.'
     : 'Nenhum confronto com duas equipes validas nesta rodada.';
-  match.waitingForUnavailableUntil = hasRunningCombat
-    ? null
-    : nowSeconds + 3;
+  match.waitingForUnavailableUntil = null;
   return match;
 }
 
@@ -179,6 +176,17 @@ export function updateLocalMatchCycle(match, dtSeconds, nowSeconds = 0) {
   if (match.phase === LOCAL_PHASES.PREPARATION && nowSeconds >= match.phaseDeadline) {
     return startCombatPhase(match, nowSeconds);
   }
+  if (match.phase === LOCAL_PHASES.INTRO) {
+    if (nowSeconds < match.phaseDeadline) return match;
+    match.phase = LOCAL_PHASES.COMBAT;
+    match.phaseStartedAt = nowSeconds;
+    match.phaseDeadline = nowSeconds + RULES.battleSeconds;
+    match.lastMessage = 'Combates locais em andamento.';
+    for (const combat of match.combats) {
+      if (combat.status === 'running') startBattle(combat.battle);
+    }
+    return match;
+  }
   if (match.phase !== LOCAL_PHASES.COMBAT) return match;
 
   for (const combat of match.combats) {
@@ -190,7 +198,7 @@ export function updateLocalMatchCycle(match, dtSeconds, nowSeconds = 0) {
   const running = match.combats.filter(combat => combat.status === 'running');
   if (nowSeconds >= match.phaseDeadline) {
     for (const combat of running) {
-      // O motor avança em passos de até 50 ms; enviar 60 s de uma vez
+      // O motor avança em passos de até 50 ms; enviar toda a duração de uma vez
       // seria truncado para 0,05 s e a partida ficaria travada nesta fase.
       let remaining = Math.max(0,RULES.battleSeconds-combat.battle.elapsed);
       while(remaining > 0 && combat.battle.phase === 'fighting') {

@@ -1,0 +1,4359 @@
+{
+  "version": 1,
+  "generatedBy": "baixar_assets_pokearena.py",
+  "spriteNotes": "Ações provenientes de AnimData.xml. CopyOf pode reutilizar um PNG já existente. public/sprites/manifest.json é gerado pelo build Astro e não foi alterado.",
+  "pokemon": {
+    "0001": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0001.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0002": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0002.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0003": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0003.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0004": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "Kick": "Kick",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0004.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0005": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Shoot",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0005.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0006": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Faint": "Faint",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Shoot",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0006.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0007": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake",
+        "Withdraw": "Withdraw"
+      },
+      "retrato": "portraits/0007.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0008": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Ricochet": "Ricochet",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Withdraw": "Withdraw"
+      },
+      "retrato": "portraits/0008.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0009": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Ricochet": "Ricochet",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Withdraw": "Withdraw"
+      },
+      "retrato": "portraits/0009.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0010": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0010.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0011": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Shoot",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0011.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0012": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "FlapAround": "FlapAround",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0012.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0013": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Jab": "Strike",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0013.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0014": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Twirl"
+      },
+      "retrato": "portraits/0014.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0015": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Jab": "Jab",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0015.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0025": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shock": "Shock",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0025.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0026": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shock": "Shock",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0026.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0035": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Withdraw": "Withdraw"
+      },
+      "retrato": "portraits/0035.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0036": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Withdraw": "Withdraw"
+      },
+      "retrato": "portraits/0036.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0039": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Slam": "Slam",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Wake": "Wake",
+        "Withdraw": "Withdraw"
+      },
+      "retrato": "portraits/0039.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0040": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Slam": "Slam",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Withdraw": "Withdraw"
+      },
+      "retrato": "portraits/0040.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0041": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0041.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0042": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0042.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0060": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "Appeal",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0060.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0061": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0061.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0062": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0062.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0063": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "Jab": "Strike",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Charge",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0063.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0064": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0064.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0065": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0065.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0066": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "Kick": "Kick",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0066.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0067": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Kick": "Kick",
+        "Punch": "Punch",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0067.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0068": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Kick": "Kick",
+        "Punch": "Punch",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0068.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0081": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0081.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0082": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0082.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0092": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Lick": "Lick",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0092.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0093": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Lick": "Lick",
+        "MultiStrike": "MultiStrike",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0093.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0094": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Lick": "Shoot",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Twirl": "Rotate",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0094.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0095": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Slam": "Attack",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0095.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0111": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Stomp": "Stomp",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0111.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0112": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Stomp": "Stomp",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0112.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0113": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0113.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0123": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Slice": "Slice",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0123.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0129": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Shoot",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0129.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0130": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0130.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0131": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Sound": "RearUp",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0131.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0133": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "TailWhip": "TailWhip",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0133.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0134": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0134.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0135": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shock": "Shock",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0135.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0136": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "TailWhip": "TailWhip",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0136.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0143": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Stomp": "Stomp",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0143.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0147": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0147.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 13
+    },
+    "0148": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "MultiStrike": "MultiStrike",
+        "Ricochet": "Ricochet",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0148.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0149": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Emit",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Special0": "Special0",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Withdraw": "Emit"
+      },
+      "retrato": "portraits/0149.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 12
+    },
+    "0150": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Punch": "Punch",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Hover",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0150.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0151": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Twirl",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0151.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0169": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0169.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0172": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shock": "Shock",
+        "Sing": "Appeal",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0172.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0173": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sing": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0173.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0174": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sing": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Withdraw": "Withdraw"
+      },
+      "retrato": "portraits/0174.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0186": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0186.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0196": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0196.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0197": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Withdraw",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake",
+        "Withdraw": "Withdraw"
+      },
+      "retrato": "portraits/0197.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0208": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Appeal",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0208.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0212": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "MultiScratch": "MultiScratch",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Charge",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0212.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0214": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Slam": "Slam",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0214.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0227": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0227.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0242": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "MultiStrike": "MultiStrike",
+        "Punch": "MultiStrike",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Twirl": "Twirl"
+      },
+      "retrato": "portraits/0242.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0246": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0246.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0247": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "FlapAround": "Rotate",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0247.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0248": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0248.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0255": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0255.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0256": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0256.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0257": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Kick": "Kick",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Slam": "Slam",
+        "Sleep": "Sleep",
+        "Strike": "Slam",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0257.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0270": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0270.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0271": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "MultiScratch": "MultiScratch",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0271.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0272": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Emit",
+        "Hop": "Hop",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0272.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0273": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Withdraw": "Withdraw"
+      },
+      "retrato": "portraits/0273.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0274": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0274.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0275": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "MultiStrike": "MultiStrike",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0275.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0280": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0280.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0281": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "SpAttack": "Twirl",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Twirl",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0281.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0282": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "SpAttack": "Appeal",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0282.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0304": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Shake",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Rumble": "Shake",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0304.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 17
+    },
+    "0305": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Shake",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Rumble": "Shake",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0305.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 12
+    },
+    "0306": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Shake",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Rumble": "Shake",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0306.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 12
+    },
+    "0318": {
+      "acoes": {
+        "Attack": "Attack",
+        "Bite": "Bite",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swell": "Swell",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0318.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0319": {
+      "acoes": {
+        "Attack": "Attack",
+        "Bite": "Bite",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swell": "Swell",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0319.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0320": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0320.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0321": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0321.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0331": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0331.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0332": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0332.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0333": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0333.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0334": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0334.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0359": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0359.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0361": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Twirl": "Rotate",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0361.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0362": {
+      "acoes": {
+        "Attack": "Attack",
+        "Bite": "Bite",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0362.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0363": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0363.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0364": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0364.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 12
+    },
+    "0365": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0365.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 12
+    },
+    "0382": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Stomp": "Stomp",
+        "Swell": "Swell",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0382.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0383": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Emit",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Rumble": "Emit",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0383.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0384": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "QuickStrike": "QuickStrike",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0384.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 12
+    },
+    "0385": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0385.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0393": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0393.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0394": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0394.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0395": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0395.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0440": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0440.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0443": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0443.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0444": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0444.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0445": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0445.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0446": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Twirl": "Twirl",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0446.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0447": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0447.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0448": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0448.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0459": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0459.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0460": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0460.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0462": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0462.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0464": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Rumble": "Rumble",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0464.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0470": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shake": "TailWhip",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "TailWhip": "TailWhip",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0470.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0471": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shake": "TailWhip",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "TailWhip": "TailWhip",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0471.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0475": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0475.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0478": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Twirl"
+      },
+      "retrato": "portraits/0478.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0483": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Scratch": "Scratch",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0483.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0484": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Scratch": "Scratch",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0484.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0491": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0491.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0532": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0532.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 7
+    },
+    "0533": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Punch": "Punch",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Special0": "Special0",
+        "Special1": "Special1",
+        "Swing": "Swing",
+        "Withdraw": "RearUp"
+      },
+      "retrato": "portraits/0533.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0534": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Rumble": "Rumble",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0534.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0557": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Twirl": "Rotate",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0557.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0562": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0562.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0563": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Shoot",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0563.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0568": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Slam": "Attack",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Wake": "Wake",
+        "Withdraw": "Withdraw"
+      },
+      "retrato": "portraits/0568.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0569": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0569.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0570": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Shoot",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0570.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0571": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0571.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0582": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0582.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0583": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Emit",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Emit",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0583.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0584": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0584.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0607": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "SpAttack": "Charge",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0607.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0608": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Emit",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Emit",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0608.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0609": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Emit",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Emit",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0609.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0621": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0621.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 12
+    },
+    "0622": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0622.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0623": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "SpAttack",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0623.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0624": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "SpAttack": "Appeal",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0624.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0625": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0625.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0633": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0633.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0634": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Jab": "Jab",
+        "MultiStrike": "MultiStrike",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0634.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0635": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0635.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 8
+    },
+    "0648": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sing": "Sing",
+        "Sleep": "Sleep",
+        "SpAttack": "Twirl",
+        "Swing": "Swing",
+        "Twirl": "Twirl",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0648.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0653": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0653.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0654": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0654.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0655": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0655.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0656": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0656.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0657": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0657.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 8
+    },
+    "0658": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "QuickStrike": "QuickStrike",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0658.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0669": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swell": "Swell",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0669.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0670": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Twirl"
+      },
+      "retrato": "portraits/0670.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0671": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "SpAttack": "Appeal",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0671.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0679": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Slice": "Slice",
+        "SpAttack": "SpAttack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0679.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0680": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Slice": "Slice",
+        "SpAttack": "SpAttack",
+        "Special0": "Special0",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0680.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0681": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Special0": "Special0",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0681.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0700": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Charge",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0700.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0701": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Kick": "Kick",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0701.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0702": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0702.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 8
+    },
+    "0708": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "SpAttack": "SpAttack",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0708.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0709": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Punch": "Punch",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0709.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0712": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Emit",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Rumble": "Emit",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0712.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0713": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Emit",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Rumble": "Emit",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0713.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0714": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0714.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0715": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0715.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0716": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "Shoot",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0716.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0717": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Special0": "Special0",
+        "Special1": "Special1",
+        "Special2": "Special2",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0717.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 12
+    },
+    "0718": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0718.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0719": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Special0": "Special0",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0719.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0721": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Stomp": "Stomp",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0721.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0722": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0722.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0723": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0723.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0724": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0724.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0725": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "MultiScratch": "MultiScratch",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0725.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 14
+    },
+    "0726": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Emit": "Emit",
+        "EventSleep": "EventSleep",
+        "Hop": "Hop",
+        "MultiScratch": "MultiScratch",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Sound": "Emit",
+        "SpAttack": "Emit",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0726.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 13
+    },
+    "0727": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Kick": "Kick",
+        "Punch": "Punch",
+        "Ricochet": "Ricochet",
+        "Rotate": "Rotate",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0727.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0728": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "SpAttack": "Shoot",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0728.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 15
+    },
+    "0729": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0729.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0730": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0730.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0761": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shake": "Shake",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0761.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0762": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Faint": "Faint",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "SpAttack": "Twirl",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Twirl",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0762.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 16
+    },
+    "0763": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Kick": "Kick",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0763.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0767": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0767.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0768": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0768.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0778": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0778.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0789": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Sleep": "Sleep",
+        "Special0": "Special0",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0789.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0790": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0790.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0791": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0791.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 8
+    },
+    "0792": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Twirl"
+      },
+      "retrato": "portraits/0792.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0794": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swell": "Swell",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0794.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0796": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shock": "Shock",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0796.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0799": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0799.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0801": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Twirl": "Twirl"
+      },
+      "retrato": "portraits/0801.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0807": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Head": "Head",
+        "Hop": "Hop",
+        "LeapForth": "LeapForth",
+        "QuickStrike": "QuickStrike",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Sleep": "Sleep",
+        "SpAttack": "RearUp",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0807.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 13
+    },
+    "0808": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0808.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0809": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Punch": "Punch",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0809.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0856": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0856.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0857": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0857.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 9
+    },
+    "0858": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0858.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0859": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0859.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0860": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0860.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0861": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Punch": "Punch",
+        "Rotate": "Rotate",
+        "Shoot": "Charge",
+        "Sleep": "Sleep",
+        "Strike": "Punch",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0861.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0890": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "RearUp": "RearUp",
+        "Rotate": "Rotate",
+        "Rumble": "RearUp",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Attack",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0890.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 11
+    },
+    "0891": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "EventSleep": "EventSleep",
+        "Hop": "Hop",
+        "Kick": "Kick",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Strike": "Strike",
+        "Swing": "Swing",
+        "Wake": "Wake"
+      },
+      "retrato": "portraits/0891.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 12
+    },
+    "0892-dec": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Shoot": "Shoot",
+        "Strike": "Attack"
+      },
+      "retrato": "portraits/0892-dec.png",
+      "acoes_pendentes": [
+        "Double",
+        "Hop",
+        "Rotate",
+        "Sleep",
+        "Swing",
+        "Twirl"
+      ],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 4
+    },
+    "0892-flu": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Shoot": "Shoot",
+        "Strike": "Attack"
+      },
+      "retrato": "portraits/0892-flu.png",
+      "acoes_pendentes": [
+        "Double",
+        "Hop",
+        "Rotate",
+        "Sleep",
+        "Swing",
+        "Twirl"
+      ],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 4
+    },
+    "0900": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "QuickStrike": "QuickStrike",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing",
+        "Twirl": "Rotate"
+      },
+      "retrato": "portraits/0900.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 10
+    },
+    "0983": {
+      "acoes": {
+        "Attack": "Attack",
+        "Charge": "Charge",
+        "Double": "Double",
+        "Hop": "Hop",
+        "Rotate": "Rotate",
+        "Shoot": "Shoot",
+        "Sleep": "Sleep",
+        "Swing": "Swing"
+      },
+      "retrato": "portraits/0983.png",
+      "acoes_pendentes": [],
+      "retrato_disponivel": true,
+      "quantidade_acoes": 8
+    }
+  },
+  "tipos": {
+    "Normal": "assets/tipos/normal.svg",
+    "Lutador": "assets/tipos/fighting.svg",
+    "Voador": "assets/tipos/flying.svg",
+    "Venenoso": "assets/tipos/poison.svg",
+    "Terrestre": "assets/tipos/ground.svg",
+    "Pedra": "assets/tipos/rock.svg",
+    "Inseto": "assets/tipos/bug.svg",
+    "Fantasma": "assets/tipos/ghost.svg",
+    "Aço": "assets/tipos/steel.svg",
+    "Fogo": "assets/tipos/fire.svg",
+    "Água": "assets/tipos/water.svg",
+    "Grama": "assets/tipos/grass.svg",
+    "Elétrico": "assets/tipos/electric.svg",
+    "Psíquico": "assets/tipos/psychic.svg",
+    "Gelo": "assets/tipos/ice.svg",
+    "Dragão": "assets/tipos/dragon.svg",
+    "Sombrio": "assets/tipos/dark.svg",
+    "Fada": "assets/tipos/fairy.svg"
+  },
+  "terrenos": {
+    "neutro": {
+      "nome": "Neutro",
+      "path": "assets/terrenos/neutro.png",
+      "cor": "#63894e",
+      "tile_px": 32,
+      "tipo": "amostra CC0 recolorida"
+    },
+    "grama": {
+      "nome": "Grama",
+      "path": "assets/terrenos/grama.png",
+      "cor": "#4e9745",
+      "tile_px": 32,
+      "tipo": "amostra CC0 recolorida"
+    },
+    "rosa": {
+      "nome": "Grama rosa",
+      "path": "assets/terrenos/rosa.png",
+      "cor": "#b97891",
+      "tile_px": 32,
+      "tipo": "amostra CC0 recolorida"
+    },
+    "terra": {
+      "nome": "Terra",
+      "path": "assets/terrenos/terra.png",
+      "cor": "#9b7649",
+      "tile_px": 32,
+      "tipo": "amostra CC0 recolorida"
+    },
+    "lama": {
+      "nome": "Lama",
+      "path": "assets/terrenos/lama.png",
+      "cor": "#665a43",
+      "tile_px": 32,
+      "tipo": "amostra CC0 recolorida"
+    },
+    "areia": {
+      "nome": "Areia",
+      "path": "assets/terrenos/areia.png",
+      "cor": "#c7b16d",
+      "tile_px": 32,
+      "tipo": "amostra CC0 recolorida"
+    },
+    "neve": {
+      "nome": "Neve",
+      "path": "assets/terrenos/neve.png",
+      "cor": "#d1e8eb",
+      "tile_px": 32,
+      "tipo": "amostra CC0 recolorida"
+    },
+    "rochoso": {
+      "nome": "Rochoso",
+      "path": "assets/terrenos/rochoso.png",
+      "cor": "#818376",
+      "tile_px": 32,
+      "tipo": "amostra CC0 recolorida"
+    },
+    "metalico": {
+      "nome": "Metálico",
+      "path": "assets/terrenos/metalico.png",
+      "cor": "#8ca6ac",
+      "tile_px": 32,
+      "tipo": "amostra CC0 recolorida"
+    },
+    "rasa": {
+      "nome": "Água rasa",
+      "path": "assets/terrenos/rasa.png",
+      "cor": "#59adc0",
+      "tile_px": 32,
+      "tipo": "amostra CC0 recolorida"
+    },
+    "funda": {
+      "nome": "Água funda",
+      "path": "assets/terrenos/funda.png",
+      "cor": "#34708f",
+      "tile_px": 32,
+      "tipo": "amostra CC0 recolorida"
+    }
+  },
+  "estruturas": {
+    "planta": {
+      "nome": "Planta",
+      "raridade": "comum",
+      "size": 1,
+      "path": "assets/estruturas/planta.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "flores": {
+      "nome": "Flores",
+      "raridade": "comum",
+      "size": 1,
+      "path": "assets/estruturas/flores.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "pedra": {
+      "nome": "Pedra",
+      "raridade": "comum",
+      "size": 1,
+      "path": "assets/estruturas/pedra.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "arvorezinha": {
+      "nome": "Arvorezinha",
+      "raridade": "comum",
+      "size": 2,
+      "path": "assets/estruturas/arvorezinha.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "cacto": {
+      "nome": "Cacto",
+      "raridade": "comum",
+      "size": 1,
+      "path": "assets/estruturas/cacto.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "antena": {
+      "nome": "Antena",
+      "raridade": "rara",
+      "size": 1,
+      "path": "assets/estruturas/antena.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "fonte": {
+      "nome": "Fonte",
+      "raridade": "rara",
+      "size": 2,
+      "path": "assets/estruturas/fonte.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "colmeia": {
+      "nome": "Colmeia",
+      "raridade": "rara",
+      "size": 1,
+      "path": "assets/estruturas/colmeia.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "cristal-gelo": {
+      "nome": "Cristal de gelo",
+      "raridade": "rara",
+      "size": 1,
+      "path": "assets/estruturas/cristal-gelo.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "braseiro": {
+      "nome": "Braseiro",
+      "raridade": "rara",
+      "size": 1,
+      "path": "assets/estruturas/braseiro.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "arvore-ancestral": {
+      "nome": "Árvore Ancestral",
+      "raridade": "lendaria",
+      "size": 2,
+      "path": "assets/estruturas/arvore-ancestral.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "obelisco": {
+      "nome": "Obelisco Elétrico",
+      "raridade": "lendaria",
+      "size": 2,
+      "path": "assets/estruturas/obelisco.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "templo-mares": {
+      "nome": "Templo das Marés",
+      "raridade": "lendaria",
+      "size": 2,
+      "path": "assets/estruturas/templo-mares.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    },
+    "santuario-glacial": {
+      "nome": "Santuário Glacial",
+      "raridade": "lendaria",
+      "size": 2,
+      "path": "assets/estruturas/santuario-glacial.png",
+      "tipo": "pixel art provisória gerada para a estrutura"
+    }
+  },
+  "fontes": {
+    "PMD": "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/LICENSE.md",
+    "tipos": "https://raw.githubusercontent.com/partywhale/pokemon-type-icons/main/LICENSE",
+    "Kenney": "https://kenney.nl/media/pages/assets/roguelike-rpg-pack/12c03cd78b-1677697420/kenney_roguelike-rpg-pack.zip",
+    "artwork_fallback": "https://github.com/PokeAPI/sprites"
+  },
+  "avisos": "Terrenos e estruturas são amostras/arte preliminar para revisão visual. Substituí-las depois não altera as regras de jogo."
+}

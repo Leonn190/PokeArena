@@ -340,9 +340,9 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .shop-card .structure-preview:empty{display:none}
 .bottom-hud.selling .shop-card{transform:none}
 /* Bússola: as cinco maiores fatias representam toda a distribuição; demais no hover. */
-.compass-widget{position:absolute;z-index:5;right:-53px;top:50%;transform:translateY(-50%);
-  width:121px;height:121px;display:grid;place-items:center;outline:none}
-.compass-ring{width:116px;height:116px;border-radius:50%;padding:11px;
+.compass-widget{position:absolute;z-index:5;right:-46px;top:35%;transform:translateY(-50%);
+  width:109px;height:109px;display:grid;place-items:center;outline:none}
+.compass-ring{width:104px;height:104px;border-radius:50%;padding:10px;
   background:conic-gradient(#697a75 0deg 360deg);border:3px solid #d4be7e;
   box-shadow:0 0 0 4px #0c1816,0 0 0 5px #b4a06e9c,0 10px 30px #000b;
   transition:filter .2s;position:relative}
@@ -364,7 +364,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .compass-tooltip-head strong{font-size:12px;color:#fff4c1}
 .compass-tooltip-head small{font-size:9px;color:#b8c7b5;text-align:right}
 .compass-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:11px 0 8px}
-.compass-entry{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:5px;align-items:center;
+.compass-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;align-items:center;
   font-size:10px;color:#dcead8}
 .compass-entry .type-color{width:7px;height:7px;border-radius:2px;background:var(--type-color)}
 .compass-entry.highlighted{color:#fff5c8;background:#d2c88a20;border-radius:3px}
@@ -405,8 +405,8 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .game-shell[data-mode="local"] .side-hud{left:211px;right:auto;max-height:calc(100dvh - 268px)}
 @media(max-width:950px){
   .bottom-hud{width:calc(100vw - 88px);grid-template-columns:120px minmax(0,1fr);gap:6px}
-  .compass-widget{right:-45px;width:101px;height:101px}
-  .compass-ring{width:96px;height:96px;padding:9px}
+  .compass-widget{right:-40px;width:91px;height:91px}
+  .compass-ring{width:86px;height:86px;padding:8px}
   .shop-portrait{min-height:69px}.shop-card{min-height:105px}
   .shop-gold{padding:4px 7px}
   .terrain-tool,.structure-slot{min-height:62px}
@@ -429,8 +429,8 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   .terrain-pane{gap:2px}.terrain-tool,.structure-slot{min-height:54px}
   .terrain-tool canvas,.structure-slot canvas{height:34px}
   .terrain-tool small,.structure-slot small{font-size:7px;padding:3px 0}
-  .compass-widget{right:2px;top:-46px;width:79px;height:79px}
-  .compass-ring{width:75px;height:75px;padding:6px;border-width:2px}
+  .compass-widget{right:2px;top:-53px;width:73px;height:73px}
+  .compass-ring{width:69px;height:69px;padding:6px;border-width:2px}
   .compass-star{font-size:13px}.compass-ring-inner strong{font-size:8px}.compass-ring-inner small{font-size:7px}
   .compass-tooltip{bottom:calc(100% + 3px);right:0;width:298px}
   .environment-panel{top:60px;left:7px;width:137px;max-height:25dvh}
@@ -444,6 +444,13 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 }
 
 .shop-card,.structure-slot{touch-action:none}
+.type-icon{display:inline-block;width:20px;height:20px;vertical-align:middle;object-fit:contain;margin-right:4px}
+.compass-entry .type-icon{width:19px;height:19px}
+.shop-slots{grid-template-columns:repeat(6,minmax(0,100px));justify-content:center;align-items:start}
+.shop-card{min-height:0!important;align-self:start}
+.shop-portrait{flex:none;aspect-ratio:1!important;min-height:0!important}
+.shop-portrait .portrait-fallback{inset:0;width:100%;height:100%}
+.shop-card .structure-preview{image-rendering:pixelated}
 
 /* Ouro é exibido na própria loja, como no TFT. */
 .game-shell[data-mode="local"] .top-hud .hud-stat.gold{display:none}

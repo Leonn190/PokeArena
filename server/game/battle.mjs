@@ -1,4 +1,5 @@
 import { BY_ID, getDirection } from './pokemon.mjs';
+import { RULES } from './rules.mjs';
 import { MOVES_BY_ID, initialLoadout, chooseMoveAnimation } from './moves.mjs';
 import { chooseCombatTarget, chooseCombatAttack } from './ai.mjs';
 import {combatTerrainAt,terrainModifiers,structureModifiers} from './terrain.mjs';
@@ -343,7 +344,7 @@ export function updateBattle(b, seconds, random = Math.random) {
   }
   if (b.phase !== 'fighting' || b.paused) return b;
   b.elapsed += dt;
-  if (b.elapsed >= 60 - 1e-6) {
+  if (b.elapsed >= RULES.battleSeconds - 1e-6) {
     const teams = [0,1].map(team => b.units.filter(u => u.team === team));
     const ratios = teams.map(list => list.reduce((sum,u) => sum + u.health,0) / Math.max(1,list.reduce((sum,u) => sum + u.maxHealth,0)));
     b.phase = 'finished';

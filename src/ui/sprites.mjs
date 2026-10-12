@@ -1,5 +1,4 @@
 import { POKEMON, applySpriteManifest, spritePath } from '../../server/game/pokemon.mjs';
-import { TAU } from '../../server/game/battle.mjs';
 
 // Cache e demanda por sprites são assuntos de apresentação, não de regras.
 export function createSpriteCache(base, onImageReady = () => {}) {
@@ -58,27 +57,33 @@ export function createSpriteCache(base, onImageReady = () => {}) {
     if(!idleImage&&p.spriteAvailable)void loadImage(p,idle?.asset||'Idle');
     return {image:idleImage||null,meta:idle};
   }
-  function drawSmallSprite(dest, p, direction = 0) {
-    if(!dest||!p) return;
-    const context = dest.getContext('2d');
+  const portraits=new Map();
+  const portraitTargets=new Map();
+  function drawPortrait(dest,p) {
+    if(!dest||!p)return;
+    const context=dest.getContext('2d');
     context.clearRect(0,0,dest.width,dest.height);
-    const {image,meta}=getImageMeta(p,'Idle');
-    if(image?.naturalWidth && meta) {
-      const scale=Math.min((dest.width-4)/meta.width,(dest.height-4)/meta.height);
-      const dirs=Math.floor(image.naturalHeight/meta.height);
+    let image=portraits.get(p.id);
+    if(!image){
+      image=new Image();
+      portraits.set(p.id,image);
+      image.onload=()=>{
+        for(const target of portraitTargets.get(p.id)||[]){
+          if(target.isConnected&&target.dataset.portraitId===p.id)drawPortrait(target,p);
+        }
+      };
+      image.src=`${base}portraits/${p.id}.png`;
+    }
+    dest.dataset.portraitId=p.id;
+    const targets=portraitTargets.get(p.id)||new Set();
+    for(const target of targets)if(!target.isConnected)targets.delete(target);
+    targets.add(dest);portraitTargets.set(p.id,targets);
+    if(image.naturalWidth){
+      const width=image.naturalWidth,height=image.naturalHeight;
+      const scale=Math.min(dest.width/width,dest.height/height);
       context.imageSmoothingEnabled=false;
-      context.drawImage(image,0,(dirs===8?direction:0)*meta.height,meta.width,meta.height,(dest.width-meta.width*scale)/2,(dest.height-meta.height*scale)/2,meta.width*scale,meta.height*scale);
-    } else {
-      context.fillStyle=p.color;
-      context.beginPath();
-      context.ellipse(dest.width/2,dest.height/2,dest.width*.25,dest.height*.28,0,0,TAU);
-      context.fill();
-      context.fillStyle='#18331e';
-      context.font='bold 12px sans-serif';
-      context.textAlign='center';
-      context.textBaseline='middle';
-      context.fillText(p.name.slice(0,2).toUpperCase(),dest.width/2,dest.height/2);
+      context.drawImage(image,(dest.width-width*scale)/2,(dest.height-height*scale)/2,width*scale,height*scale);
     }
   }
-  return {prepareSprites,getImageMeta,drawSmallSprite,warmPokemon};
+  return {prepareSprites,getImageMeta,drawPortrait,warmPokemon};
 }
