@@ -14,6 +14,8 @@ const SPRITES = {
 };
 const mk = (id, name, group, type, color, hp, atk, spa, def, spd, vel) => ({
   id, number: Number(id), name, group, type, color,
+  price: ['0001','0004','0007'].includes(id) ? 3 : ['0002','0005','0008'].includes(id) ? 5 : 8,
+  stage: ['0001','0004','0007'].includes(id) ? 1 : ['0002','0005','0008'].includes(id) ? 2 : 3,
   stats: {vida:hp, atk, spa, def, spd, vel},
   sprites: Object.fromEntries(Object.entries(SPRITES[id]).map(([key,[width,height,durations]]) => [key,{width,height,durations,hitFrame:Math.floor(durations.length*.55),asset:key}]))
 });
@@ -29,16 +31,19 @@ export const POKEMON = [
   mk('0009','Blastoise','Squirtle','Água','#83c7ff',79,83,85,100,105,78)
 ];
 export const BY_ID = Object.fromEntries(POKEMON.map(p => [p.id, p]));
+export const SHOP_IDS = ['0001','0004','0007'];
+export const EVOLVES_TO = Object.freeze({
+  '0001':'0002', '0002':'0003',
+  '0004':'0005', '0005':'0006',
+  '0007':'0008', '0008':'0009'
+});
 export const spritePath = (p, animation) => `${p.id}/${animation}-Anim.png`;
 export const spriteUrl = (p, animation) => `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/${spritePath(p,animation)}`;
 
-// PMD sheet directions (observadas nas spritesheets): S=0, SO=1, O=2, NO=3,
-// N=4, NE=5, L=6, SE=7. Corrige personagens olhando ao contrário da direção da caminhada.
+// PMD sheet directions: S=0, SE=1, E=2, NE=3, N=4, NW=5, W=6, SW=7.
 export function getDirection(dx,dy) {
   if (dx === 0 && dy === 0) return 0;
-  const angle = Math.atan2(dx, dy); // 0 = para baixo; ângulo cresce no sentido anti-horário na tela
-  return (Math.round((angle / (Math.PI/4) + 8) % 8)) % 8 === 0 ? 0 :
-    [0,7,6,5,4,3,2,1][Math.round((angle / (Math.PI/4) + 8) % 8) % 8];
+  return Math.round((Math.atan2(dx, dy) / (Math.PI / 4) + 8)) % 8;
 }
 export function getFrame(durations, seconds, loop=true) {
   if (!durations?.length) return 0;

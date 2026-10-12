@@ -7,66 +7,79 @@ const base = import.meta.env.BASE_URL;
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#090f19" />
-  <meta name="description" content="Arena Pokémon 2D 10×5 com grama, movimento livre, Pokémon arrastáveis e batalhas iniciadas manualmente." />
-  <title>Pokémon Arena | Kanto Auto Battle</title>
+  <meta name="theme-color" content="#172916" />
+  <meta name="description" content="Simulador Pokémon TFT em Astro + Canvas 2D com sprites PMD, loja, banco, evolução, IVs e combate automático." />
+  <title>Pokémon TFT Arena</title>
   <link rel="icon" href={`${base}favicon.svg`} />
 </head>
 <body>
-  <div class="background-pattern"></div>
-  <div class="site-wrap">
-    <header class="masthead">
-      <div class="identity">
-        <div class="identity-badge"><span>✳</span></div>
-        <div><p class="tiny-label">PROJETO / 003</p><h1>POKÉMON <span>ARENA</span></h1></div>
+  <main class="game-shell">
+    <canvas id="arena" width="1000" height="720" data-base={base} aria-label="Arena Pokémon TFT com inimigos no topo e seu time na parte inferior." tabindex="0"></canvas>
+
+    <section class="top-hud" aria-label="Estado da rodada">
+      <div class="hud-brand">
+        <span class="pokeball-mark"></span>
+        <div><b>Pokémon TFT</b><small id="phase-label">Preparação</small></div>
       </div>
-      <div class="header-pills"><span class="game-pill"><span class="on-dot"></span> COMBATE AUTOMÁTICO</span><span class="version-pill">KANTO · 001—009</span></div>
-    </header>
+      <div class="hud-stat"><small>Rodada</small><b id="round-label">1</b></div>
+      <div class="hud-stat"><small>Limite</small><b id="limit-label">1 / 6</b></div>
+      <div class="hud-stat gold"><small>Ouro</small><b>∞</b></div>
+      <div class="hud-stat"><small>Tempo</small><b id="clock">00:00</b></div>
+      <div class="hud-actions">
+        <button id="start" class="icon-button primary" type="button" title="Iniciar batalha" aria-label="Iniciar batalha">▶</button>
+        <button id="next-round" class="icon-button" type="button" title="Próxima rodada" aria-label="Próxima rodada">↻</button>
+      </div>
+    </section>
 
-    <main>
-      <section class="intro">
-        <div><div class="eyebrow"><span class="eyebrow-line"></span> PROTÓTIPO DO JOGO</div><h2>Um campo vivo.<br/><em>Sua batalha.</em></h2><p>Gramado Pokémon em 2D, movimento livre e ataques animados. Posicione seus Pokémon e escolha quando começar.</p></div>
-        <div class="short-instructions"><span class="instruction-number">01</span><p><b>Arraste</b> os Pokémon para a grama.</p><span class="instruction-number">02</span><p><b>Equipe</b> 2 ataques por Pokémon.</p><span class="instruction-number">03</span><p><b>Inicie</b> a luta quando quiser.</p></div>
-      </section>
-
-      <section class="game-layout" aria-label="Jogo Pokémon Arena">
-        <div class="arena-column">
-          <div class="frame board-frame">
-            <div class="frame-header"><span><i class="panel-light"></i> CAMPO DE BATALHA <b>/ 10 × 5</b></span><span id="phase-label" class="phase-label">PREPARANDO EQUIPES</span></div>
-            <div class="scorebar">
-              <div class="score-team score-blue"><span class="team-mark"></span><div><small>TIME 01 / ESQUERDA</small><strong>AZUL</strong></div><div class="score-count"><b id="alive-0">3</b><small>VIVOS</small></div></div>
-              <div class="middle-score"><span class="score-sep">×</span><span id="clock">00:00</span></div>
-              <div class="score-team score-red"><span class="team-mark"></span><div><small>TIME 02 / DIREITA</small><strong>VERMELHO</strong></div><div class="score-count"><b id="alive-1">3</b><small>VIVOS</small></div></div>
-            </div>
-            <div id="canvas-wrapper" class="canvas-wrapper">
-              <canvas id="arena" width="960" height="590" data-base={base} aria-label="Mapa 2D de grama com dez colunas e cinco linhas. Arraste Pokémon para posicionar livremente. Só começa quando clicar em Iniciar batalha." tabindex="0"></canvas>
-              <div class="board-corner-tl">NORTE <span>↑</span></div><div class="board-corner-br">SUL <span>↓</span></div>
-              <div class="battle-outcome" id="outcome" hidden><div class="outcome-card"><span class="victory-star">✦</span><div class="result-kicker">BATALHA ENCERRADA</div><h3 id="result-title">TIME AZUL VENCEU</h3><p id="result-note">Todos os adversários foram derrotados.</p><button type="button" id="again" class="button button-primary">NOVA BATALHA <span>↻</span></button></div></div>
-            </div>
-            <div class="arena-bottom">
-              <div class="arena-status"><span class="status-indicator"></span><div><b id="status-title">PRONTO PARA LUTAR</b><p id="status-description">Os dois tabuleiros estão separados.</p></div></div>
-              <span id="action-hint" class="action-hint">Arraste unidades livremente antes da batalha.</span>
-            </div>
-            <div class="control-bar"><button id="start" class="button button-primary" type="button"><span id="start-icon">▶</span><span id="start-label">COMEÇAR AGORA</span></button><button id="shuffle" class="button button-secondary" type="button"><span>⤨</span> SORTEAR EQUIPES</button><button id="reset" class="button button-quiet" type="button"><span>↺</span> PREPARAR</button></div>
-          </div>
-          <div class="team-lists"><section class="team-lineup upper"><h3><span class="lineup-dot"></span> TIME AZUL <small id="count-0">3 / 3</small></h3><div id="team-0-list" class="lineup-list"></div></section><section class="team-lineup lower"><h3><span class="lineup-dot"></span> TIME VERMELHO <small id="count-1">3 / 3</small></h3><div id="team-1-list" class="lineup-list"></div></section></div>
+    <section class="side-hud" aria-label="Ficha do Pokémon selecionado">
+      <div class="panel-title"><span id="selected-number">#004</span><b id="selected-name">Charmander</b></div>
+      <div class="selected-head">
+        <canvas id="selected-avatar" width="78" height="70" aria-hidden="true"></canvas>
+        <div>
+          <small id="selected-type">Fogo</small>
+          <strong id="selected-place">Banco</strong>
+          <p id="selected-iv">IV geral 50%</p>
         </div>
+      </div>
+      <div id="stats-list" class="stats-list"></div>
+      <div class="attack-panel">
+        <div class="panel-subtitle">Ataques</div>
+        <div id="moves-active" class="moves-list"></div>
+        <div class="attack-actions">
+          <button id="reroll-move" type="button">Reroll 2</button>
+          <button id="unlock-move" type="button">+ Slot 4</button>
+        </div>
+      </div>
+    </section>
 
-        <aside class="sidebar">
-          <div class="frame roster-frame"><div class="frame-header"><span><i class="panel-light"></i> DEX DISPONÍVEL <b>/ KANTO</b></span><span class="roster-count">09</span></div><div class="side-content"><div class="sidebar-heading"><h2>Escolha seu time</h2><p>Nove Pokémon, até três em cada metade.</p></div>
-            <div class="team-switch" role="group" aria-label="Equipe que receberá o Pokémon"><button class="team-choice chosen" id="pick-0" type="button">← <span>AZUL</span></button><button class="team-choice" id="pick-1" type="button">→ <span>VERMELHO</span></button></div>
-            <div class="roster-grid" id="roster-grid" aria-label="Pokémon disponíveis"></div>
-            <div class="placement-tip" id="placement-tip"><span>◎</span><p>Arraste um Pokémon da lista para o mapa ou clique no gramado. Arraste os que já estão lá para mover; botão direito remove.</p></div>
-          </div></div>
-          <div class="frame stats-frame"><div class="frame-header"><span><i class="panel-light"></i> FICHA TÉCNICA</span><span id="dex-number">#001</span></div><div class="side-content"><div class="stats-head"><div id="selected-avatar" class="selected-avatar"><canvas width="86" height="76" aria-hidden="true"></canvas></div><div><small id="detail-type">GRAMA</small><h3 id="detail-name">Bulbasaur</h3><p>ATRIBUTOS BASE</p></div></div><div class="stat-bars" id="stats-list"></div><div class="stat-footnote">VIDA define o HP. ATK/DEF afetam ataques físicos; SPA/SPD, os especiais. VEL controla movimento e frequência de ataques.</div></div></div>
-          <div class="frame moves-frame"><div class="frame-header"><span><i class="panel-light"></i> GOLPES DO POKÉMON</span><span class="moves-kicker">2 ATIVOS / 6 RESERVA</span></div><div class="side-content move-content"><div class="moves-heading">ATAQUES EQUIPADOS <small>Selecione um slot</small></div><div id="moves-active" class="moves-list"></div><div class="moves-heading">GOLPES DISPONÍVEIS <small>Toque para equipar</small></div><div id="moves-reserve" class="moves-list moves-reserve"></div><p class="moves-footnote">Cada golpe possui dano, categoria, alcance e sua própria prioridade de animações PMD. Troque os ataques na preparação.</p></div></div>
-          <div class="frame log-frame"><div class="frame-header"><span><i class="panel-light"></i> REGISTRO DA PARTIDA</span><span class="live-label">● AO VIVO</span></div><div id="battle-log" class="log-items" aria-live="polite"><div class="log-empty">Aguardando os primeiros movimentos...</div></div></div>
-        </aside>
-      </section>
-      <div class="undertext"><span>⌁</span> Demonstração não comercial. Nove Pokémon de Kanto nesta versão. Ataques com categorias físico/especial, alcance, dano e fallback de animações PMD.</div>
-    </main>
-    <footer class="footer"><div>POKÉMON ARENA <span>·</span> FEITO COM ASTRO + CANVAS 2D</div><div>Sprites: <a href="https://sprites.pmdcollab.org/" target="_blank" rel="noopener noreferrer">PMD Sprite Repository ↗</a> <span>·</span> Fan project</div></footer>
-  </div>
+    <section class="enemy-hud" aria-label="Criar inimigos">
+      <div class="panel-subtitle">Inimigos</div>
+      <div id="enemy-picks" class="enemy-picks"></div>
+      <small>Escolha e clique na arena de cima.</small>
+    </section>
+
+    <section class="bottom-hud" aria-label="Banco e loja">
+      <div class="bench-row" id="bench-row" aria-label="Banco de 10 slots"></div>
+      <div class="shop-row">
+        <div class="shop-meta">
+          <b>Loja</b>
+          <button id="reroll-shop" type="button">Reroll 2</button>
+        </div>
+        <div id="shop-slots" class="shop-slots" aria-label="Loja de 6 slots"></div>
+      </div>
+    </section>
+
+    <section id="battle-log" class="battle-log" aria-live="polite"></section>
+
+    <div class="battle-outcome" id="outcome" hidden>
+      <div class="outcome-card">
+        <small>Batalha encerrada</small>
+        <h1 id="result-title">Vitória</h1>
+        <p id="result-note">Prepare a próxima rodada.</p>
+        <button id="again" type="button">Preparar próxima rodada</button>
+      </div>
+    </div>
+  </main>
   <script>import '../scripts/arena.js';</script>
 </body>
 </html>
