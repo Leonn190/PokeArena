@@ -8,7 +8,7 @@ const base = import.meta.env.BASE_URL;
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#172916" />
-  <meta name="description" content="Simulador Pokémon TFT em Astro + Canvas 2D com sprites PMD, câmera 2D, loja, banco físico, evolução, IVs e combate automático." />
+  <meta name="description" content="Pokémon TFT em Astro + Canvas 2D com partida local contra bots, evolução, economia e combate automático." />
   <title>Pokémon TFT Arena</title>
   <link rel="icon" href={`${base}favicon.svg`} />
 </head>
@@ -16,22 +16,9 @@ const base = import.meta.env.BASE_URL;
   <main class="game-shell" data-mode="menu">
     <canvas id="arena" width="1000" height="760" data-base={base} aria-label="Arena Pokémon TFT com inimigos no topo, seu time embaixo e banco físico no mapa." tabindex="0"></canvas>
 
-    <section class="entry-screen" id="entry-screen" aria-label="Escolha o modo do jogo">
-      <div class="entry-panel" id="mode-choice">
-        <div class="entry-emblem" aria-hidden="true"><span class="pokeball-mark"></span> POKÉARENA</div>
-        <h1>Sua arena Pokémon</h1>
-        <p>Monte sua equipe e prepare o campo de batalha.</p>
-        <div class="mode-options">
-          <button id="choose-test" class="mode-option" type="button">
-            <b>MODO TESTE</b><small>Simulador livre · Pokémon, loja e combates</small>
-          </button>
-          <button id="choose-match" class="mode-option accent" type="button">
-            <b>PUXAR PARTIDA</b><small>Sessão local com bots · sem conexão online</small>
-          </button>
-        </div>
-      </div>
-      <div class="entry-panel match-setup" id="match-setup" hidden>
-        <h1>Partida local</h1>
+    <section class="entry-screen" id="entry-screen" aria-label="Iniciar partida local">
+      <div class="entry-panel match-setup" id="match-setup">
+        <h1>Partida Pokémon TFT</h1>
         <p>Você e os bots começam com 100 HP e 9 de ouro em uma partida local com preparação, combate e arenas observáveis.</p>
         <label for="player-count">Quantidade de participantes</label>
         <select id="player-count" name="player-count">
@@ -43,7 +30,6 @@ const base = import.meta.env.BASE_URL;
           <option value="8">8 jogadores · 7 bots</option>
         </select>
         <div class="setup-actions">
-          <button id="back-to-modes" type="button">Voltar</button>
           <button id="confirm-match" class="confirm-local" type="button">Criar partida local</button>
         </div>
       </div>
@@ -56,15 +42,10 @@ const base = import.meta.env.BASE_URL;
       </div>
       <div class="hud-stat"><small>Rodada</small><b id="round-label">1</b></div>
       <div class="hud-stat"><small>Unidades</small><b id="limit-label">1/6</b></div>
-      <div class="hud-stat gold"><small>Ouro</small><b id="gold-label">∞</b></div>
+      <div class="hud-stat gold"><small>Ouro</small><b id="gold-label">9</b></div>
       <div class="hud-stat" id="hp-stat" hidden><small>Vida</small><b id="hp-label">100</b></div>
       <div class="hud-stat" id="alive-stat" hidden><small>Vivos</small><b id="alive-label">1/1</b></div>
       <div class="hud-stat" id="timer-stat" hidden><small>Tempo</small><b id="timer-label">45s</b></div>
-      <div class="hud-actions">
-        <button id="start" class="icon-button primary" type="button" title="Iniciar batalha" aria-label="Iniciar batalha">▶</button>
-        <button id="pause" class="icon-button" type="button" title="Pausar ou continuar" aria-label="Pausar ou continuar">Ⅱ</button>
-        <button id="prepare" class="icon-button" type="button" title="Voltar para preparação" aria-label="Voltar para preparação">↺</button>
-      </div>
       <div class="camera-actions" aria-label="Câmera">
         <button id="zoom-in" type="button" title="Aproximar" aria-label="Aproximar">+</button>
         <button id="zoom-out" type="button" title="Afastar" aria-label="Afastar">−</button>
@@ -104,7 +85,7 @@ const base = import.meta.env.BASE_URL;
     <section class="bottom-hud" aria-label="Loja">
       <div class="shop-meta">
         <b>Loja</b>
-        <small id="shop-mode-note">Ouro infinito ativo</small>
+        <small id="shop-mode-note">Pool compartilhado · Pokémon</small>
         <button id="reroll-shop" type="button">Reroll 2</button>
         <button id="lock-shop" type="button" aria-pressed="false" hidden>🔓 Travar</button>
       </div>
@@ -118,8 +99,8 @@ const base = import.meta.env.BASE_URL;
       <div class="outcome-card">
         <small>Batalha encerrada</small>
         <h1 id="result-title">Vitória</h1>
-        <p id="result-note">Prepare ou reinicie com as mesmas equipes.</p>
-        <button id="again" type="button">Voltar para preparação</button>
+        <p id="result-note">A partida local terminou.</p>
+        <button id="again" type="button">Nova partida</button>
       </div>
     </div>
   </main>

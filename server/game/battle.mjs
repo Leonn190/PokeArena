@@ -1,5 +1,6 @@
 import { BY_ID, getDirection } from './pokemon.mjs';
 import { MOVES_BY_ID, initialLoadout, chooseMoveAnimation } from './moves.mjs';
+import { chooseCombatTarget, chooseCombatAttack } from './ai.mjs';
 
 export const BOARD = Object.freeze({
   columns: 10,
@@ -36,8 +37,6 @@ export const benchTeamForCell = cell => cell?.row === BOARD.enemyBenchRow ? 1 : 
 export const validCellForTeam = (team, cell) => !!cell && (team === 1
   ? cell.row >= BOARD.enemyFieldStart && cell.row < BOARD.enemyFieldStart + BOARD.enemyRows
   : cell.row >= BOARD.playerFieldStart && cell.row < BOARD.playerBenchRow);
-// O simulador mantém seis posições livres. O competitivo usa fieldLimitForBattle em rules.mjs.
-export const maxActiveForRound = () => 6;
 export const ivMultiplier = iv => .85 + clamp(iv, 0, 100) * .003;
 export function effectiveStats(pokemon, iv = 50) {
   return Object.fromEntries(Object.entries(pokemon.stats).map(([key, value]) => [key, Math.round(value * ivMultiplier(iv))]));
@@ -56,19 +55,38 @@ export const maxHealth = stats => 60 + stats.vida * 2;
 export const moveSpeed = stats => 55 + stats.vel * .62;
 export const attackInterval = stats => clamp(1.58 - stats.vel * .0088, .46, 1.45);
 
-function typeMultiplier(attackType, defendType) {
-  if (attackType === 'Fogo' && defendType === 'Grama') return 1.25;
-  if (attackType === 'Grama' && defendType === 'Água') return 1.25;
-  if (attackType === 'Água' && defendType === 'Fogo') return 1.25;
-  if (attackType === 'Fogo' && defendType === 'Água') return .8;
-  if (attackType === 'Grama' && defendType === 'Fogo') return .8;
-  if (attackType === 'Água' && defendType === 'Grama') return .8;
-  return 1;
+// Tabela canônica dos 18 tipos: efeitos dos tipos de ataque contra defensores.
+// O catálogo de golpes ainda só utiliza Normal. Não libera golpes adicionais.
+const TYPE_EFFECTIVENESS = Object.freeze({
+  Normal:{Pedra:.5,Aço:.5,Fantasma:0},
+  Fogo:{Fogo:.5,Água:.5,Grama:2,Gelo:2,Inseto:2,Pedra:.5,Dragão:.5,Aço:2},
+  Água:{Fogo:2,Água:.5,Grama:.5,Terrestre:2,Pedra:2,Dragão:.5},
+  Elétrico:{Água:2,Elétrico:.5,Grama:.5,Terrestre:0,Voador:2,Dragão:.5},
+  Grama:{Fogo:.5,Água:2,Grama:.5,Venenoso:.5,Terrestre:2,Voador:.5,Inseto:.5,Pedra:2,Dragão:.5,Aço:.5},
+  Gelo:{Fogo:.5,Água:.5,Grama:2,Gelo:.5,Terrestre:2,Voador:2,Dragão:2,Aço:.5},
+  Lutador:{Normal:2,Gelo:2,Venenoso:.5,Voador:.5,Psíquico:.5,Inseto:.5,Pedra:2,Fantasma:0,Sombrio:2,Aço:2,Fada:.5},
+  Venenoso:{Grama:2,Venenoso:.5,Terrestre:.5,Pedra:.5,Fantasma:.5,Aço:0,Fada:2},
+  Terrestre:{Fogo:2,Elétrico:2,Grama:.5,Venenoso:2,Voador:0,Inseto:.5,Pedra:2,Aço:2},
+  Voador:{Elétrico:.5,Grama:2,Lutador:2,Inseto:2,Pedra:.5,Aço:.5},
+  Psíquico:{Lutador:2,Venenoso:2,Psíquico:.5,Sombrio:0,Aço:.5},
+  Inseto:{Fogo:.5,Grama:2,Lutador:.5,Venenoso:.5,Voador:.5,Psíquico:2,Fantasma:.5,Sombrio:2,Aço:.5,Fada:.5},
+  Pedra:{Fogo:2,Gelo:2,Lutador:.5,Terrestre:.5,Voador:2,Inseto:2,Aço:.5},
+  Fantasma:{Normal:0,Psíquico:2,Fantasma:2,Sombrio:.5},
+  Dragão:{Dragão:2,Aço:.5,Fada:0},
+  Sombrio:{Lutador:.5,Psíquico:2,Fantasma:2,Sombrio:.5,Fada:.5},
+  Aço:{Fogo:.5,Água:.5,Elétrico:.5,Gelo:2,Pedra:2,Aço:.5,Fada:2},
+  Fada:{Fogo:.5,Lutador:2,Venenoso:.5,Dragão:2,Sombrio:2,Aço:.5}
+});
+export function typeMultiplier(attackType, defendingTypes) {
+  const types=Array.isArray(defendingTypes)?defendingTypes:[defendingTypes];
+  return types.reduce((mult,type)=>mult*(TYPE_EFFECTIVENESS[attackType]?.[type]??1),1);
 }
 export function physicalOrSpecialDamage(attacker, defender, kind, random = Math.random, baseDamage = 30, attackType = 'Normal') {
   const a = attacker.stats[kind === 'atk' ? 'atk' : 'spa'];
   const d = defender.stats[kind === 'atk' ? 'def' : 'spd'];
-  return Math.max(1, Math.round(baseDamage * (.62 + a / 105) * (100 / (80 + d)) * typeMultiplier(attackType, defender.type.type) * (.92 + random() * .16)));
+  const multiplier = typeMultiplier(attackType, defender.type.types);
+  if (multiplier === 0) return 0;
+  return Math.max(1, Math.round(baseDamage * (.62 + a / 105) * (100 / (80 + d)) * multiplier * (.92 + random() * .16)));
 }
 export function normalizeEntry(entry, team) {
   const speciesId = entry.speciesId ?? entry.id;
@@ -79,8 +97,9 @@ export function normalizeEntry(entry, team) {
     instanceId: entry.instanceId ?? entry.uid ?? crypto.randomUUID(),
     speciesId,
     team,
-    x: entry.x ?? p.x,
-    y: entry.y ?? p.y,
+    // A posição em grid prevalece: compras e espelhamento não trazem x/y da reserva.
+    x: p.x,
+    y: p.y,
     col,
     row,
     iv: clamp(Math.round(entry.iv ?? 50), 0, 100),
@@ -139,6 +158,10 @@ export function startBattle(b) {
   b.paused = false;
   b.elapsed = 0;
   b.events = [{ type:'start' }];
+  b.kills = [0,0];
+  b.projectiles = [];
+  b.effects = [];
+  b.floaters = [];
   b.units = makeUnits(b.lineups);
   return true;
 }
@@ -151,7 +174,7 @@ export function effectiveAttackRange(_unit, move) {
   return attackRangePixels(move);
 }
 const setState = (u, state) => { if (u.state !== state) { u.state = state; u.stateTime = 0; } };
-function getTarget(b, u) { return alive(b, 1 - u.team).sort((a, z) => dist(a, u) - dist(z, u))[0] || null; }
+function getTarget(b, u) { return chooseCombatTarget(u,alive(b,1-u.team),getMoves(u),BOARD.tile); }
 function getMoves(u) { return u.activeMoves.map(m => MOVES_BY_ID[m]).filter(Boolean); }
 function beginAttack(b, u, target, move) {
   const animation = chooseMoveAnimation(move, u.type.sprites);
@@ -296,11 +319,11 @@ export function updateBattle(b, seconds, random = Math.random) {
   }
   if (b.phase !== 'fighting' || b.paused) return b;
   b.elapsed += dt;
-  if (b.elapsed >= 60) {
+  if (b.elapsed >= 60 - 1e-6) {
     const teams = [0,1].map(team => b.units.filter(u => u.team === team));
     const ratios = teams.map(list => list.reduce((sum,u) => sum + u.health,0) / Math.max(1,list.reduce((sum,u) => sum + u.maxHealth,0)));
     b.phase = 'finished';
-    b.winner = ratios[0] === ratios[1] ? null : ratios[0] > ratios[1] ? 0 : 1;
+    b.winner = Math.abs(ratios[0]-ratios[1]) < 1e-6 ? null : ratios[0] > ratios[1] ? 0 : 1;
     b.events.push({type:'finish',winner:b.winner,reason:'timeout'});
     return b;
   }
@@ -322,7 +345,7 @@ export function updateBattle(b, seconds, random = Math.random) {
     const inRange = moves.filter(m => edgeDistance(u, target) <= effectiveAttackRange(u, m));
     u.cooldown -= dt;
     if (u.cooldown <= 0 && inRange.length) {
-      beginAttack(b, u, target, inRange[Math.floor(random() * inRange.length)]);
+      beginAttack(b, u, target, chooseCombatAttack(u,target,inRange,BOARD.tile) || inRange[0]);
       continue;
     }
     moveToTarget(b, u, target, dt, Math.max(...moves.map(m => effectiveAttackRange(u, m))) * .72);

@@ -1,6 +1,8 @@
 # ORGANIZAÇÃO OFICIAL — PokeArena
 
-**Versão 0.5 (12/10/2026). Leitura obrigatória antes de QUALQUER alteração por Codex.**
+**Versão 0.5 (12/10/2026), com decisão de interface atualizada para partida única. Leitura obrigatória antes de QUALQUER alteração por Codex.**
+
+**Decisão posterior:** não existe mais modo livre de testes. O site apresenta somente "Criar partida local", e a partida offline em memória é o único fluxo ativo. Não reintroduzir o segundo modo nas etapas posteriores.
 
 Este documento prevalece sobre sugestões genéricas de estrutura e sobre o plano antigo de Codex **quanto à arquitetura e à forma de executar alterações**. Para regras de jogo, consultar o `GAME_DESIGN_POKEMON_TFT_v0_4_Multiplayer_Economia_Combate.md` disponibilizado pelo criador; este arquivo NÃO precisa ser copiado para a raiz. O plano de implementação é `PLANO_CODEX_POKEARENA_v0_5.md`. **Se houver conflito, avisar o criador e não inventar regras.**
 
@@ -10,16 +12,16 @@ Este documento prevalece sobre sugestões genéricas de estrutura e sobre o plan
 
 - `server/game/` permanece independente de navegador/Node/HTTP e concentra regras reutilizáveis. O frontend poderá importar esse domínio diretamente para a simulação local provisória, sem reivindicar autoridade competitiva online.
 - `server/` deve continuar autossuficiente para migração futura, mas `server/index.mjs`, `server/match.mjs`, `server/store.mjs` e `src/services/api.mjs` não participam do fluxo offline até nova decisão explícita do criador.
-- **Etapa 01:** menu com Modo Teste preservado e Puxar Partida criando sessão local de 3–8 participantes (um humano e bots), 100 HP, nove ouros, rodada 1. Não executar batalhas, IA, compras competitivas, economia ou rodadas prematuramente.
+- **Etapa 01:** menu com partida local preservado e Puxar Partida criando sessão local de 3–8 participantes (um humano e bots), 100 HP, nove ouros, rodada 1. Não executar batalhas, IA, compras competitivas, economia ou rodadas prematuramente.
 - **Etapas 02–11:** evoluir a simulação local e suas regras puras nas respectivas etapas, mantendo a separação que permitirá posteriormente transferir a autoridade ao servidor. Nunca tratar resultados locais como partidas oficiais online.
 
 ## 1. Objetivo irrevogável
 
-- **Frontend**: site Astro estático no GitHub Pages, Canvas 2D, animações PMDCollab, interface, câmera, renderização, entradas de usuário e Modo Teste (simulador offline).
+- **Frontend**: site Astro estático no GitHub Pages, Canvas 2D, animações PMDCollab, interface, câmera, renderização, entradas de usuário e partida local (simulador offline).
 - **Backend**: serviço Node HTTP dentro de `server/`, executável localmente ou no Render. Em modo Partida, será **autoritário** sobre sala, saldo, estoque, ofertas, IV, fusões, ações, bots, cronômetro, simulação, dano nos 100 HP, eliminações e vencedor. O navegador somente envia intenção de ação e mostra estado/eventos confirmados.
 - **Banco de dados**: armazenamento atrás de um adaptador. Em desenvolvimento, memória volátil; em produção com `DATABASE_URL`, PostgreSQL. Nenhum dado crítico de partida depende da memória do navegador ou de arquivo gravado no disco efêmero do Render.
-- **Separação futura**: `server/` é uma aplicação **AUTOSSUFICIENTE** com `package.json` próprio, imports internos e variável `PORT`. Deve funcionar se sua pasta for **COPIADA** integralmente para a raiz de outro repositório GitHub e instalada/iniciada pelo Render. Manter a pasta original no repositório do site porque o Modo Teste usa as regras compartilhadas; não movê-la sem atualizar as importações do frontend. Após a separação, sincronizar explicitamente versões das regras compartilhadas ou fazer o frontend consultar o servidor; partidas oficiais jamais dependem do motor do cliente.
-- **Localmente**: a página Astro pode ser usada como Modo Teste sem API; a própria API pode ser iniciada localmente. Futuras partidas competitivas locais deverão chamar exatamente os mesmos endpoints do Render e permanecer servidor-autoritárias. **Não criar fallback de partida competitiva controlada pelo browser.**
+- **Separação futura**: `server/` é uma aplicação **AUTOSSUFICIENTE** com `package.json` próprio, imports internos e variável `PORT`. Deve funcionar se sua pasta for **COPIADA** integralmente para a raiz de outro repositório GitHub e instalada/iniciada pelo Render. Manter a pasta original no repositório do site porque a partida local usa as regras compartilhadas; não movê-la sem atualizar as importações do frontend. Após a separação, sincronizar explicitamente versões das regras compartilhadas ou fazer o frontend consultar o servidor; partidas oficiais jamais dependem do motor do cliente.
+- **Localmente**: a página Astro pode ser usada coma partida local sem API; a própria API pode ser iniciada localmente. Futuras partidas competitivas locais deverão chamar exatamente os mesmos endpoints do Render e permanecer servidor-autoritárias. **Não criar fallback de partida competitiva controlada pelo browser.**
 
 ## 2. ÚNICOS GOLPES PERMITIDOS — REGRA TEMPORÁRIA OBRIGATÓRIA
 
@@ -29,7 +31,7 @@ Este documento prevalece sobre sugestões genéricas de estrutura e sobre o plan
 2. **Investida** — ataque físico de contato.
 3. **Ataque Legal** — ataque físico de alcance curto/intermediário.
 
-**Todos** compartilham exatamente o mesmo catálogo em `server/game/moves.mjs`. No combate, **dois golpes equipados por Pokémon**, e o terceiro é uma opção de troca; nunca três equipados. Nenhum golpe específico por espécie, nenhum golpe novo, status, habilidades ou ataques especiais, mesmo que o GDD v0.4 ou planos antigos mencionem pools de seis. A troca competitiva deve custar 2 ouros quando a economia for implementada; Modo Teste pode ser gratuito. Evolução não gera novos golpes. O balanceamento numérico dos três é provisório.
+**Todos** compartilham exatamente o mesmo catálogo em `server/game/moves.mjs`. No combate, **dois golpes equipados por Pokémon**, e o terceiro é uma opção de troca; nunca três equipados. Nenhum golpe específico por espécie, nenhum golpe novo, status, habilidades ou ataques especiais, mesmo que o GDD v0.4 ou planos antigos mencionem pools de seis. A troca competitiva deve custar 2 ouros quando a economia for implementada; partida local pode ser gratuito. Evolução não gera novos golpes. O balanceamento numérico dos três é provisório.
 
 ## 3. Estrutura de diretórios permitida
 
@@ -77,7 +79,7 @@ PokeArena/
 3. `server/match.mjs` gerencia ciclo e autorização. Somente o servidor gera ofertas, sorteios e emparelhamentos, aplica alterações com transações e publica snapshots filtrados. O servidor nunca expõe mãos/ofertas futuras ou segredos dos outros jogadores.
 4. `server/store.mjs` é o único acesso ao banco; transações e reserva do pool no mesmo estado são atômicas. A criação inicial de tabelas é permitida apenas no servidor; não escrever arquivos persistentes dentro do container Render.
 5. `src/services/api.mjs` centraliza URL da API, headers e chamadas. Quando o modo competitivo estiver implementado, a UI não recalcula vitórias, recompensas, sorteios ou vida. Pode fazer interpolação visual dos eventos do servidor, sem assumir sua autoridade.
-6. `src/ui/*` contém apenas visual, controles e o **simulador offline Modo Teste**. Ainda existe lógica antiga concentrada em `arena.js` que deverá migrar paulatinamente para `server/game/` conforme as próximas etapas; não adicionar mecânicas competitivas novas nesse arquivo.
+6. `src/ui/*` contém apenas visual, controles e o **simulador offline partida local**. Ainda existe lógica antiga concentrada em `arena.js` que deverá migrar paulatinamente para `server/game/` conforme as próximas etapas; não adicionar mecânicas competitivas novas nesse arquivo.
 7. Pokémon definem dados e `collisionRadius` de jogo; tamanho de sprite e animação nunca alteram física, alcance ou dano. Assets e cache só afetam apresentação.
 8. O motor de duelo aceita **duas equipes**; a partida da sala pode ter **3 a 8 pessoas**, emparelhadas em duelos. Nunca converter o motor para um confronto de 8 equipes num único tabuleiro.
 9. Os bots devem chamar as MESMAS operações de regra/economia utilizadas para jogadores humanos, sem acesso a resultados futuros e sem unidades gratuitas.
@@ -92,9 +94,9 @@ PokeArena/
 | `GET /api/v1/matches/:id` | Snapshot AUTORIZADO (`Authorization: Bearer ...`). |
 | `POST /api/v1/matches/:id/actions` | Futuras intenções (`buy`, `sell`, `place`, `reroll`, `ready` etc.), validação e resultado pelo servidor. **Hoje retorna 501, propositalmente.** |
 
-Ao implementar comandos competitivos, manter esse prefixo e o formato geral; rejeitar ações fora da preparação, calcular fases pelo relógio do servidor, não confiar em timestamps do cliente, não duplicar operações em reenvios e transacionar simultaneamente estoque/economia/IV/pool/vitória. O Modo Teste não chama esses endpoints para declarar vencedor de partida oficial.
+Ao implementar comandos competitivos, manter esse prefixo e o formato geral; rejeitar ações fora da preparação, calcular fases pelo relógio do servidor, não confiar em timestamps do cliente, não duplicar operações em reenvios e transacionar simultaneamente estoque/economia/IV/pool/vitória. A partida local não chama esses endpoints para declarar vencedor de partida oficial.
 
-**Escopo REAL já entregue na fundação:** API HTTP e repositório de partidas em memória/PostgreSQL, criação e consulta autorizada de sala, regras compartilhadas do duelo inicial, frontend atual de Modo Teste. **NÃO** está entregue ainda: matchmaking humano, login, execução oficial de rodadas pelo servidor, batalha competitiva real, persistência de contas, nem vitórias online. Essas etapas constam do plano. Nunca anunciar o stub como servidor competitivo pronto.
+**Escopo REAL já entregue na fundação:** API HTTP e repositório de partidas em memória/PostgreSQL, criação e consulta autorizada de sala, regras compartilhadas do duelo inicial, frontend atual de partida local. **NÃO** está entregue ainda: matchmaking humano, login, execução oficial de rodadas pelo servidor, batalha competitiva real, persistência de contas, nem vitórias online. Essas etapas constam do plano. Nunca anunciar o stub como servidor competitivo pronto.
 
 ## 6. Deploy Render sem retrabalho de arquitetura
 
@@ -103,7 +105,7 @@ Ao implementar comandos competitivos, manter esse prefixo e o formato geral; rej
 3. Para salvar estado entre reinícios, configurar **Render Postgres** e a variável **secreta** `DATABASE_URL` da API. O adapter cria a tabela `matches` no primeiro início. Sem ela, partidas são mantidas só em memória e somem quando o processo reinicia: apenas desenvolvimento local.
 4. Configurar `CORS_ORIGINS` se houver outro domínio de frontend. Já estão permitidos `https://leonn190.github.io`, `http://localhost:4321`, `http://127.0.0.1:4321`.
 5. No GitHub do **frontend** configurar a Actions Variable `POKEARENA_API_URL` com `https://...onrender.com` (sem barra final). O workflow injeta no build como `PUBLIC_POKEARENA_API_URL`, lido pelo adaptador do navegador.
-6. O repositório do site **continua com cópia de `server/`**, usada para compartilhar código do Modo Teste. A API publicada fica no repositório separado; alterações futuras precisam ser sincronizadas conscientemente (ou migrar o simulador local para outro pacote versionado por decisão do criador). **Não** presumir que duas cópias em repositórios diferentes se atualizam sozinhas.
+6. O repositório do site **continua com cópia de `server/`**, usada para compartilhar código da partida local. A API publicada fica no repositório separado; alterações futuras precisam ser sincronizadas conscientemente (ou migrar o simulador local para outro pacote versionado por decisão do criador). **Não** presumir que duas cópias em repositórios diferentes se atualizam sozinhas.
 
 ## 7. Uso local, sem alterar o contrato
 
@@ -114,7 +116,7 @@ Ao implementar comandos competitivos, manter esse prefixo e o formato geral; rej
 
 ## 8. Regras de conteúdo que não devem ser violadas
 
-- Menu final **Modo Teste** e **Puxar Partida**; primeiro simula, segundo usa a API. Protótipo competitivo: **3–8 participantes, pessoa + bots, 100 HP**, eliminação, preparação **45 s**, combate **60 s**, campo **10×5 por time**, banco **10**, seis ofertas, nove ouros, progressão **1,2,2,3,3,4,5,5,6,6**.
+- Menu final de **partida local única**; API suspensa até decisão posterior. Protótipo competitivo: **3–8 participantes, pessoa + bots, 100 HP**, eliminação, preparação **45 s**, combate **60 s**, campo **10×5 por time**, banco **10**, seis ofertas, nove ouros, progressão **1,2,2,3,3,4,5,5,6,6**.
 - As chances de raridade, estoque finito por espécie, IV único `0..100`, 5 Babys de IV perfeito, a bússola, Zygarde, terreno e estruturas seguem GDD v0.4. Regra de ataque desta ORGANIZAÇÃO substitui provisoriamente a seção de golpes do GDD: **somente três universais**.
 - Pontos `[A definir]` do GDD ficam sinalizados. Se uma solução técnica provisória for inevitável (folga em sala ímpar, juros etc.), centralizar em `server/game/rules.mjs` e registrar no resumo, jamais tratá-la como definitiva.
 

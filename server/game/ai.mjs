@@ -1,0 +1,123 @@
+// Tática determinística sobre unidades de combate e planejamento econômico dos bots.
+// Recebe RNG injetável; usa exclusivamente ações públicas do domínio de partida.
+import { BY_ID, FUSION_COSTS } from './pokemon.mjs';
+import { RULES, fieldLimitForBattle } from './rules.mjs';
+import { purchaseLocalOffer, refreshLocalShop, sellLocalUnit } from './roster.mjs';
+
+const owned = player => [...player.board, ...player.bench.filter(Boolean)];
+const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
+const edge = (a,b) => Math.max(0,distance(a,b)-a.radius-b.radius);
+
+export function chooseCombatTarget(unit, enemies, moves, tileSize) {
+  if (!enemies.length) return null;
+  const maxReach = Math.max(0,...moves.map(move=>move.range*tileSize));
+  return enemies.reduce((best,enemy) => {
+    const gap=edge(unit,enemy);
+    const hp=enemy.health/Math.max(1,enemy.maxHealth);
+    const threat=(enemy.stats.atk+enemy.stats.spa)/Math.max(1,enemy.stats.def+enemy.stats.spd);
+    const score=gap/(tileSize*1.45)+hp*1.6-threat*.45+(gap>maxReach ? .4 : 0);
+    return !best||score<best.score ? {enemy,score} : best;
+  },null)?.enemy || null;
+}
+
+export function chooseCombatAttack(attacker, target, moves, tileSize) {
+  const gap=edge(attacker,target);
+  const options=moves.filter(move=>gap<=move.range*tileSize);
+  if (!options.length) return null;
+  return options.reduce((best,move) => {
+    const special=move.category==='spa';
+    const offense=attacker.stats[special?'spa':'atk'];
+    const defense=target.stats[special?'spd':'def'];
+    const projected=move.damage*(.62+offense/105)*(100/(80+defense));
+    const travel=move.projectile ? gap/Math.max(1,move.projectileSpeed||400) : 0;
+    const reach=move.range*tileSize;
+    // Prioriza dano por oportunidade, alcance adequado e menor atraso do projétil.
+    const score=projected/(1+travel*.65)+Math.min(gap,reach)*.008+(move.projectile?.25:0);
+    return !best||score>best.score ? {move,score} : best;
+  },null)?.move || null;
+}
+
+function preference(player,speciesId,round,style) {
+  const species=BY_ID[speciesId];
+  const group=owned(player).filter(unit=>unit.speciesId===speciesId).length;
+  const needed=FUSION_COSTS[speciesId]||99;
+  const duplicates=group>0 ? 4+group*2+(group===needed-1?7:0) : 0;
+  const stats=species.stats;
+  const sturdy=(stats.vida+stats.def+stats.spd)/3;
+  const damage=Math.max(stats.atk,stats.spa);
+  const role=style==='front' ? sturdy*.032 : style==='back' ? damage*.037 : (sturdy+damage)*.016;
+  const economy=style==='economy' ? (7-species.price)*.85 : 0;
+  const pricePenalty=round<4 ? species.price*.6 : 0;
+  return duplicates+role+economy-pricePenalty;
+}
+
+function reorganizeBot(player,round,style) {
+  const limit=fieldLimitForBattle(round);
+  const pool=owned(player);
+  const ranked=pool.slice().sort((a,b)=>{
+    const pa=BY_ID[a.speciesId],pb=BY_ID[b.speciesId];
+    const stat=p => style==='front' ? p.stats.vida+p.stats.def+p.stats.spd :
+      style==='back' ? (p.stats.atk+p.stats.spa)*1.4+p.stats.vel :
+      p.stats.vida+p.stats.atk+p.stats.spa+p.stats.def+p.stats.spd;
+    return stat(pb)*(1+(b.iv||0)*.003)-stat(pa)*(1+(a.iv||0)*.003);
+  });
+  const field=ranked.slice(0,limit);
+  const reserves=ranked.slice(limit);
+  player.board=field;
+  player.bench=Array(RULES.bankSlots).fill(null);
+  for(let i=0;i<Math.min(RULES.bankSlots,reserves.length);i++)player.bench[i]=reserves[i];
+  const front=field.filter(unit=>{
+    const p=BY_ID[unit.speciesId];
+    return p.stats.vida+p.stats.def+p.stats.spd >= p.stats.atk+p.stats.spa+p.stats.vel;
+  });
+  const back=field.filter(unit=>!front.includes(unit));
+  // Sempre dentro das 5 linhas do lado do jogador; no duelo o motor espelha o oponente.
+  function place(list,startRow) {
+    list.forEach((unit,index)=>{
+      const columns=[4,5,3,6,2,7,1,8,0,9];
+      unit.col=columns[index%columns.length];
+      unit.row=Math.min(10,startRow+Math.floor(index/columns.length));
+      unit.x=undefined;
+      unit.y=undefined;
+      unit.team=0;
+    });
+  }
+  place(front, style==='back'?8:6);
+  place(back,style==='front'?9:10);
+}
+
+export function prepareLocalBots(match,random=Math.random) {
+  for(const bot of match.players) {
+    if(!bot.isBot||bot.eliminated)continue;
+    const style=bot.strategy||(bot.strategy=['front','back','evolution','economy'][(match.players.indexOf(bot)-1)%4]);
+    const limit=fieldLimitForBattle(match.round);
+    const target=Math.min(RULES.bankSlots+limit,Math.max(limit+2,style==='evolution'?limit+5:limit+3));
+    // Desapega de uma unidade fraca quando banco/campo estão ocupados e
+    // há uma oferta substancialmente melhor. Venda usa a MESMA operação do humano.
+    if(bot.bench.every(Boolean)&&bot.board.length>=limit) {
+      const lowest=owned(bot).filter(unit=>!((FUSION_COSTS[unit.speciesId]||99)<=owned(bot).filter(x=>x.speciesId===unit.speciesId).length+1))
+        .sort((a,b)=>preference(bot,a.speciesId,match.round,style)-preference(bot,b.speciesId,match.round,style))[0];
+      const stronger=!!lowest && bot.shop.some(id=>BY_ID[id]&&BY_ID[id].price<=bot.gold&&
+        preference(bot,id,match.round,style)>preference(bot,lowest?.speciesId,match.round,style)+2);
+      if(lowest&&stronger)sellLocalUnit(match,bot,lowest);
+    }
+    let rerolls=0;
+    let actions=0;
+    while(actions++<18 && owned(bot).length<target) {
+      const options=bot.shop.map((id,index)=>({id,index}))
+        .filter(offer=>BY_ID[offer.id]&&BY_ID[offer.id].price<=bot.gold)
+        .sort((a,b)=>preference(bot,b.id,match.round,style)-preference(bot,a.id,match.round,style));
+      const buffer=style==='economy'?Math.min(10,match.round*2):style==='evolution'?0:2;
+      if(options.length && bot.gold-BY_ID[options[0].id].price>=buffer) {
+        // Sem cópias gratuitas: compra usa a reserva real e evolui pelas mesmas regras.
+        if(purchaseLocalOffer(match,bot,options[0].index,random))continue;
+      }
+      if(rerolls>=2 || bot.shopLocked || bot.gold<RULES.rerollCostGold+buffer+1)break;
+      if(!refreshLocalShop(match,bot,random,true))break;
+      rerolls++;
+    }
+    // Formação alterada só em preparação; sem teletransporte ou manipulação durante duelos.
+    reorganizeBot(bot,match.round,style);
+    match.revision++;
+  }
+}

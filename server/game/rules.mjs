@@ -1,4 +1,4 @@
-// Regras aprovadas no GDD v0.4. Fonte única para futuras fases competitivas.
+// Regras do GDD v0.4 para partidas locais; reutilizáveis futuramente pelo servidor.
 // Não substituir decisões [A definir] por convenções definitivas.
 export const RULES = Object.freeze({
   version:'0.4',

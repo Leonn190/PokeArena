@@ -1,6 +1,7 @@
 import { createBattle, startBattle, updateBattle, BOARD } from './battle.mjs';
 import { RULES, defeatDamage, fieldLimitForBattle } from './rules.mjs';
 import { awardLocalRoundIncome, prepareLocalRound, releaseEliminatedLocalPlayer } from './roster.mjs';
+import { prepareLocalBots } from './ai.mjs';
 
 export const LOCAL_PHASES = Object.freeze({
   PREPARATION: 'preparation',
@@ -69,6 +70,7 @@ export function startLocalMatchCycle(match, nowSeconds = 0) {
   match.byeCursor = match.byeCursor || 0;
   match.lastMessage = 'Preparação local: organize o campo e compre Pokémon na loja.';
   prepareLocalRound(match);
+  prepareLocalBots(match);
   return match;
 }
 
@@ -185,7 +187,14 @@ export function updateLocalMatchCycle(match, dtSeconds, nowSeconds = 0) {
   const running = match.combats.filter(combat => combat.status === 'running');
   if (nowSeconds >= match.phaseDeadline) {
     for (const combat of running) {
-      updateBattle(combat.battle, Math.max(0, RULES.battleSeconds - combat.battle.elapsed));
+      // O motor avança em passos de até 50 ms; enviar 60 s de uma vez
+      // seria truncado para 0,05 s e a partida ficaria travada nesta fase.
+      let remaining = Math.max(0,RULES.battleSeconds-combat.battle.elapsed);
+      while(remaining > 0 && combat.battle.phase === 'fighting') {
+        const step = Math.min(.05,remaining);
+        updateBattle(combat.battle,step);
+        remaining-=step;
+      }
       finishCombat(match, combat);
     }
   }

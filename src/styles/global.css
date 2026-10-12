@@ -38,8 +38,8 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .hud-stat{min-width:62px;height:40px;border:1px solid rgba(234,255,198,.17);border-radius:6px;background:rgba(12,25,18,.62);display:flex;flex-direction:column;justify-content:center;padding:0 9px}
 .hud-stat b{font-size:17px;line-height:1;font-variant-numeric:tabular-nums;color:#fff9bf}
 .hud-stat.gold b{color:#ffe073}
-.hud-actions,.camera-actions{display:flex;gap:6px}
-.icon-button,.camera-actions button{
+.camera-actions{display:flex;gap:6px}
+.camera-actions button{
   height:40px;
   border-radius:6px;
   border:1px solid rgba(234,255,198,.26);
@@ -47,10 +47,8 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   color:#f2f7e8;
   font-weight:950;
 }
-.icon-button{width:40px}
 .camera-actions button{min-width:36px;padding:0 9px;font-size:12px}
-.icon-button.primary{background:#ffd65e;color:#26301a;border-color:#fff0a3}
-.icon-button:hover:not(:disabled),.camera-actions button:hover:not(:disabled){filter:brightness(1.09)}
+.camera-actions button:hover:not(:disabled){filter:brightness(1.09)}
 .side-hud{
   right:12px;
   top:82px;
@@ -83,16 +81,15 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   border-radius:6px;
 }
 .move-row{display:grid;grid-template-columns:1fr 46px;gap:7px}
-.moves-list .move-card,.moves-list .move-unlock{min-height:47px;text-align:left;padding:8px}
+.moves-list .move-card{min-height:47px;text-align:left;padding:8px}
 .moves-list .move-reroll{min-height:47px;font-size:18px;font-weight:950;text-align:center}
 .moves-list .move-card{cursor:default}
 .moves-list .move-card:focus{outline:none}
 .moves-list .move-card:hover{filter:none}
-.moves-list .move-unlock{width:calc(100% - 53px);font-weight:950;color:#ffdf70}
 .moves-list b{display:block;font-size:11px}
 .moves-list small{display:block;margin-top:4px;color:#b8c9a8;font-size:10px}
 .attack-actions{display:grid;grid-template-columns:1fr;gap:7px;margin-top:8px}
-.attack-actions button,.shop-meta button,.team-toggle button,.wide-tool{min-height:34px;font-size:11px;font-weight:900}
+.attack-actions button,.shop-meta button{min-height:34px;font-size:11px;font-weight:900}
 .bottom-hud{
   left:50%;
   bottom:12px;
@@ -206,7 +203,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   .top-hud{top:7px;min-height:50px;gap:4px}
   .hud-brand{min-width:104px}.hud-brand b{font-size:12px}.hud-brand small,.hud-stat small{font-size:8px}
   .hud-stat{height:36px;min-width:42px}.hud-stat b{font-size:14px}
-  .icon-button{width:34px;height:36px}.camera-actions button{height:36px;font-size:10px}
+  .camera-actions button{height:36px;font-size:10px}
   .side-hud{top:64px;right:8px;width:min(300px,calc(100vw - 16px));max-height:232px;padding:8px}
   .selected-head{grid-template-columns:60px 1fr;padding:7px}.selected-head canvas{width:56px;height:50px}
   .stats-list{grid-template-columns:repeat(3,1fr);gap:5px}.stat{min-height:38px;padding:6px}.stat small{display:none}
@@ -228,7 +225,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   .shop-footer{min-height:28px}
 }
 
-/* Etapas 01-02: menu e partida local sobre o mesmo Canvas. */
+/* Tela de partida local única, sem simulador livre. */
 [hidden]{display:none!important}
 .game-shell[data-mode="menu"] .top-hud,
 .game-shell[data-mode="menu"] .bottom-hud,
@@ -240,16 +237,10 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .entry-emblem .pokeball-mark{flex-shrink:0}
 .entry-panel h1{margin:17px 0 8px;font-size:clamp(25px,5vw,36px);letter-spacing:-.9px}
 .entry-panel p{margin:0 auto 25px;color:#cce0be;font-size:13px;line-height:1.6;max-width:340px}
-.mode-options{display:grid;gap:12px}
-.mode-option{display:flex;flex-direction:column;align-items:flex-start;gap:5px;width:100%;text-align:left;padding:17px 19px;border:1px solid #80ad75;border-radius:10px;color:#f2ffdf;background:linear-gradient(100deg,#3d6b43,#274631);transition:filter .15s,transform .15s}
-.mode-option.accent{background:linear-gradient(110deg,#f2d367,#cda544);border-color:#ffeda3;color:#263319}
-.mode-option b{font-size:16px;font-weight:950;letter-spacing:.3px}
-.mode-option small{font-size:11px;font-weight:650;opacity:.8;line-height:1.4}
-.mode-option:hover{filter:brightness(1.1);transform:translateY(-2px)}
 .match-setup h1{margin-top:0}
 .match-setup label{display:block;text-align:left;font-weight:900;font-size:12px;margin-bottom:8px;color:#ffe58b}
 .match-setup select{width:100%;min-height:46px;padding:0 11px;background:#132b1d;color:#eefbe4;border:1px solid #9cc78c;border-radius:8px;font:inherit}
-.setup-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:18px}
+.setup-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:18px}
 .setup-actions button{min-height:44px;border:1px solid #7a9e75;border-radius:8px;background:#23402c;color:#f3f9ed;font-weight:900}
 .setup-actions .confirm-local{background:#f2d367;color:#21321a;border-color:#ffe9a5}
 .return-menu{border:1px solid rgba(234,255,198,.24);border-radius:6px;background:#1b3525;color:#eaf9dd;font-weight:900;font-size:11px;min-height:40px;padding:0 10px}
@@ -268,7 +259,6 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .match-hp-bar i{display:block;height:100%;background:linear-gradient(90deg,#8fe36e,#ffe477)}
 .back-own-arena{width:100%;min-height:32px;margin-top:8px;border:1px solid rgba(255,226,130,.45);border-radius:6px;background:#263f2b;color:#fff0ad;font-size:11px;font-weight:900}
 .match-pending{font-size:10px;line-height:1.55;color:#c0d5ad;margin:12px 0 0}
-.game-shell[data-mode="local"] .hud-actions{display:none}
 .game-shell[data-mode="local"] .shop-card.empty{opacity:.48}
 .game-shell[data-mode="local"] .side-hud{left:12px;right:auto}
 @media(max-width:720px){

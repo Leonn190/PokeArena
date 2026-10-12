@@ -1,6 +1,6 @@
 // Contrato HTTP estável entre o GitHub Pages e o servidor independente no Render.
-// No Modo Teste, o Canvas pode continuar offline. Em partidas competitivas,
-// NUNCA usar resultado/HP calculado pelo navegador como verdade.
+// Contrato para migração futura; a partida local atual não acessa esta API.
+// NUNCA usar resultado/HP calculado pelo navegador como verdade numa partida online.
 const configuredUrl=(import.meta.env.PUBLIC_POKEARENA_API_URL||'').replace(/\/+$/,'');
 export const API_URL=configuredUrl||(
   typeof location!=='undefined' && ['localhost','127.0.0.1'].includes(location.hostname)

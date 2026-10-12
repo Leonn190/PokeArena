@@ -1,5 +1,5 @@
 import { RULES, fieldLimitForBattle, interestForGold, shopOddsForBattle } from './rules.mjs';
-import { BY_ID, SHOP_POKEMON, STARTER_SHOP_IDS, EVOLVES_TO, FUSION_COSTS, EVOLUTION_OPTIONS } from './pokemon.mjs';
+import { BY_ID, SHOP_POKEMON, FUSION_COSTS, EVOLUTION_OPTIONS } from './pokemon.mjs';
 
 // Todas as operações de partida são síncronas e executadas em memória.
 // match.pool representa somente cópias LIVRES; ofertas possuem reservas próprias.
@@ -20,37 +20,13 @@ export function createParticipant({id,name,isBot}) {
   };
 }
 
-// Estado independente do Modo Teste; suas unidades nunca consomem estoque da partida.
-export function createSandboxState() {
-  return {round:1,gold:Infinity,infiniteGold:true,playerBench:Array(10).fill(null),
-    enemyBench:Array(10).fill(null),playerBoard:[],enemyBoard:[],shop:Array(6).fill(null)};
-}
-export function createSandboxPokemon(speciesId,team,instanceId,random=Math.random) {
+// Entidade de partida; a lógica não depende de um simulador paralelo.
+export function createMatchPokemon(speciesId,team,instanceId,random=Math.random) {
   return {
     instanceId,speciesId,team,iv:Math.min(100,Math.floor(random()*101)),
     activeMoves:['disparo','investida'],slots:2,
-    col:team?5:4,row:team?2:7,x:0,y:0
+    col:team?5:4,row:team?2:7
   };
-}
-export function removeFromSandbox(state,unit) {
-  for(const bench of [state.playerBench,state.enemyBench]) {
-    const slot=bench.indexOf(unit);
-    if(slot!==-1)bench[slot]=null;
-  }
-  for(const board of [state.playerBoard,state.enemyBoard]) {
-    const index=board.indexOf(unit);
-    if(index!==-1)board.splice(index,1);
-  }
-}
-export function nextSandboxFusion(units,evolvesTo) {
-  const groups=new Map();
-  for(const unit of units) {
-    if(!evolvesTo[unit.speciesId])continue;
-    const group=groups.get(unit.speciesId)||[];
-    group.push(unit);
-    groups.set(unit.speciesId,group);
-  }
-  return [...groups.entries()].find(([,group])=>group.length>=3)||null;
 }
 
 export function createLocalMatchState(playerCount,sessionId) {
@@ -202,7 +178,9 @@ export function purchaseLocalOffer(match,participant,index,random=Math.random) {
   if(!p||participant.reservedOffers[index]!==id||participant.gold<p.price)return null;
   const existingZygarde=p.name==='Zygarde' ? ownedUnits(participant).find(u=>u.speciesId===id):null;
   if(existingZygarde?.zygardeProgress>=100)return null;
-  if(!existingZygarde&&fullBench(participant))return null;
+  const canFuseOnPurchase = (FUSION_COSTS[id] || Infinity) <=
+    ownedUnits(participant).filter(u=>u.speciesId===id).length + 1;
+  if(!existingZygarde&&fullBench(participant)&&!canFuseOnPurchase)return null;
   participant.gold-=p.price;
   participant.shop[index]=null;
   participant.reservedOffers[index]=null;
@@ -226,15 +204,25 @@ export function purchaseLocalOffer(match,participant,index,random=Math.random) {
     unit=existingZygarde;
   } else {
     const benchSlot=participant.bench.findIndex(slot=>!slot);
-    unit=createSandboxPokemon(id,0,`${match.id}-unit-${++match.nextUnitId}`,random);
+    unit=createMatchPokemon(id,0,`${match.id}-unit-${++match.nextUnitId}`,random);
     unit.provenance=[part];
     unit.purchaseCost=p.price;
     unit.evolutionSteps=0;
     unit.items=[];
     if(p.name==='Zygarde')unit.zygardeProgress=10;
-    participant.bench[benchSlot]=unit;
+    // Slot provisório somente quando a compra completa uma fusão com banco cheio.
+    if(benchSlot<0)participant.bench.push(unit);
+    else participant.bench[benchSlot]=unit;
   }
   fuseLocalUnits(match,participant,random);
+  // A fusão consome a cópia temporária ou libera um banco normal.
+  if(participant.bench.length>RULES.bankSlots) {
+    const extra=participant.bench.pop();
+    if(extra) {
+      const free=participant.bench.findIndex(slot=>!slot);
+      if(free>=0)participant.bench[free]=extra;
+    }
+  }
   match.revision++;
   return ownedUnits(participant).find(u=>u.provenance?.includes(part)) || unit;
 }
@@ -260,38 +248,23 @@ export function prepareLocalRound(match,random=Math.random) {
     if(participant.eliminated)continue;
     if(!participant.shopLocked)refreshLocalShop(match,participant,random);
   }
-  for(const bot of match.players.filter(p=>p.isBot&&!p.eliminated))botPrepare(match,bot,random);
+  // Preparação tática de bots ocorre em ai.mjs, chamada pelo ciclo da partida.
 }
-function botPrepare(match,bot,random) {
-  const max=fieldLimitForBattle(match.round);
-  // Bots compram pelo MESMO método e pool do humano, sem gerar unidades gratuitas.
-  let tries=0;
-  while(tries++<9 && ownedUnits(bot).length<Math.min(max+2,RULES.bankSlots+max)) {
-    const eligible=bot.shop.map((id,index)=>({id,index}))
-      .filter(offer=>BY_ID[offer.id]&&BY_ID[offer.id].price<=bot.gold);
-    if(!eligible.length) {
-      if(!refreshLocalShop(match,bot,random,true))break;
-      continue;
-    }
-    // Dar preferência a unidades de custo acessível e cópias que formem fusão.
-    eligible.sort((a,b)=>{
-      const aDup=ownedUnits(bot).filter(u=>u.speciesId===a.id).length;
-      const bDup=ownedUnits(bot).filter(u=>u.speciesId===b.id).length;
-      return bDup-aDup || BY_ID[b.id].price-BY_ID[a.id].price;
-    });
-    const bought=purchaseLocalOffer(match,bot,eligible[0].index,random);
-    if(!bought)break;
-  }
-  while(bot.board.length<max) {
-    const index=bot.bench.findIndex(Boolean);
-    if(index<0)break;
-    const unit=bot.bench[index];
-    bot.bench[index]=null;
-    unit.col=3+(bot.board.length%4);
-    unit.row=8+Math.floor(bot.board.length/4);
-    bot.board.push(unit);
-  }
-  // Em preparação seguinte, o bot conserva unidades que já estavam no campo.
+export function changeLocalMove(match,participant,unit,slot) {
+  if(match.phase!=='preparation'||participant.eliminated||
+    !ownedUnits(participant).includes(unit)||!Number.isInteger(slot)||slot<0||slot>1||
+    participant.gold<RULES.moveChangeCostGold)return false;
+  const available=['disparo','investida','ataque-legal'];
+  const equipped=(unit.activeMoves||[]).slice(0,2);
+  if(equipped.length!==2||!equipped.every(id=>available.includes(id)))return false;
+  const replacement=available.find(id=>!equipped.includes(id));
+  if(!replacement)return false;
+  participant.gold-=RULES.moveChangeCostGold;
+  equipped[slot]=replacement;
+  unit.activeMoves=equipped;
+  unit.slots=2;
+  match.revision++;
+  return true;
 }
 export function awardLocalRoundIncome(match) {
   for(const participant of match.players) {

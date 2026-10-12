@@ -2,6 +2,8 @@
 
 **ANTES DE QUALQUER MODIFICAÇÃO**, leia integralmente `ORGANIZACAO.md` e a etapa aplicável de `PLANO_CODEX_POKEARENA_v0_5.md`. O GDD v0.4 rege as regras aprovadas, exceto pela substituição TEMPORÁRIA dos golpes: todos os Pokémon têm **APENAS Disparo, Investida e Ataque Legal**, com **DOIS** equipados.
 
+**MODO ÚNICO (12/10/2026):** o simulador livre foi eliminado. Somente partidas locais com bots; não restabelecer menu, arquivos nem controles paralelos.
+
 **REGRA TEMPORÁRIA SUPERIOR (todas as etapas 01–11): desenvolvimento 100% LOCAL.** Não iniciar nem consultar API HTTP, Render, Firebase, PostgreSQL ou outro serviço remoto. Partidas, bots, economia e combates deverão funcionar em memória por meio de `server/game/` quando chegar sua respectiva etapa; nenhuma sessão local é multiplayer online ou vitória oficial. `server/` continua modular e preparado para migração FUTURA a servidor autoritário, mas sua infraestrutura HTTP e banco ficam inteiramente inativos durante este plano. Em caso de conflito, esta regra prevalece sobre comandos antigos do plano e da organização. Não mudar a arquitetura sem alinhar com `ORGANIZACAO.md`.
 
 **NÃO EXECUTE testes, builds, servidores, instalações, scripts, simulações ou comandos de verificação. NÃO CRIE pastas/arquivos de teste, node_modules, .node, .astro, dist, caches, logs, temporários, mocks, fixtures, backups, .bat, .ps1 ou outras pastas de raiz. Apenas revisão estática.** Detalhes obrigatórios completos estão na seção 9 de `ORGANIZACAO.md`. Repita essa proibição no resumo de cada etapa e não afirme ter testado.
