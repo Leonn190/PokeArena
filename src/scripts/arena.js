@@ -1,6 +1,6 @@
 import { POKEMON, BY_ID, SHOP_IDS, EVOLVES_TO, getFrame, spritePath, spriteUrl, applySpriteManifest } from './pokemon.mjs';
 import { MOVES_BY_ID, movePool, initialLoadout } from './moves.mjs';
-import { BOARD, TAU, cellAtWorld, isBenchCell, tilePosition, validCellForTeam, maxActiveForRound, effectiveStats, createBattle, syncLineups, startBattle, updateBattle } from './battle.mjs';
+import { BOARD, TAU, cellAtWorld, isBenchCell, benchTeamForCell, tilePosition, validCellForTeam, maxActiveForRound, effectiveStats, createBattle, syncLineups, startBattle, updateBattle } from './battle.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('arena');
@@ -20,7 +20,6 @@ const hash = (x, y, z = 0) => {
 let idSeq = 1;
 let battle = createBattle([[], []]);
 let selectedId = null;
-let selectedMoveSlot = 0;
 let speciesPick = '0004';
 let teamPick = 1;
 let deleteMode = false;
@@ -29,17 +28,21 @@ let lastFrame = 0;
 let visualTime = 0;
 let hovered = null;
 let drag = null;
+let shopPointer = null;
+let suppressShopClick = false;
 let pan = null;
 let spaceDown = false;
 let toastTimer = 0;
 let dpr = 1;
 let screen = { w: 1000, h: 760 };
-const camera = { x: 0, y: 0, scale: 1, targetScale: 1 };
+const camera = { x: 0, y: 0, scale: 1, targetX: 0, targetY: 0, targetScale: 1 };
+const evolutionEffects = [];
 const state = {
   round: 1,
   gold: Infinity,
   infiniteGold: true,
-  bench: Array(10).fill(null),
+  playerBench: Array(10).fill(null),
+  enemyBench: Array(10).fill(null),
   playerBoard: [],
   enemyBoard: [],
   shop: Array(6).fill(null)
@@ -68,10 +71,13 @@ function fieldUnits() {
   return [...state.playerBoard, ...state.enemyBoard];
 }
 function allUnits() {
-  return [...fieldUnits(), ...state.bench.filter(Boolean)];
+  return [...fieldUnits(), ...state.playerBench.filter(Boolean), ...state.enemyBench.filter(Boolean)];
 }
 function listForTeam(team) {
   return team ? state.enemyBoard : state.playerBoard;
+}
+function benchForTeam(team) {
+  return team ? state.enemyBench : state.playerBench;
 }
 function selectedMon() {
   return findMon(selectedId) || allUnits()[0] || null;
@@ -80,23 +86,28 @@ function findMon(id) {
   return allUnits().find(mon => mon.instanceId === id) || null;
 }
 function monCell(mon) {
-  if (state.bench.includes(mon)) return { col: state.bench.indexOf(mon), row: BOARD.benchRow };
+  if (state.playerBench.includes(mon)) return { col: state.playerBench.indexOf(mon), row: BOARD.playerBenchRow };
+  if (state.enemyBench.includes(mon)) return { col: state.enemyBench.indexOf(mon), row: BOARD.enemyBenchRow };
   return { col: mon.col, row: mon.row };
 }
 function monWorld(mon) {
-  if (drag?.mon === mon && drag.world) return drag.world;
+  if (drag?.kind === 'unit' && drag.mon === mon && drag.world) return drag.world;
   const cell = monCell(mon);
   return tilePosition(cell.col, cell.row);
 }
 function benchIndex(mon) {
-  return state.bench.findIndex(item => item === mon);
+  const playerSlot = state.playerBench.findIndex(item => item === mon);
+  if (playerSlot >= 0) return { team:0, slot:playerSlot };
+  const enemySlot = state.enemyBench.findIndex(item => item === mon);
+  if (enemySlot >= 0) return { team:1, slot:enemySlot };
+  return null;
 }
 function boardIndex(mon) {
   return listForTeam(mon.team).indexOf(mon);
 }
 function removeFromContainers(mon) {
   const b = benchIndex(mon);
-  if (b >= 0) state.bench[b] = null;
+  if (b) benchForTeam(b.team)[b.slot] = null;
   for (const list of [state.playerBoard, state.enemyBoard]) {
     const i = list.indexOf(mon);
     if (i >= 0) list.splice(i, 1);
@@ -105,12 +116,13 @@ function removeFromContainers(mon) {
 function boardOccupant(team, col, row, except = null) {
   return listForTeam(team).find(mon => mon !== except && mon.col === col && mon.row === row);
 }
-function benchOccupant(col, except = null) {
-  return state.bench[col] && state.bench[col] !== except ? state.bench[col] : null;
+function benchOccupant(team, col, except = null) {
+  const bench = benchForTeam(team);
+  return bench[col] && bench[col] !== except ? bench[col] : null;
 }
 function snapshot(mon) {
   const b = benchIndex(mon);
-  if (b >= 0) return { kind:'bench', slot:b, team:mon.team, col:mon.col, row:mon.row };
+  if (b) return { kind:'bench', slot:b.slot, team:b.team, col:mon.col, row:mon.row };
   return { kind:'board', team:mon.team, col:mon.col, row:mon.row };
 }
 function restore(mon, origin) {
@@ -118,24 +130,24 @@ function restore(mon, origin) {
   mon.team = origin.team;
   mon.col = origin.col;
   mon.row = origin.row;
-  if (origin.kind === 'bench') state.bench[origin.slot] = mon;
+  if (origin.kind === 'bench') benchForTeam(origin.team)[origin.slot] = mon;
   else listForTeam(mon.team).push(mon);
   syncBattle();
   renderHud();
 }
-function firstBenchSlot() {
-  return state.bench.findIndex(item => !item);
+function firstBenchSlot(team = 0) {
+  return benchForTeam(team).findIndex(item => !item);
 }
-function placeBench(mon, slot, swap = true) {
+function placeBench(mon, team, slot, swap = true) {
   if (!mon || battle.phase !== 'setup') return false;
   const target = clamp(slot, 0, 9);
-  if (mon.team !== 0) mon.team = 0;
-  const other = benchOccupant(target, mon);
+  const other = benchOccupant(team, target, mon);
   const origin = snapshot(mon);
   if (other && !swap) return false;
   removeFromContainers(mon);
   if (other) restoreOtherToOrigin(other, origin);
-  state.bench[target] = mon;
+  mon.team = team;
+  benchForTeam(team)[target] = mon;
   selectedId = mon.instanceId;
   syncBattle();
   renderHud();
@@ -146,15 +158,15 @@ function restoreOtherToOrigin(other, origin) {
   other.team = origin.team;
   other.col = origin.col;
   other.row = origin.row;
-  if (origin.kind === 'bench') state.bench[origin.slot] = other;
+  if (origin.kind === 'bench') benchForTeam(origin.team)[origin.slot] = other;
   else listForTeam(other.team).push(other);
 }
-function placeBoard(mon, team, cell, swap = true, ignoreLimit = false) {
+function placeBoard(mon, team, cell, swap = true) {
   if (!mon || battle.phase !== 'setup' || !validCellForTeam(team, cell)) return false;
   const list = listForTeam(team);
   const alreadyInList = list.includes(mon);
-  if (team === 0 && !alreadyInList && !ignoreLimit && list.length >= maxActive()) {
-    showToast(`Limite aliado: ${maxActive()} em campo.`);
+  if (!alreadyInList && list.length >= maxActive()) {
+    showToast(`Limite do campo: ${maxActive()} em campo.`);
     return false;
   }
   const other = boardOccupant(team, cell.col, cell.row, mon);
@@ -188,7 +200,7 @@ function buyOffer(index) {
   if (battle.phase !== 'setup') return;
   const speciesId = state.shop[index];
   if (!speciesId) return;
-  const slot = firstBenchSlot();
+  const slot = firstBenchSlot(0);
   if (slot < 0) {
     showToast('Banco cheio.');
     return;
@@ -200,10 +212,30 @@ function buyOffer(index) {
   }
   if (!state.infiniteGold) state.gold -= p.price;
   const mon = newMon(speciesId, 0);
-  placeBench(mon, slot, false);
+  placeBench(mon, 0, slot, false);
   state.shop[index] = null;
   evolveTeam(0);
   renderHud();
+}
+function buyOfferToCell(index, cell) {
+  if (battle.phase !== 'setup') return false;
+  const speciesId = state.shop[index];
+  if (!speciesId || !cell) return false;
+  const team = isBenchCell(cell) ? benchTeamForCell(cell) : pointerTeamForCell(cell);
+  if (team == null) return false;
+  const p = BY_ID[speciesId];
+  if (!state.infiniteGold && state.gold < p.price) {
+    showToast('Ouro insuficiente.');
+    return false;
+  }
+  const mon = newMon(speciesId, team);
+  const placed = isBenchCell(cell) ? placeBench(mon, team, cell.col, false) : placeBoard(mon, team, cell, false);
+  if (!placed) return false;
+  if (!state.infiniteGold) state.gold -= p.price;
+  state.shop[index] = null;
+  evolveTeam(team);
+  renderHud();
+  return true;
 }
 function refillShop() {
   state.shop = Array.from({ length:6 }, () => SHOP_IDS[Math.floor(Math.random() * SHOP_IDS.length)]);
@@ -223,6 +255,14 @@ function evolveTeam(team) {
     if (!found) break;
     const [speciesId, copies] = found;
     const keep = copies[0];
+    const mergeTo = monWorld(keep);
+    evolutionEffects.push({
+      from: copies.slice(0, 3).map(mon => ({ ...monWorld(mon), speciesId:mon.speciesId, team:mon.team })),
+      to: { ...mergeTo },
+      newSpeciesId: EVOLVES_TO[speciesId],
+      time: 0,
+      total: .95
+    });
     for (const mon of copies.slice(1, 3)) removeFromContainers(mon);
     keep.speciesId = EVOLVES_TO[speciesId];
     keep.activeMoves = initialLoadout(keep.speciesId);
@@ -236,14 +276,15 @@ function evolveTeam(team) {
     renderHud();
   }
 }
-function rerollMove() {
+function rerollMove(slot) {
   const mon = selectedMon();
   if (!mon || battle.phase !== 'setup') return;
+  const moveSlot = clamp(slot, 0, mon.slots - 1);
   const pool = movePool(mon.speciesId);
-  const current = mon.activeMoves[selectedMoveSlot];
+  const current = mon.activeMoves[moveSlot];
   const available = pool.filter(move => move.id !== current && !mon.activeMoves.includes(move.id));
   if (!available.length) return;
-  mon.activeMoves[selectedMoveSlot] = available[Math.floor(Math.random() * available.length)].id;
+  mon.activeMoves[moveSlot] = available[Math.floor(Math.random() * available.length)].id;
   syncBattle();
   renderDetails();
 }
@@ -321,13 +362,24 @@ function fitCamera() {
   camera.targetScale = scale;
   camera.x = (screen.w - world.w * scale) / 2 - world.x * scale;
   camera.y = 78 + (usableH - world.h * scale) / 2 - world.y * scale;
+  camera.targetX = camera.x;
+  camera.targetY = camera.y;
 }
 function zoomAt(screenPos, factor) {
   const before = screenToWorld(screenPos);
   camera.targetScale = clamp(camera.targetScale * factor, .45, 2.7);
-  camera.scale = camera.targetScale;
-  camera.x = screenPos.x - before.x * camera.scale;
-  camera.y = screenPos.y - before.y * camera.scale;
+  camera.targetX = screenPos.x - before.x * camera.targetScale;
+  camera.targetY = screenPos.y - before.y * camera.targetScale;
+}
+function updateCamera(dt) {
+  if (pan) return;
+  const t = 1 - Math.pow(.0015, dt);
+  camera.scale += (camera.targetScale - camera.scale) * t;
+  camera.x += (camera.targetX - camera.x) * t;
+  camera.y += (camera.targetY - camera.y) * t;
+  if (Math.abs(camera.targetScale - camera.scale) < .0005) camera.scale = camera.targetScale;
+  if (Math.abs(camera.targetX - camera.x) < .05) camera.x = camera.targetX;
+  if (Math.abs(camera.targetY - camera.y) < .05) camera.y = camera.targetY;
 }
 function cellAtClient(clientX, clientY) {
   const p = clientToWorld(clientX, clientY);
@@ -348,8 +400,8 @@ function hitUnit(world) {
 }
 function pointerTeamForCell(cell) {
   if (!cell) return teamPick;
-  if (isBenchCell(cell)) return 0;
-  return cell.row < BOARD.enemyRows ? 1 : 0;
+  if (isBenchCell(cell)) return benchTeamForCell(cell);
+  return validCellForTeam(1, cell) ? 1 : 0;
 }
 function dropUnit(mon, cell, origin) {
   if (!cell) {
@@ -357,13 +409,15 @@ function dropUnit(mon, cell, origin) {
     return;
   }
   if (isBenchCell(cell)) {
-    if (mon.team === 0) placeBench(mon, cell.col);
-    else restore(mon, origin);
+    placeBench(mon, benchTeamForCell(cell), cell.col);
     return;
   }
   const team = pointerTeamForCell(cell);
-  if (!placeBoard(mon, team, cell, true, team === 1)) restore(mon, origin);
+  if (!placeBoard(mon, team, cell, true)) restore(mon, origin);
   else evolveTeam(team);
+}
+function dropShopOffer(index, cell) {
+  if (!buyOfferToCell(index, cell)) showToast('Solte em um banco ou campo valido.');
 }
 function createAt(cell) {
   if (!cell || isBenchCell(cell) || battle.phase !== 'setup') return;
@@ -371,13 +425,13 @@ function createAt(cell) {
   const team = teamPick;
   if (!validCellForTeam(team, cell)) return;
   const mon = newMon(speciesPick, team);
-  placeBoard(mon, team, cell, true, team === 1);
+  placeBoard(mon, team, cell, true);
 }
 
 canvas.addEventListener('pointerdown', e => {
   const screenPos = screenPoint(e.clientX, e.clientY);
   const world = screenToWorld(screenPos);
-  if (e.button === 1 || (spaceDown && e.button === 0)) {
+  if (e.button === 1 || e.button === 2 || (spaceDown && e.button === 0)) {
     pan = { pointer:e.pointerId, start:screenPos, x:camera.x, y:camera.y };
     canvas.setPointerCapture(e.pointerId);
     e.preventDefault();
@@ -393,10 +447,8 @@ canvas.addEventListener('pointerdown', e => {
       return;
     }
     const p = monWorld(hit);
-    drag = { pointer:e.pointerId, mon:hit, origin:snapshot(hit), offset:{ x:world.x - p.x, y:world.y - p.y }, world:p, moved:false };
+    drag = { kind:'unit', pointer:e.pointerId, mon:hit, origin:snapshot(hit), offset:{ x:world.x - p.x, y:world.y - p.y }, world:p, moved:false };
     canvas.setPointerCapture(e.pointerId);
-  } else {
-    createAt(cellAtWorld(world.x, world.y));
   }
 });
 canvas.addEventListener('pointermove', e => {
@@ -406,6 +458,8 @@ canvas.addEventListener('pointermove', e => {
   if (pan?.pointer === e.pointerId) {
     camera.x = pan.x + screenPos.x - pan.start.x;
     camera.y = pan.y + screenPos.y - pan.start.y;
+    camera.targetX = camera.x;
+    camera.targetY = camera.y;
     return;
   }
   if (drag?.pointer === e.pointerId) {
@@ -421,16 +475,48 @@ canvas.addEventListener('pointerup', e => {
   if (!drag || drag.pointer !== e.pointerId) return;
   const activeDrag = drag;
   drag = null;
-  if (document.elementFromPoint(e.clientX, e.clientY)?.closest?.('#sell-zone')) {
+  if (document.elementFromPoint(e.clientX, e.clientY)?.closest?.('#sell-zone,#shop-slots,.shop-meta,.bottom-hud')) {
     removeUnit(activeDrag.mon, activeDrag.mon.team === 0);
     return;
   }
-  dropUnit(activeDrag.mon, cellAtClient(e.clientX, e.clientY), activeDrag.origin);
+  if (activeDrag.kind === 'unit') dropUnit(activeDrag.mon, cellAtClient(e.clientX, e.clientY), activeDrag.origin);
 });
 canvas.addEventListener('pointercancel', () => {
-  if (drag) restore(drag.mon, drag.origin);
+  if (drag?.kind === 'unit') restore(drag.mon, drag.origin);
   drag = null;
   pan = null;
+  shopPointer = null;
+});
+document.addEventListener('pointermove', e => {
+  if (!shopPointer || shopPointer.pointer !== e.pointerId) return;
+  const moved = Math.hypot(e.clientX - shopPointer.start.x, e.clientY - shopPointer.start.y);
+  if (!shopPointer.dragging && moved > 5) {
+    shopPointer.dragging = true;
+    suppressShopClick = true;
+    const world = clientToWorld(e.clientX, e.clientY);
+    drag = { kind:'shop', pointer:e.pointerId, index:shopPointer.index, speciesId:shopPointer.speciesId, offset:{ x:0, y:0 }, world, moved:true };
+  }
+  if (shopPointer.dragging && drag?.kind === 'shop') {
+    drag.world = clientToWorld(e.clientX, e.clientY);
+    hovered = battle.phase === 'setup' ? cellAtClient(e.clientX, e.clientY) : null;
+  }
+});
+document.addEventListener('pointerup', e => {
+  if (!shopPointer || shopPointer.pointer !== e.pointerId) return;
+  const active = shopPointer;
+  shopPointer = null;
+  if (!active.dragging) return;
+  drag = null;
+  if (!document.elementFromPoint(e.clientX, e.clientY)?.closest?.('.bottom-hud')) {
+    dropShopOffer(active.index, cellAtClient(e.clientX, e.clientY));
+  }
+  setTimeout(() => { suppressShopClick = false; }, 0);
+});
+document.addEventListener('pointercancel', e => {
+  if (!shopPointer || shopPointer.pointer !== e.pointerId) return;
+  shopPointer = null;
+  if (drag?.kind === 'shop') drag = null;
+  suppressShopClick = false;
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => {
@@ -473,7 +559,7 @@ function renderDetails() {
   $('selected-type').textContent = `${p.type} · ${stageName[p.stage]}`;
   $('selected-type').style.color = p.color;
   const b = benchIndex(mon);
-  $('selected-place').textContent = b >= 0 ? `Banco ${b + 1}` : mon.team ? `Inimigo ${mon.col + 1},${mon.row + 1}` : `Aliado ${mon.col + 1},${mon.row - 4}`;
+  $('selected-place').textContent = b ? `${b.team ? 'Banco inimigo' : 'Banco'} ${b.slot + 1}` : mon.team ? `Inimigo ${mon.col + 1},${mon.row}` : `Aliado ${mon.col + 1},${mon.row - BOARD.playerFieldStart + 1}`;
   $('selected-iv').textContent = `IV geral ${mon.iv}%`;
   $('sell-value').textContent = mon.team === 0 ? `Venda: ${p.price} ouro` : 'Remover inimigo';
   drawSmallSprite($('selected-avatar'), p, mon.team ? 0 : 4);
@@ -484,18 +570,23 @@ function renderDetails() {
   }).join('');
   $('moves-active').innerHTML = mon.activeMoves.slice(0, mon.slots).map((id, i) => {
     const move = MOVES_BY_ID[id];
-    return `<button type="button" class="${selectedMoveSlot === i ? 'selected' : ''}" data-slot="${i}"><b>${move.name}</b><small>${move.category === 'atk' ? 'Fisico' : 'Especial'} · ${move.damage} · ${move.range.toFixed(1)}</small></button>`;
+    return `<div class="move-row"><button type="button" class="move-card" tabindex="-1"><b>${move.name}</b><small>${move.category === 'atk' ? 'Fisico' : 'Especial'} · ${move.damage} · ${move.range.toFixed(1)}</small></button><button type="button" class="move-reroll" data-slot="${i}" title="Rerollar ${move.name}" aria-label="Rerollar ${move.name}">↻</button></div>`;
   }).join('');
-  $('moves-active').querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
-    selectedMoveSlot = Number(btn.dataset.slot);
-    renderDetails();
-  }));
-  $('unlock-move').disabled = battle.phase !== 'setup' || mon.slots >= 3;
-  $('reroll-move').disabled = battle.phase !== 'setup';
+  if (mon.slots < 3) $('moves-active').insertAdjacentHTML('beforeend', '<button id="unlock-move" class="move-unlock" type="button">+ Novo ataque</button>');
+  $('moves-active').querySelectorAll('.move-reroll').forEach(btn => {
+    btn.disabled = battle.phase !== 'setup';
+    btn.addEventListener('click', () => rerollMove(Number(btn.dataset.slot)));
+  });
+  const unlockButton = $('unlock-move');
+  if (unlockButton) {
+    unlockButton.addEventListener('click', unlockMove);
+    unlockButton.disabled = battle.phase !== 'setup' || mon.slots >= 3;
+  }
   $('sell-selected').disabled = battle.phase !== 'setup';
 }
 function renderSpeciesTools() {
   const wrap = $('species-picks');
+  if (!wrap) return;
   wrap.innerHTML = SHOP_IDS.map(id => `<button type="button" class="${speciesPick === id ? 'picked' : ''}" data-id="${id}"><canvas width="36" height="32" aria-hidden="true"></canvas><span>${BY_ID[id].name}</span></button>`).join('');
   wrap.querySelectorAll('button').forEach(btn => {
     drawSmallSprite(btn.querySelector('canvas'), BY_ID[btn.dataset.id], 0);
@@ -507,6 +598,7 @@ function renderSpeciesTools() {
   renderTeamTools();
 }
 function renderTeamTools() {
+  if (!$('pick-player')) return;
   $('pick-player').classList.toggle('picked', teamPick === 0);
   $('pick-enemy').classList.toggle('picked', teamPick === 1);
   $('delete-mode').classList.toggle('picked', deleteMode);
@@ -522,8 +614,22 @@ function renderShop() {
     const index = Number(card.dataset.index);
     const id = state.shop[index];
     if (id) drawSmallSprite(card.querySelector('canvas'), BY_ID[id], 0);
-    card.addEventListener('click', () => buyOffer(index));
+    card.addEventListener('click', () => {
+      if (suppressShopClick) return;
+      buyOffer(index);
+    });
+    card.addEventListener('pointerdown', e => startShopPointer(e, index));
   });
+}
+function startShopPointer(e, index) {
+  if (e.button !== 0 || battle.phase !== 'setup' || !state.shop[index]) return;
+  shopPointer = {
+    pointer:e.pointerId,
+    index,
+    speciesId:state.shop[index],
+    start:{ x:e.clientX, y:e.clientY },
+    dragging:false
+  };
 }
 
 function assetFor(p, action) {
@@ -623,7 +729,7 @@ function makeTerrain() {
     for (let col = 0; col < BOARD.columns; col++) {
       const x = BOARD.x + col * BOARD.tile;
       const y = BOARD.y + row * BOARD.tile;
-      c.fillStyle = row === BOARD.benchRow ? '#617d4e' : ['#7db44e', '#83ba55', '#76ab49'][Math.floor(hash(col, row) * 3)];
+      c.fillStyle = (row === BOARD.enemyBenchRow || row === BOARD.playerBenchRow) ? '#617d4e' : ['#7db44e', '#83ba55', '#76ab49'][Math.floor(hash(col, row) * 3)];
       c.fillRect(x, y, BOARD.tile, BOARD.tile);
       for (let j = 0; j < 14; j++) {
         const xx = x + hash(col * 40 + j, row, 17) * (BOARD.tile - 8) + 4;
@@ -640,9 +746,10 @@ function makeTerrain() {
     }
   }
   c.fillStyle = '#d7df96';
-  c.fillRect(BOARD.x - 6, BOARD.y + BOARD.enemyRows * BOARD.tile - 3, BOARD.columns * BOARD.tile + 12, 6);
+  c.fillRect(BOARD.x - 6, BOARD.y + BOARD.playerFieldStart * BOARD.tile - 3, BOARD.columns * BOARD.tile + 12, 6);
   c.fillStyle = '#2e5a32';
-  c.fillRect(BOARD.x - 6, BOARD.y + BOARD.benchRow * BOARD.tile - 6, BOARD.columns * BOARD.tile + 12, 8);
+  c.fillRect(BOARD.x - 6, BOARD.y + BOARD.enemyFieldStart * BOARD.tile - 6, BOARD.columns * BOARD.tile + 12, 8);
+  c.fillRect(BOARD.x - 6, BOARD.y + BOARD.playerBenchRow * BOARD.tile - 6, BOARD.columns * BOARD.tile + 12, 8);
   c.strokeStyle = '#e1f0b7';
   c.lineWidth = 2;
   c.strokeRect(BOARD.x - 1, BOARD.y - 1, BOARD.columns * BOARD.tile + 2, BOARD.rows * BOARD.tile + 2);
@@ -653,9 +760,9 @@ function drawBoard(t) {
   ctx.drawImage(terrain, 0, 0);
   ctx.save();
   ctx.fillStyle = 'rgba(43,112,174,.10)';
-  ctx.fillRect(BOARD.x, BOARD.y + BOARD.enemyRows * BOARD.tile, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
+  ctx.fillRect(BOARD.x, BOARD.y + BOARD.playerFieldStart * BOARD.tile, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
   ctx.fillStyle = 'rgba(185,75,94,.10)';
-  ctx.fillRect(BOARD.x, BOARD.y, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
+  ctx.fillRect(BOARD.x, BOARD.y + BOARD.enemyFieldStart * BOARD.tile, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
   const showGrid = battle.phase === 'setup' && (drag || hovered);
   ctx.strokeStyle = showGrid ? 'rgba(238,255,214,.45)' : 'rgba(238,255,214,.18)';
   ctx.lineWidth = 1;
@@ -672,9 +779,10 @@ function drawBoard(t) {
   ctx.fillStyle = '#f6ffe8';
   ctx.shadowColor = '#16371f';
   ctx.shadowBlur = 6;
-  ctx.fillText('INIMIGO', BOARD.x + BOARD.columns * BOARD.tile / 2, BOARD.y - 18);
-  ctx.fillText('SEU CAMPO', BOARD.x + BOARD.columns * BOARD.tile / 2, BOARD.y + BOARD.fieldRows * BOARD.tile + 22);
-  ctx.fillText('BANCO', BOARD.x - 46, BOARD.y + BOARD.benchRow * BOARD.tile + 34);
+  ctx.fillText('BANCO INIMIGO', BOARD.x + BOARD.columns * BOARD.tile / 2, BOARD.y - 18);
+  ctx.fillText('INIMIGO', BOARD.x + BOARD.columns * BOARD.tile / 2, BOARD.y + BOARD.enemyFieldStart * BOARD.tile - 12);
+  ctx.fillText('SEU CAMPO', BOARD.x + BOARD.columns * BOARD.tile / 2, BOARD.y + BOARD.playerBenchRow * BOARD.tile + 22);
+  ctx.fillText('BANCO', BOARD.x - 46, BOARD.y + BOARD.playerBenchRow * BOARD.tile + 34);
   ctx.shadowBlur = 0;
   ctx.restore();
   for (let i = 0; i < 18; i++) {
@@ -711,13 +819,15 @@ function drawSetupUnit(mon) {
   ctx.stroke();
   ctx.restore();
   drawUnitSprite(p, pos.x, pos.y, 'Idle', mon.team ? 0 : 4, visualTime);
-  ctx.fillStyle = '#fffbea';
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 10px system-ui';
-  ctx.shadowColor = '#1b4022';
-  ctx.shadowBlur = 4;
-  ctx.fillText(p.name, pos.x, pos.y + 28);
-  ctx.shadowBlur = 0;
+}
+function drawShopGhost(activeDrag) {
+  const p = BY_ID[state.shop[activeDrag.index] || activeDrag.speciesId];
+  if (!p || !activeDrag.world) return;
+  ctx.save();
+  ctx.globalAlpha = .82;
+  ellipse(activeDrag.world.x, activeDrag.world.y + 14, 30, 10, '#17371f88');
+  drawUnitSprite(p, activeDrag.world.x, activeDrag.world.y, 'Idle', 4, visualTime);
+  ctx.restore();
 }
 function drawBattleUnit(u) {
   if (u.dead) return;
@@ -741,13 +851,6 @@ function drawBattleUnit(u) {
   ctx.fillRect(u.x - bw / 2, py, bw, bh);
   ctx.fillStyle = health > .35 ? '#87e26f' : '#ffbd66';
   ctx.fillRect(u.x - bw / 2 + 1, py + 1, (bw - 2) * health, bh - 2);
-  ctx.fillStyle = '#fffbea';
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 10px system-ui';
-  ctx.shadowColor = '#1b4022';
-  ctx.shadowBlur = 4;
-  ctx.fillText(u.type.name, u.x, u.y + 28);
-  ctx.shadowBlur = 0;
 }
 function drawEffects() {
   for (const p of battle.projectiles) {
@@ -786,6 +889,39 @@ function drawEffects() {
     ctx.restore();
   }
 }
+function updateEvolutionEffects(dt) {
+  for (let i = evolutionEffects.length - 1; i >= 0; i--) {
+    evolutionEffects[i].time += dt;
+    if (evolutionEffects[i].time >= evolutionEffects[i].total) evolutionEffects.splice(i, 1);
+  }
+}
+function drawEvolutionEffects() {
+  for (const e of evolutionEffects) {
+    const a = clamp(e.time / e.total, 0, 1);
+    const pull = 1 - Math.pow(1 - a, 3);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = .18 + Math.sin(a * Math.PI) * .34;
+    ellipse(e.to.x, e.to.y - 12, 48 + a * 26, 36 + a * 18, '#fff0a8');
+    ctx.restore();
+    for (const item of e.from) {
+      const p = BY_ID[item.speciesId];
+      const x = item.x + (e.to.x - item.x) * pull;
+      const y = item.y + (e.to.y - item.y) * pull - Math.sin(a * Math.PI) * 20;
+      ctx.save();
+      ctx.globalAlpha = 1 - a * .55;
+      drawUnitSprite(p, x, y, 'Idle', item.team ? 0 : 4, visualTime);
+      ctx.restore();
+    }
+    if (a > .68) {
+      const p = BY_ID[e.newSpeciesId];
+      ctx.save();
+      ctx.globalAlpha = clamp((a - .68) / .32, 0, 1);
+      drawUnitSprite(p, e.to.x, e.to.y - Math.sin(a * Math.PI) * 10, 'Idle', 4, visualTime);
+      ctx.restore();
+    }
+  }
+}
 function draw() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, screen.w, screen.h);
@@ -795,6 +931,8 @@ function draw() {
   drawBoard(visualTime);
   if (battle.phase === 'setup') {
     allUnits().slice().sort((a, b) => monWorld(a).y - monWorld(b).y).forEach(drawSetupUnit);
+    if (drag?.kind === 'shop') drawShopGhost(drag);
+    drawEvolutionEffects();
   } else {
     battle.units.filter(u => !u.dead).slice().sort((a, b) => a.y - b.y).forEach(drawBattleUnit);
     drawEffects();
@@ -805,6 +943,8 @@ function frame(timestamp) {
   const dt = Math.min(.05, (timestamp - lastFrame) / 1000);
   lastFrame = timestamp;
   visualTime += dt;
+  updateCamera(dt);
+  updateEvolutionEffects(dt);
   updateBattle(battle, dt);
   if (battle.phase === 'finished' && !resultAnnounced) {
     resultAnnounced = true;
@@ -833,21 +973,19 @@ $('zoom-in').addEventListener('click', () => zoomAt({ x:screen.w / 2, y:screen.h
 $('zoom-out').addEventListener('click', () => zoomAt({ x:screen.w / 2, y:screen.h / 2 }, .87));
 $('camera-reset').addEventListener('click', fitCamera);
 $('reroll-shop').addEventListener('click', () => { if (battle.phase === 'setup') refillShop(); });
-$('reroll-move').addEventListener('click', rerollMove);
-$('unlock-move').addEventListener('click', unlockMove);
 $('sell-selected').addEventListener('click', () => {
   const mon = selectedMon();
   if (mon) removeUnit(mon, mon.team === 0);
 });
-$('pick-player').addEventListener('click', () => { teamPick = 0; deleteMode = false; renderTeamTools(); });
-$('pick-enemy').addEventListener('click', () => { teamPick = 1; deleteMode = false; renderTeamTools(); });
-$('delete-mode').addEventListener('click', () => { deleteMode = !deleteMode; renderTeamTools(); });
+$('pick-player')?.addEventListener('click', () => { teamPick = 0; deleteMode = false; renderTeamTools(); });
+$('pick-enemy')?.addEventListener('click', () => { teamPick = 1; deleteMode = false; renderTeamTools(); });
+$('delete-mode')?.addEventListener('click', () => { deleteMode = !deleteMode; renderTeamTools(); });
 window.addEventListener('resize', sizeCanvas);
 
 const starter = newMon('0004', 0);
 const enemy = newMon('0007', 1);
-placeBoard(starter, 0, { col:4, row:7 }, false, true);
-placeBoard(enemy, 1, { col:5, row:2 }, false, true);
+placeBoard(starter, 0, { col:4, row:8 }, false);
+placeBoard(enemy, 1, { col:5, row:3 }, false);
 selectedId = starter.instanceId;
 refillShop();
 sizeCanvas();

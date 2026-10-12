@@ -5,10 +5,13 @@ export const BOARD = Object.freeze({
   columns: 10,
   fieldRows: 10,
   enemyRows: 5,
-  benchRow: 10,
-  rows: 11,
+  enemyBenchRow: 0,
+  enemyFieldStart: 1,
+  playerFieldStart: 6,
+  playerBenchRow: 11,
+  rows: 12,
   width: 1000,
-  height: 760,
+  height: 820,
   tile: 58,
   x: 210,
   y: 58
@@ -17,8 +20,8 @@ const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 const fieldBounds = {
   minX: BOARD.x + 10,
   maxX: BOARD.x + BOARD.columns * BOARD.tile - 10,
-  minY: BOARD.y + 10,
-  maxY: BOARD.y + BOARD.fieldRows * BOARD.tile - 10
+  minY: BOARD.y + BOARD.enemyFieldStart * BOARD.tile + 10,
+  maxY: BOARD.y + BOARD.playerBenchRow * BOARD.tile - 10
 };
 
 export const TAU = Math.PI * 2;
@@ -28,9 +31,12 @@ export function cellAtWorld(x, y) {
   const row = Math.floor((y - BOARD.y) / BOARD.tile);
   return col >= 0 && col < BOARD.columns && row >= 0 && row < BOARD.rows ? { col, row } : null;
 }
-export const isBenchCell = cell => cell?.row === BOARD.benchRow;
-export const validCellForTeam = (team, cell) => !!cell && cell.row < BOARD.fieldRows && (team === 1 ? cell.row < BOARD.enemyRows : cell.row >= BOARD.enemyRows);
-export const maxActiveForRound = round => clamp(round, 1, 6);
+export const isBenchCell = cell => cell?.row === BOARD.enemyBenchRow || cell?.row === BOARD.playerBenchRow;
+export const benchTeamForCell = cell => cell?.row === BOARD.enemyBenchRow ? 1 : cell?.row === BOARD.playerBenchRow ? 0 : null;
+export const validCellForTeam = (team, cell) => !!cell && (team === 1
+  ? cell.row >= BOARD.enemyFieldStart && cell.row < BOARD.enemyFieldStart + BOARD.enemyRows
+  : cell.row >= BOARD.playerFieldStart && cell.row < BOARD.playerBenchRow);
+export const maxActiveForRound = () => 6;
 export const ivMultiplier = iv => .8 + clamp(iv, 0, 100) / 100 * .4;
 export function effectiveStats(pokemon, ivs = {}) {
   return Object.fromEntries(Object.entries(pokemon.stats).map(([key, value]) => [key, Math.round(value * ivMultiplier(ivs[key] ?? 50))]));
@@ -56,7 +62,7 @@ export function physicalOrSpecialDamage(attacker, defender, kind, random = Math.
 export function normalizeEntry(entry, team) {
   const speciesId = entry.speciesId ?? entry.id;
   const col = clamp(entry.col ?? (team ? 5 : 4), 0, 9);
-  const row = clamp(entry.row ?? (team ? 2 : 7), 0, 9);
+  const row = clamp(entry.row ?? (team ? 3 : 8), 0, BOARD.rows - 1);
   const p = tilePosition(col, row);
   return {
     instanceId: entry.instanceId ?? entry.uid ?? crypto.randomUUID(),

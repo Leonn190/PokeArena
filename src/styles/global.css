@@ -12,7 +12,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .game-shell{position:relative;width:100vw;height:100dvh;min-height:620px;overflow:hidden;background:#17321d}
 #arena{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:auto;touch-action:none;cursor:grab}
 #arena:active{cursor:grabbing}
-.top-hud,.side-hud,.sim-hud,.bottom-hud,.toast{
+.top-hud,.side-hud,.bottom-hud,.toast{
   position:absolute;
   z-index:2;
   border:1px solid rgba(234,255,198,.30);
@@ -76,25 +76,23 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .stat small{display:block;color:#a9b99c;font-size:9px;text-align:right;line-height:1.25}
 .panel-subtitle{font-weight:950;color:#fff4b0;font-size:11px;text-transform:uppercase;letter-spacing:.8px;margin:3px 0 8px}
 .moves-list{display:grid;gap:7px}
-.moves-list button,.attack-actions button,.shop-meta button,.species-picks button,.team-toggle button,.wide-tool,.outcome-card button{
+.moves-list button,.attack-actions button,.shop-meta button,.outcome-card button{
   border:1px solid rgba(234,255,198,.22);
   background:#203827;
   color:#eff8e9;
   border-radius:6px;
 }
-.moves-list button{min-height:47px;text-align:left;padding:8px}
-.moves-list button.selected{border-color:#ffd961;background:#3c3b22}
+.move-row{display:grid;grid-template-columns:1fr 46px;gap:7px}
+.moves-list .move-card,.moves-list .move-unlock{min-height:47px;text-align:left;padding:8px}
+.moves-list .move-reroll{min-height:47px;font-size:18px;font-weight:950;text-align:center}
+.moves-list .move-card{cursor:default}
+.moves-list .move-card:focus{outline:none}
+.moves-list .move-card:hover{filter:none}
+.moves-list .move-unlock{width:calc(100% - 53px);font-weight:950;color:#ffdf70}
 .moves-list b{display:block;font-size:11px}
 .moves-list small{display:block;margin-top:4px;color:#b8c9a8;font-size:10px}
-.attack-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:8px}
+.attack-actions{display:grid;grid-template-columns:1fr;gap:7px;margin-top:8px}
 .attack-actions button,.shop-meta button,.team-toggle button,.wide-tool{min-height:34px;font-size:11px;font-weight:900}
-.sim-hud{left:12px;top:82px;width:178px;border-radius:8px;padding:10px}
-.species-picks{display:grid;gap:6px}
-.species-picks button{height:42px;display:flex;align-items:center;gap:7px;padding:4px 7px;font-size:11px;font-weight:850}
-.species-picks button.picked,.team-toggle button.picked,.wide-tool.picked{border-color:#ffdf66;background:#3d3b22}
-.species-picks canvas{width:36px;height:32px;image-rendering:pixelated}
-.team-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
-.wide-tool{width:100%;margin-top:7px}
 .bottom-hud{
   left:50%;
   bottom:12px;
@@ -148,7 +146,6 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .outcome-card button{min-height:42px;padding:0 16px;font-weight:900;background:#ffdb61;color:#253019;border-color:#fff1a5}
 @media(max-width:980px){
   .side-hud{right:8px;width:260px}
-  .sim-hud{left:8px;width:160px}
   .top-hud{max-width:calc(100vw - 16px);overflow:hidden}
   .hud-brand{min-width:128px}
   .hud-stat{min-width:52px;padding:0 7px}
@@ -160,9 +157,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   .hud-brand{min-width:104px}.hud-brand b{font-size:12px}.hud-brand small,.hud-stat small{font-size:8px}
   .hud-stat{height:36px;min-width:42px}.hud-stat b{font-size:14px}
   .icon-button{width:34px;height:36px}.camera-actions button{height:36px;font-size:10px}
-  .sim-hud{top:64px;width:142px;padding:8px}
-  .species-picks button{height:36px;font-size:9px}
-  .side-hud{top:64px;right:8px;width:calc(100vw - 160px);max-height:232px;padding:8px}
+  .side-hud{top:64px;right:8px;width:min(300px,calc(100vw - 16px));max-height:232px;padding:8px}
   .selected-head{grid-template-columns:60px 1fr;padding:7px}.selected-head canvas{width:56px;height:50px}
   .stats-list{grid-template-columns:repeat(3,1fr);gap:5px}.stat{min-height:38px;padding:6px}.stat small{display:none}
   .bottom-hud{bottom:8px;width:calc(100vw - 16px);grid-template-columns:62px 76px 1fr;gap:5px;padding:6px}
