@@ -3,7 +3,7 @@
 export const FIELD_WIDTH=10;
 export const FIELD_HEIGHT=5;
 export const TERRAIN=Object.freeze({
-  neutro:{name:'Neutro',color:'#5f8848',points:{}},
+  neutro:{name:'Neutro',color:'#e3e6dd',points:{}},
   grama:{name:'Grama',color:'#4e9745',points:{Grama:3,Inseto:2,Venenoso:1},effect:'grass'},
   rosa:{name:'Grama rosa',color:'#b97891',points:{Fada:3,Grama:2,Psíquico:1}},
   terra:{name:'Terra',color:'#9b7649',points:{Terrestre:3,Normal:2,Lutador:1}},
@@ -84,6 +84,24 @@ export function placeStructure(match,player,id,col,row) {
   player.structures.push({id,col,row});
   stack.count--;
   if(!stack.count)player.structureInventory.splice(player.structureInventory.indexOf(stack),1);
+  match.revision++;
+  return true;
+}
+// Reposicionamento de uma estrutura já instalada: mantém a mesma instância e
+// capacidade, sem passar pelo inventário e sem cobrar ouro novamente.
+export function movePlacedStructure(match,player,structure,col,row) {
+  if(!editing(match,player)||!structure||!validCell(col,row))return false;
+  if(!player.structures?.includes(structure))return false;
+  const size=STRUCTURE_BY_ID[structure.id]?.size||1;
+  if(col+size>FIELD_WIDTH||row+size>FIELD_HEIGHT)return false;
+  if(player.structures.some(other=>{
+    if(other===structure)return false;
+    const otherSize=STRUCTURE_BY_ID[other.id]?.size||1;
+    return col<other.col+otherSize&&col+size>other.col&&row<other.row+otherSize&&row+size>other.row;
+  }))return false;
+  if(structure.col===col&&structure.row===row)return true;
+  structure.col=col;
+  structure.row=row;
   match.revision++;
   return true;
 }

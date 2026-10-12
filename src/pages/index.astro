@@ -62,8 +62,6 @@ const base = import.meta.env.BASE_URL;
     </aside>
 
     <aside id="environment-panel" class="environment-panel" hidden aria-label="Bússola e efeitos do campo">
-      <div class="environment-title">Bússola <small>18 tipos</small></div>
-      <div id="compass-list" class="compass-list"></div>
       <div class="environment-title">Efeitos de estruturas <small id="capacity-label">0/8</small></div>
       <div id="environment-effects" class="environment-effects"></div>
     </aside>
@@ -91,22 +89,34 @@ const base = import.meta.env.BASE_URL;
 
     <section class="bottom-hud" aria-label="Loja">
       <div class="shop-meta">
-        <b id="shop-title">Loja</b>
-        <button id="tab-pokemon" class="game-tab selected" type="button" aria-pressed="true">Pokémon</button>
-        <button id="tab-terrain" class="game-tab" type="button" aria-pressed="false">Terreno</button>
-        <small id="shop-mode-note">Pool compartilhado · Pokémon</small>
-        <button id="remove-placed" type="button" hidden>Remover do campo</button>
-        <button id="discard-structure" type="button" hidden title="Descarta uma estrutura do inventário sem reembolso">Descartar −1</button>
-        <button id="reroll-shop" type="button">Reroll 2</button>
-        <button id="lock-shop" type="button" aria-pressed="false" hidden>🔓 Travar</button>
+        <div class="shop-tabs" role="tablist" aria-label="Categorias da loja">
+          <button id="tab-pokemon" class="game-tab selected" role="tab" type="button" aria-selected="true">Pokémon</button>
+          <button id="tab-terrain" class="game-tab" role="tab" type="button" aria-selected="false">Terreno</button>
+        </div>
+        <div class="shop-actions">
+          <span class="shop-gold" aria-label="Ouro disponível"><span class="gold-emblem" aria-hidden="true">●</span><b id="shop-gold-value">9</b></span>
+          <button id="reroll-shop" type="button" title="Atualizar ofertas por 2 de ouro"><span class="reroll-icon" aria-hidden="true">↻</span> <span>2</span></button>
+          <button id="lock-shop" class="lock-button" type="button" aria-label="Travar loja" title="Travar loja" aria-pressed="false" hidden><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></button>
+          <button id="remove-placed" type="button" hidden title="Remover estrutura do campo">Retirar</button>
+          <button id="discard-structure" type="button" hidden title="Descartar estrutura selecionada">Descartar</button>
+        </div>
       </div>
-      <div id="shop-rarity-odds" class="shop-rarity-odds" hidden aria-label="Chances de raridade da rodada"></div>
-      <div id="terrain-pane" class="terrain-pane" hidden aria-label="Ferramentas de terrenos e seis pilhas de estruturas">
-        <div class="terrain-tools" id="terrain-tools"></div>
-        <div class="structure-inventory" id="structure-inventory"></div>
-        <small id="terrain-note">Pinte seu campo gratuitamente · arraste para pintar · Shift: pincel 3×3 · use “Remover do campo” e clique numa estrutura para devolvê-la</small>
+      <div class="shop-content">
+        <div id="shop-rarity-odds" class="shop-rarity-odds" hidden aria-label="Chances de raridade da rodada"></div>
+        <div id="terrain-pane" class="terrain-pane" role="tabpanel" hidden aria-label="Terrenos e estruturas">
+          <div class="terrain-tools" id="terrain-tools"></div>
+          <div class="structure-inventory" id="structure-inventory"></div>
+        </div>
+        <div id="shop-slots" class="shop-slots" role="tabpanel" aria-label="Seis ofertas. Arraste Pokémon para o banco ou campo."></div>
       </div>
-      <div id="shop-slots" class="shop-slots" aria-label="Loja de 6 slots. Arraste um Pokémon do mapa para um slot da loja para vender."></div>
+      <div id="compass-widget" class="compass-widget" hidden tabindex="0" aria-label="Bússola de tipos. Passe o mouse ou pressione Tab para detalhes.">
+        <div class="compass-ring" id="compass-ring"><div class="compass-ring-inner"><span class="compass-star" aria-hidden="true">✦</span><strong>Bússola</strong><small id="compass-lead">Neutra</small></div></div>
+        <div class="compass-tooltip" id="compass-tooltip" role="tooltip">
+          <div class="compass-tooltip-head"><strong>Influência de tipos</strong><small>18 tipos · distribuição atual</small></div>
+          <div id="compass-breakdown" class="compass-breakdown"></div>
+          <div id="compass-sources" class="compass-sources"></div>
+        </div>
+      </div>
     </section>
 
     <div id="toast" class="toast" hidden></div>

@@ -273,53 +273,177 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   .entry-panel{padding:23px 18px}
 }
 
-/* Etapas 04–05: identificação de raridade sem depender de sprites externos. */
-.bottom-hud{grid-template-columns:105px minmax(0,1fr);grid-template-rows:auto auto}
-.shop-meta{grid-row:1 / span 2}
-.shop-rarity-odds{grid-column:2;display:flex;gap:3px;align-items:center;justify-content:space-between;min-width:0}
-.shop-rarity-odds span{display:flex;gap:4px;align-items:center;font-size:10px;font-weight:700;color:var(--rarity);background:#122519da;border:1px solid color-mix(in srgb,var(--rarity),transparent 60%);padding:3px 5px;border-radius:5px}
-.shop-rarity-odds b{color:#fff;font-variant-numeric:tabular-nums}
-.shop-slots{grid-column:2}
-.shop-card:not(.empty){border:2px solid var(--rarity);box-shadow:inset 0 0 0 1px #0006}
-.shop-card:not(.empty) .shop-portrait{background:radial-gradient(circle at 50% 38%,color-mix(in srgb,var(--rarity),#425744 64%),#172d22)}
-.shop-card .shop-rarity{position:absolute;left:0;top:0;right:0;z-index:1;background:#08140dcc;color:var(--rarity);font-size:9px;text-transform:uppercase;letter-spacing:.4px;font-weight:950;padding:3px;text-align:center}
-.shop-card.rarity-mitico .shop-rarity,.shop-card.rarity-lendario .shop-rarity{color:var(--rarity)}
-#lock-shop[aria-pressed="true"]{color:#ffdf6a;border-color:#ffdf6a;background:#35432a}
-@media(max-width:720px){
-  .bottom-hud{grid-template-columns:68px minmax(0,1fr)}
-  .shop-rarity-odds{flex-wrap:wrap;gap:2px}
-  .shop-rarity-odds span{font-size:7px;padding:2px 3px}
-  .shop-card .shop-rarity{font-size:7px;padding:2px}
+/* Loja TFT: opções em uma bandeja compacta, controles laterais e bússola saliente. */
+.bottom-hud{
+  left:calc(50% - 22px);
+  width:min(1120px,calc(100vw - 110px));
+  padding:9px 12px 10px 9px;
+  display:grid;
+  grid-template-columns:144px minmax(0,1fr);
+  grid-template-rows:1fr;
+  gap:10px;
+  border:1px solid #9eac8669;
+  border-radius:11px;
+  background:linear-gradient(170deg,rgba(24,41,32,.97),rgba(9,19,18,.97));
+  box-shadow:0 3px 0 #050d09cc,0 18px 55px #030c0ab5,inset 0 1px 0 #d8e9b51e;
+  overflow:visible;
 }
-
-/* Etapas 08–09: bússola, terreno pintável e inventário de estruturas. */
-.environment-panel{position:absolute;z-index:3;left:12px;top:82px;width:216px;max-height:calc(100dvh - 268px);overflow-y:auto;padding:10px;border-radius:9px;border:1px solid #b1ce8a66;background:linear-gradient(#173021f2,#0e2519ed);box-shadow:0 12px 32px #0006;font-size:11px}
-.environment-title{display:flex;align-items:center;justify-content:space-between;color:#ffe394;font-weight:950;margin:5px 0 7px}
+.shop-meta{
+  display:flex;flex-direction:column;gap:12px;justify-content:space-between;
+  padding:4px 5px 4px 0;border:none;border-right:1px solid #a4ba8730;
+  border-radius:0;background:transparent;
+}
+.shop-tabs{display:flex;align-items:center;gap:1px;border-bottom:1px solid #9bb28445}
+.shop-meta .game-tab{
+  flex:1;min-height:34px;border:0!important;border-bottom:2px solid transparent!important;
+  border-radius:0;background:transparent!important;color:#9fae9c;font-size:12px;
+  font-weight:800;padding:5px 1px;transition:color .14s,background .14s;
+}
+.shop-meta .game-tab:hover{color:#fff6d0}
+.shop-meta .game-tab.selected{color:#ffe39b!important;border-bottom-color:#edcb69!important;background:#b49f4522!important}
+.shop-actions{display:grid;grid-template-columns:1fr 40px;grid-auto-flow:row;gap:7px;align-items:center}
+.shop-gold{grid-column:1/-1;display:flex;align-items:center;gap:8px;justify-content:flex-start;
+  border:1px solid #d9b75b55;border-radius:6px;padding:5px 9px;background:#121b15;
+  color:#ffe8a4;box-shadow:inset 0 1px 6px #0008}
+.shop-gold b{font-size:16px;line-height:1.25;font-weight:950;font-variant-numeric:tabular-nums}
+.gold-emblem{display:inline-grid;place-items:center;width:16px;height:16px;border:2px solid #fff2a0;
+  border-radius:50%;background:radial-gradient(circle at 33% 30%,#ffe796,#d39d30 65%,#8a5b19);color:#ffe696;
+  font-size:7px;box-shadow:0 0 8px #ffcc5428}
+.shop-actions #reroll-shop{display:flex;align-items:center;justify-content:center;gap:10px;background:#243c2d;border:1px solid #a3ba8f55;color:#f5f7df}
+.reroll-icon{font-size:22px;line-height:.8;font-weight:600;color:#e2c66d}
+.shop-actions .lock-button{display:grid;place-items:center;padding:0;background:#1f3126;border:1px solid #a3ba8f55}
+.shop-actions .lock-button[aria-pressed="true"]{background:#514426;border-color:#f4d783;color:#ffde80}
+.shop-actions #remove-placed,.shop-actions #discard-structure{grid-column:1/-1;min-height:29px;font-size:10px}
+#remove-placed.selected{background:#6f5428;border-color:#ead18b}
+.shop-content{display:flex;flex-direction:column;gap:7px;min-width:0;min-height:0}
+.shop-rarity-odds{display:flex;justify-content:flex-start;align-items:center;flex-wrap:wrap;gap:clamp(6px,1.2vw,17px);
+  min-height:20px;min-width:0}
+.shop-rarity-odds .rarity-odd{display:inline-flex;gap:4px;align-items:center;white-space:nowrap;
+  padding:0;border:0;background:none;color:var(--rarity);font-size:10px;font-weight:800;
+  text-shadow:0 1px 2px #0009}
+.shop-rarity-odds .rarity-dot{width:5px;height:5px;border-radius:50%;background:var(--rarity);box-shadow:0 0 7px var(--rarity)}
+.shop-rarity-odds b{color:#e8efdf;font-weight:850;font-variant-numeric:tabular-nums}
+.shop-slots{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;grid-column:auto}
+.shop-card{border-radius:4px 4px 6px 6px;background:#27372f;border:1px solid var(--rarity,#a7baab);
+  box-shadow:inset 0 1px 0 #ffffff20,0 3px 8px #0005;min-height:124px;
+  transition:filter .12s,transform .12s,border-color .12s}
+.shop-card:hover:not(:disabled){filter:brightness(1.11);transform:translateY(-2px);border-color:#f9e6a8}
+.shop-card:not(.empty) .shop-portrait{background:radial-gradient(ellipse at 50% 35%,color-mix(in srgb,var(--rarity),#3d5849 62%),#182a22 85%)}
+.shop-portrait{flex:1;aspect-ratio:auto;min-height:83px}
+.shop-portrait::before{content:'';position:absolute;inset:0;background:linear-gradient(130deg,#ffffff20,transparent 38%,#0000002b 100%);pointer-events:none}
+.shop-portrait .portrait-fallback{inset:7%;width:86%;height:86%}
+.shop-footer{min-height:30px;padding:5px 7px;border-top:1px solid #f0efbc45;background:#0d1916f2}
+.shop-footer b{font-size:11px;letter-spacing:-.25px}
+.shop-price{font-size:12px}
+.shop-card.empty{opacity:.5}
+.shop-card .structure-preview{display:block;width:72px;height:72px;image-rendering:auto;max-width:95%;max-height:92%;pointer-events:none}
+.shop-card .structure-preview:empty{display:none}
+.bottom-hud.selling .shop-card{transform:none}
+/* Bússola: as cinco maiores fatias representam toda a distribuição; demais no hover. */
+.compass-widget{position:absolute;z-index:5;right:-53px;top:50%;transform:translateY(-50%);
+  width:121px;height:121px;display:grid;place-items:center;outline:none}
+.compass-ring{width:116px;height:116px;border-radius:50%;padding:11px;
+  background:conic-gradient(#697a75 0deg 360deg);border:3px solid #d4be7e;
+  box-shadow:0 0 0 4px #0c1816,0 0 0 5px #b4a06e9c,0 10px 30px #000b;
+  transition:filter .2s;position:relative}
+.compass-ring::after{content:'';position:absolute;inset:4px;pointer-events:none;border:1px solid #fff8e040;border-radius:50%}
+.compass-ring-inner{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:50%;background:radial-gradient(circle at 37% 29%,#334f41,#10241e 70%);border:1px solid #e0c987aa;
+  box-shadow:0 0 0 2px #07181185,inset 0 2px 10px #000a;text-align:center}
+.compass-star{font-size:20px;color:#f6d98b;line-height:1.1}
+.compass-ring-inner strong{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#f1efd5}
+.compass-ring-inner small{font-size:9px;color:#dfdbb4;max-width:70px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compass-widget:hover .compass-ring,.compass-widget:focus-visible .compass-ring,.compass-widget:focus-within .compass-ring{filter:brightness(1.16)}
+.compass-tooltip{position:absolute;bottom:calc(100% + 12px);right:-2px;width:330px;max-width:calc(100vw - 20px);
+  padding:14px;border:1px solid #cab784c4;border-radius:10px;
+  background:linear-gradient(145deg,#25392e,#0d211d 68%);box-shadow:0 18px 55px #000d;
+  opacity:0;visibility:hidden;pointer-events:none;transform:translateY(6px);transition:opacity .16s,transform .16s,visibility .16s;
+  color:#eff4e8}
+.compass-widget:hover .compass-tooltip,.compass-widget:focus-visible .compass-tooltip,.compass-widget:focus-within .compass-tooltip{opacity:1;visibility:visible;transform:translateY(0)}
+.compass-tooltip-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:9px;border-bottom:1px solid #dde6bd30}
+.compass-tooltip-head strong{font-size:12px;color:#fff4c1}
+.compass-tooltip-head small{font-size:9px;color:#b8c7b5;text-align:right}
+.compass-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:11px 0 8px}
+.compass-entry{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:5px;align-items:center;
+  font-size:10px;color:#dcead8}
+.compass-entry .type-color{width:7px;height:7px;border-radius:2px;background:var(--type-color)}
+.compass-entry.highlighted{color:#fff5c8;background:#d2c88a20;border-radius:3px}
+.compass-entry b{font-variant-numeric:tabular-nums;color:#fff6c2;font-size:10px}
+.compass-sources{padding:9px 0 1px;border-top:1px solid #dee8cc33;display:grid;gap:5px}
+.compass-sources div{display:flex;justify-content:space-between;gap:12px;color:#bcd2c1;font-size:10px}
+.compass-sources b{color:#f6e3a7;font-variant-numeric:tabular-nums}
+/* Terrenos e estruturas compartilham a mesma grade de 2 × 8. */
+.terrain-pane{min-width:0;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:6px;flex:1}
+.terrain-tools,.structure-inventory{display:contents}
+.terrain-tool,.structure-slot{
+  position:relative;min-width:0;min-height:70px;overflow:hidden;display:flex;flex-direction:column;
+  align-items:stretch;justify-content:space-between;padding:0;border-radius:5px;
+  border:1px solid #9fb5a56e;background:linear-gradient(#2b4537,#182921);
+  color:#f3f6e8;text-align:center;transition:transform .12s,filter .12s,border-color .12s;
+}
+.terrain-tool:disabled,.structure-slot:disabled{opacity:.68}
+.terrain-tool:hover:not(:disabled),.structure-slot:hover:not(:disabled){filter:brightness(1.2);transform:translateY(-1px)}
+.terrain-tool.selected,.structure-slot.selected{border-color:#fbe69d;box-shadow:0 0 0 1px #e8d070,inset 0 0 0 1px #fff4c9}
+.terrain-tool canvas,.structure-slot canvas{display:block;width:100%;height:47px;min-height:0;object-fit:cover;image-rendering:pixelated;pointer-events:none}
+.terrain-tool small,.structure-slot small{display:block;width:100%;max-width:100%;padding:3px 2px 4px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#10241cec;
+  color:#e5efdf;font-size:10px;font-weight:800;line-height:1.1}
+.structure-slot .stack-count{position:absolute;right:4px;top:3px;z-index:2;color:#fff0b2;
+  font-size:11px;font-weight:950;text-shadow:0 1px 4px #000;pointer-events:none}
+.structure-slot.empty{background:repeating-linear-gradient(135deg,#192b24,#192b24 8px,#1e3329 8px,#1e3329 16px);border-style:dashed}
+.structure-slot.empty small{color:#657e72}
+.structure-slot.empty canvas{opacity:.1}
+.environment-panel{position:absolute;z-index:3;left:12px;top:82px;width:190px;
+  max-height:calc(100dvh - 260px);overflow-y:auto;padding:9px;
+  border-radius:8px;border:1px solid #b1ce8a45;
+  background:linear-gradient(#173021ed,#0e2519df);box-shadow:0 12px 32px #0006;font-size:11px}
+.environment-title{display:flex;align-items:center;justify-content:space-between;color:#ffe394;font-weight:900;margin:3px 0 8px}
 .environment-title small{color:#c5dbb0;font-size:10px}
-.compass-list{display:grid;grid-template-columns:1fr 1fr;gap:3px 7px;margin-bottom:11px}
-.compass-entry{display:flex;justify-content:space-between;gap:3px;padding:3px 4px;background:#10281dbb;border-radius:4px;color:#dce8cf}
-.compass-entry b{color:#ffdf83;font-variant-numeric:tabular-nums}
 .environment-effects{display:grid;gap:4px}
 .environment-effects div{padding:5px;background:#183827;border:1px solid #cedcab2f;border-radius:5px;line-height:1.45}
 .environment-effects small{display:block;color:#abc49d}
-.game-shell[data-mode="local"] .side-hud{left:242px;right:auto;max-height:calc(100dvh - 268px)}
-.game-tab{border:1px solid #dae4bd55!important;min-height:26px!important}
-.game-tab.selected{color:#ffe17c;background:#375037!important;border-color:#ffe17c!important}
-.terrain-pane{grid-column:2;display:grid;grid-template-rows:auto auto auto;align-content:center;gap:5px;min-width:0}
-.terrain-tools,.structure-inventory{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
-.terrain-tool,.structure-slot{min-width:0;min-height:34px;display:grid;place-items:center;padding:3px;border-radius:5px;border:1px solid #d6e5bd44;background:#22412d;color:#f2f9e8;text-align:center;font-size:10px;font-weight:900;line-height:1.2}
-.terrain-tool small,.structure-slot small{font-size:8px;color:#ccdac2}
-.terrain-tool.selected,.structure-slot.selected{outline:2px solid #ffe17c;outline-offset:-2px;border-color:#ffe17c}
-.terrain-tool .swatch{width:14px;height:12px;border-radius:3px;border:1px solid #ffffff77}
-.structure-inventory{grid-template-columns:repeat(6,minmax(0,1fr))}
-.structure-slot{min-height:37px;position:relative}
-.structure-slot .stack-count{position:absolute;right:2px;top:0;color:#ffe586;font-size:10px}
-#terrain-note{font-size:9px;color:#b9d3a6}
-.bottom-hud.terrain-active .shop-rarity-odds,.bottom-hud.terrain-active .shop-slots{display:none}
-.bottom-hud.terrain-active .terrain-pane{display:grid}
-@media(max-width:920px){.environment-panel{width:160px;left:7px;font-size:10px}.game-shell[data-mode="local"] .side-hud{left:172px;max-width:230px}.compass-list{grid-template-columns:1fr 1fr}}
-@media(max-width:650px){.environment-panel{max-height:25dvh;top:60px;width:145px}.game-shell[data-mode="local"] .side-hud{left:7px;top:calc(25dvh + 68px);max-height:25dvh;width:200px}.terrain-tools{grid-template-columns:repeat(5,1fr)}.terrain-tool,.structure-slot{min-height:29px;font-size:9px}.structure-inventory{grid-template-columns:repeat(6,1fr)}#terrain-note{font-size:8px}}
+.game-shell[data-mode="local"] .side-hud{left:211px;right:auto;max-height:calc(100dvh - 268px)}
+@media(max-width:950px){
+  .bottom-hud{width:calc(100vw - 88px);grid-template-columns:120px minmax(0,1fr);gap:6px}
+  .compass-widget{right:-45px;width:101px;height:101px}
+  .compass-ring{width:96px;height:96px;padding:9px}
+  .shop-portrait{min-height:69px}.shop-card{min-height:105px}
+  .shop-gold{padding:4px 7px}
+  .terrain-tool,.structure-slot{min-height:62px}
+  .terrain-tool canvas,.structure-slot canvas{height:40px}
+  .terrain-tool small,.structure-slot small{font-size:9px}
+  .environment-panel{width:155px;left:7px}
+  .game-shell[data-mode="local"] .side-hud{left:172px;max-width:210px}
+}
+@media(max-width:700px){
+  .bottom-hud{left:50%;bottom:6px;width:calc(100vw - 12px);grid-template-columns:96px minmax(0,1fr);gap:4px;padding:5px 6px}
+  .shop-meta{gap:4px;padding-right:4px}
+  .shop-meta .game-tab{min-height:26px;font-size:9px}
+  .shop-actions{grid-template-columns:1fr 29px;gap:3px}
+  .shop-actions #reroll-shop{gap:2px;min-height:28px}
+  .shop-gold{padding:3px 5px}.shop-gold b{font-size:12px}
+  .shop-rarity-odds{gap:4px;min-height:15px}.shop-rarity-odds .rarity-odd{font-size:8px}
+  .shop-slots{gap:2px}.shop-card{min-height:75px}
+  .shop-portrait{min-height:52px}.shop-footer{min-height:24px;flex-direction:column;gap:1px;padding:2px}
+  .shop-footer b{font-size:8px}.shop-price{font-size:9px}.coin-icon{width:10px;height:10px}
+  .terrain-pane{gap:2px}.terrain-tool,.structure-slot{min-height:54px}
+  .terrain-tool canvas,.structure-slot canvas{height:34px}
+  .terrain-tool small,.structure-slot small{font-size:7px;padding:3px 0}
+  .compass-widget{right:2px;top:-46px;width:79px;height:79px}
+  .compass-ring{width:75px;height:75px;padding:6px;border-width:2px}
+  .compass-star{font-size:13px}.compass-ring-inner strong{font-size:8px}.compass-ring-inner small{font-size:7px}
+  .compass-tooltip{bottom:calc(100% + 3px);right:0;width:298px}
+  .environment-panel{top:60px;left:7px;width:137px;max-height:25dvh}
+  .game-shell[data-mode="local"] .side-hud{left:7px;top:calc(25dvh + 68px);max-height:25dvh;width:200px}
+}
+@media(max-height:640px){
+  .bottom-hud{padding-top:5px;padding-bottom:5px}
+  .shop-card{min-height:92px}.shop-portrait{min-height:60px}
+  .terrain-tool,.structure-slot{min-height:54px}.terrain-tool canvas,.structure-slot canvas{height:35px}
+  .compass-ring{transform:scale(.88)}
+}
 
-#remove-placed.selected{background:#64512c;color:#fff0b1;border-color:#ffe28b}
-.structure-symbol{font-size:34px;line-height:1;color:#dfdfb4;text-shadow:0 2px 12px #141e19}
-.structure-offer .shop-rarity{color:#d0eee2}
+.shop-card,.structure-slot{touch-action:none}
+
+/* Ouro é exibido na própria loja, como no TFT. */
+.game-shell[data-mode="local"] .top-hud .hud-stat.gold{display:none}

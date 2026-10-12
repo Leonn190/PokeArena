@@ -9,7 +9,7 @@ import { fieldLimitForBattle, shopOddsForBattle, RULES } from '../../server/game
 import { aliveCount, combatForPlayer, phaseRemainingSeconds, startLocalMatchCycle, updateLocalMatchCycle } from '../../server/game/match-cycle.mjs';
 import { BOARD, TAU, cellAtWorld, tilePosition, validCellForTeam, effectiveUnitStats } from '../../server/game/battle.mjs';
 import {calculateCompass,ALL_TYPES} from '../../server/game/compass.mjs';
-import {TERRAIN,STRUCTURE_BY_ID,STRUCTURE_CAPACITY,paintTerrain,buyStructure,placeStructure,removeStructure,discardStructure,structurePoints,fieldEffects} from '../../server/game/terrain.mjs';
+import {TERRAIN,STRUCTURE_BY_ID,STRUCTURE_CAPACITY,terrainInfluence,structureInfluence,recipeInfluence,paintTerrain,buyStructure,placeStructure,movePlacedStructure,removeStructure,discardStructure,structurePoints,fieldEffects} from '../../server/game/terrain.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('arena');
@@ -46,6 +46,8 @@ let activeTab='pokemon';
 let terrainTool='grama';
 let selectedStructure=null;
 let terrainPainting=null;
+let structurePointer=null;
+let compassSignature='';
 let dpr=1;
 let screen={w:1000,h:760};
 const evolutionEffects=[];
@@ -87,6 +89,8 @@ function startMatch() {
   hovered=null;
   drag=null;
   shopPointer=null;
+  structurePointer=null;
+  compassSignature='';
   announced=false;
   evolutionEffects.length=0;
   $('entry-screen').hidden=true;
@@ -107,6 +111,7 @@ function openMenu() {
   hovered=null;
   drag=null;
   shopPointer=null;
+  structurePointer=null;
   pan=null;
   $('entry-screen').hidden=false;
   $('outcome').hidden=true;
@@ -126,6 +131,8 @@ function observePlayer(id) {
   drag=null;
   hovered=null;
   shopPointer=null;
+  structurePointer=null;
+  compassSignature='';
   fitCamera();
   renderHud();
 }
@@ -146,8 +153,21 @@ function purchase(index,dropCell=null) {
   const id=player.shop[index];
   if(!id)return false;
   if(player.shopKinds[index]==='estrutura') {
-    if(!buyStructure(localMatch,player,index)) {showToast('Sem ouro ou seis pilhas de estruturas ocupadas.');return false;}
-    shopSignature=''; terrainSignature=''; renderHud();showToast('Estrutura adicionada ao inventário.');return true;
+    const def=STRUCTURE_BY_ID[id];
+    if(dropCell){
+      if(!validCellForTeam(0,dropCell))return false;
+      const col=dropCell.col,row=dropCell.row-BOARD.playerFieldStart;
+      if(col+def.size>10||row+def.size>5||
+        player.structures.some(s=>{
+          const size=STRUCTURE_BY_ID[s.id]?.size||1;
+          return col<s.col+size&&col+def.size>s.col&&row<s.row+size&&row+def.size>s.row;
+        })||structurePoints(player)+(def.size===2?2:1)>STRUCTURE_CAPACITY)return false;
+    }
+    if(!buyStructure(localMatch,player,index)) {showToast('Sem ouro ou inventário de estruturas cheio.');return false;}
+    if(dropCell)placeStructure(localMatch,player,id,dropCell.col,dropCell.row-BOARD.playerFieldStart);
+    shopSignature='';terrainSignature='';renderHud();
+    if(!dropCell)showToast('Estrutura no inventário.');
+    return true;
   }
   if(!BY_ID[id])return false;
   if(dropCell) {
@@ -235,6 +255,14 @@ function hitUnit(world) {
   }
   return best;
 }
+function hitPlacedStructure(cell) {
+  if(!canEdit()||!validCellForTeam(0,cell))return null;
+  const row=cell.row-BOARD.playerFieldStart;
+  return (humanParticipant().structures||[]).slice().reverse().find(entry=>{
+    const size=STRUCTURE_BY_ID[entry.id]?.size||1;
+    return cell.col>=entry.col&&cell.col<entry.col+size&&row>=entry.row&&row<entry.row+size;
+  })||null;
+}
 function setShopSellMode(selling) {
   const hud=$('shop-slots').closest('.bottom-hud');
   hud.classList.toggle('selling',!!selling);
@@ -273,9 +301,24 @@ canvas.addEventListener('pointerdown',e=>{
     return;
   }
   if(e.button!==0||!canEdit())return;
+  const worldCell=cellAtClient(e.clientX,e.clientY);
+  const clickedMon=activeTab==='pokemon'?hitUnit(screenToWorld(p)):null;
+  const placed=clickedMon?null:hitPlacedStructure(worldCell);
+  if(placed&&terrainTool!=='remove') {
+    const item=STRUCTURE_BY_ID[placed.id],world=screenToWorld(p);
+    const center={x:BOARD.x+(placed.col+item.size/2)*BOARD.tile,
+      y:BOARD.y+(BOARD.playerFieldStart+placed.row+item.size/2)*BOARD.tile};
+    drag={kind:'placed-structure',pointer:e.pointerId,structure:placed,id:placed.id,
+      grab:{col:worldCell.col-placed.col,row:worldCell.row-BOARD.playerFieldStart-placed.row},
+      offset:{x:world.x-center.x,y:world.y-center.y},world:center};
+    canvas.setPointerCapture(e.pointerId);
+    return;
+  }
   if(activeTab==='terrain'){
     terrainActionAt(e);
-    if(terrainTool!=='structure'&&terrainTool!=='remove'){terrainPainting=e.pointerId;canvas.setPointerCapture(e.pointerId);}
+    if(terrainTool!=='structure'&&terrainTool!=='remove'){
+      terrainPainting=e.pointerId;canvas.setPointerCapture(e.pointerId);
+    }
     return;
   }
   const world=screenToWorld(p);
@@ -301,6 +344,10 @@ canvas.addEventListener('pointermove',e=>{
     camera.targetY=camera.y;
     return;
   }
+  if(drag?.kind==='placed-structure'&&drag.pointer===e.pointerId){
+    drag.world={x:world.x-drag.offset.x,y:world.y-drag.offset.y};
+    return;
+  }
   if(drag?.kind==='unit'&&drag.pointer===e.pointerId) {
     drag.world={x:world.x-drag.offset.x,y:world.y-drag.offset.y};
     updateSellHover(e.clientX,e.clientY);
@@ -309,6 +356,18 @@ canvas.addEventListener('pointermove',e=>{
 canvas.addEventListener('pointerup',e=>{
   if(terrainPainting===e.pointerId){terrainPainting=null;return;}
   if(pan?.pointer===e.pointerId) {pan=null;return;}
+  if(drag?.kind==='placed-structure'&&drag.pointer===e.pointerId){
+    const active=drag;drag=null;
+    const target=document.elementFromPoint(e.clientX,e.clientY);
+    if(target?.closest?.('#terrain-pane')){
+      if(!removeStructure(localMatch,humanParticipant(),active.structure.col,active.structure.row))showToast('Inventário de estruturas cheio.');
+    }else{
+      const cell=cellAtClient(e.clientX,e.clientY);
+      const col=cell?.col-active.grab.col,row=cell?.row-BOARD.playerFieldStart-active.grab.row;
+      if(!movePlacedStructure(localMatch,humanParticipant(),active.structure,col,row))showToast('Posição indisponível.');
+    }
+    terrainSignature='';renderHud();return;
+  }
   if(drag?.kind!=='unit'||drag.pointer!==e.pointerId)return;
   const active=drag;
   drag=null;
@@ -341,7 +400,35 @@ document.addEventListener('pointerup',e=>{
   }
   setTimeout(()=>{suppressShopClick=false;},0);
 });
-document.addEventListener('pointercancel',()=>{shopPointer=null;if(drag?.kind==='shop')drag=null;suppressShopClick=false;});
+document.addEventListener('pointercancel',()=>{
+  shopPointer=null;structurePointer=null;
+  if(drag?.kind==='shop'||drag?.kind==='inventory-structure')drag=null;
+  suppressShopClick=false;
+});
+// Mesmo ciclo de arraste dos Pokémon: clique seleciona, arraste instala estrutura.
+document.addEventListener('pointermove',e=>{
+  if(!structurePointer||structurePointer.pointer!==e.pointerId)return;
+  if(!structurePointer.dragging&&Math.hypot(e.clientX-structurePointer.start.x,e.clientY-structurePointer.start.y)>5){
+    structurePointer.dragging=true;suppressShopClick=true;
+    drag={kind:'inventory-structure',id:structurePointer.id,world:clientToWorld(e.clientX,e.clientY)};
+  }
+  if(structurePointer.dragging&&drag?.kind==='inventory-structure'){
+    drag.world=clientToWorld(e.clientX,e.clientY);
+    hovered=cellAtClient(e.clientX,e.clientY);
+  }
+});
+document.addEventListener('pointerup',e=>{
+  if(!structurePointer||structurePointer.pointer!==e.pointerId)return;
+  const prior=structurePointer;structurePointer=null;
+  if(!prior.dragging)return;
+  drag=null;
+  const cell=cellAtClient(e.clientX,e.clientY);
+  if(!cell||!validCellForTeam(0,cell)||!placeStructure(localMatch,humanParticipant(),prior.id,cell.col,cell.row-BOARD.playerFieldStart)){
+    showToast('Solte a estrutura em uma área livre do campo.');
+  }
+  terrainSignature='';renderHud();
+  setTimeout(()=>{suppressShopClick=false;},0);
+});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('wheel',e=>{e.preventDefault();zoomAt(screenPoint(e.clientX,e.clientY),e.deltaY<0?1.12:.89);},{passive:false});
 window.addEventListener('keydown',e=>{
@@ -362,11 +449,11 @@ function renderHud() {
   $('terrain-pane').hidden=!terrainMode;
   $('shop-slots').hidden=terrainMode;
   $('shop-rarity-odds').hidden=!localMatch||terrainMode;
-  $('shop-title').textContent=terrainMode?'Terreno':'Loja';
+  $('compass-widget').hidden=!localMatch;
   $('tab-pokemon').classList.toggle('selected',!terrainMode);
-  $('tab-pokemon').setAttribute('aria-pressed',String(!terrainMode));
+  $('tab-pokemon').setAttribute('aria-selected',String(!terrainMode));
   $('tab-terrain').classList.toggle('selected',terrainMode);
-  $('tab-terrain').setAttribute('aria-pressed',String(terrainMode));
+  $('tab-terrain').setAttribute('aria-selected',String(terrainMode));
   $('reroll-shop').hidden=terrainMode;
   $('lock-shop').hidden=terrainMode||!localMatch;
   $('discard-structure').hidden=!terrainMode;
@@ -374,20 +461,22 @@ function renderHud() {
   $('remove-placed').disabled=!editing;
   $('remove-placed').classList.toggle('selected',terrainTool==='remove');
   $('discard-structure').disabled=!editing||!selectedStructure||!(player?.structureInventory||[]).some(s=>s.id===selectedStructure);
-  $('shop-mode-note').textContent=terrainMode?'10 solos · 6 pilhas':'Pool compartilhado · Pokémon';
   $('hp-stat').hidden=!localMatch;
   $('alive-stat').hidden=!localMatch;
   $('timer-stat').hidden=!localMatch;
   $('round-label').textContent=localMatch?.round??1;
   $('limit-label').textContent=`${observed?.board.length||0}/${fieldLimitForBattle(localMatch?.round||1)}`;
   $('gold-label').textContent=player?.gold??9;
+  $('shop-gold-value').textContent=player?.gold??9;
   $('hp-label').textContent=observed?.hp??100;
   $('alive-label').textContent=localMatch?`${aliveCount(localMatch)}/${localMatch.players.length}`:'—';
   $('timer-label').textContent=localMatch?`${phaseRemainingSeconds(localMatch,performance.now()/1000)}s`:'45s';
   $('phase-label').textContent=localMatch?.phase==='combat'?'Combate · Local':localMatch?.phase==='finished'?'Fim de partida':'Preparação · Local';
   $('reroll-shop').disabled=!editing||player.shopLocked||player.gold<RULES.rerollCostGold;
   $('lock-shop').disabled=!editing;
-  $('lock-shop').textContent=player?.shopLocked?'🔒 Travada':'🔓 Travar';
+  $('lock-shop').setAttribute('aria-label',player?.shopLocked?'Destravar loja':'Travar loja');
+  $('lock-shop').title=player?.shopLocked?'Destravar loja':'Travar loja';
+  $('lock-shop').querySelector('path').setAttribute('d',player?.shopLocked?'M8 10V7a4 4 0 0 1 8 0v3':'M8 10V7a4 4 0 0 1 7-2');
   $('lock-shop').setAttribute('aria-pressed',String(!!player?.shopLocked));
   renderEnvironment();
   renderTerrainTools();
@@ -426,12 +515,63 @@ function renderHud() {
   renderDetails();
   renderShop();
 }
+let compassPieSlices=[];
+let compassTypeSources=null;
+let compassFirstType=null;
+const TYPE_COLORS={Normal:'#a7a794',Lutador:'#d17e57',Voador:'#aabde4',Venenoso:'#b783bf',Terrestre:'#c59c62',Pedra:'#a69c87',Inseto:'#a9c46a',Fantasma:'#8575be',Aço:'#a5bac2',Fogo:'#f28a54',Água:'#60b5e3',Grama:'#80ca73',Elétrico:'#f2d868',Psíquico:'#e894be',Gelo:'#a4e3ee',Dragão:'#7881d6',Sombrio:'#7c8195',Fada:'#f1a5cf'};
+function renderCompass(player,compass) {
+  const signature=`${player.id}:${ALL_TYPES.map(type=>compass[type].toFixed(3)).join(':')}`;
+  if(signature===compassSignature)return;
+  compassSignature=signature;
+  const ranked=ALL_TYPES.map(type=>({type,score:compass[type]||0})).sort((a,b)=>b.score-a.score);
+  const leaders=ranked.filter(entry=>entry.score>0).slice(0,5);
+  const total=leaders.reduce((sum,entry)=>sum+entry.score,0);
+  let angle=0;
+  compassPieSlices=[];
+  const segments=leaders.map((entry,i)=>{
+    const from=angle;
+    angle=i===leaders.length-1?360:angle+entry.score/total*360;
+    compassPieSlices.push({type:entry.type,from,to:angle});
+    return `${TYPE_COLORS[entry.type]} ${from.toFixed(2)}deg ${angle.toFixed(2)}deg`;
+  });
+  $('compass-ring').style.background=segments.length?`conic-gradient(${segments.join(',')})`:'conic-gradient(#667b72 0deg 360deg)';
+  $('compass-lead').textContent=leaders[0]?.type||'Neutra';
+  $('compass-widget').setAttribute('aria-label',leaders.length?`Bússola: ${leaders.map(x=>`${x.type} ${x.score.toFixed(1)} pontos`).join(', ')}`:'Bússola neutra, nenhuma influência');
+  $('compass-breakdown').innerHTML=ranked.map(({type,score})=>
+    `<div class="compass-entry" data-type="${type}" style="--type-color:${TYPE_COLORS[type]}"><i class="type-color"></i><span>${type}</span><b>${+score.toFixed(1)}</b></div>`).join('');
+  const direct=(units,points)=>{
+    const out={};
+    for(const mon of units||[]) {
+      const types=BY_ID[mon?.speciesId]?.types||[];
+      for(const type of types)out[type]=(out[type]||0)+points/types.length;
+    }
+    return out;
+  };
+  compassTypeSources=[
+    ['Pokémon no campo',direct(player.board,5)],
+    ['Pokémon no banco',direct(player.bench.filter(Boolean),2)],
+    ['Terrenos',terrainInfluence(player)],
+    ['Estruturas',structureInfluence(player)],
+    ['Combinações',recipeInfluence(player)]
+  ];
+  compassFirstType=leaders[0]?.type||null;
+  showCompassType(compassFirstType);
+}
+function showCompassType(type){
+  const selected=type||compassFirstType;
+  $('compass-lead').textContent=selected||'Neutra';
+  $('compass-breakdown').querySelectorAll('.compass-entry').forEach(row=>{
+    row.classList.toggle('highlighted',row.dataset.type===selected);
+  });
+  $('compass-sources').innerHTML=(compassTypeSources||[]).map(([label,scores])=>
+    `<div><span>${label}</span><b>${+((scores[selected]||0).toFixed(1))} pts</b></div>`).join('');
+}
 function renderEnvironment() {
   const player=observedParticipant();
   if(!player||!localMatch)return;
   const compass=calculateCompass(player);
   player.compass=compass; // Snapshot local recalculado ao consultar; nunca altera chances de raridade.
-  $('compass-list').innerHTML=ALL_TYPES.map(type=>`<span class="compass-entry"><span>${type}</span><b>${+compass[type].toFixed(1)}</b></span>`).join('');
+  renderCompass(player,compass);
   $('capacity-label').textContent=`${structurePoints(player)}/${STRUCTURE_CAPACITY}`;
   const effects=fieldEffects(player);
   $('environment-effects').innerHTML=effects.length ? effects.map(e=>`<div><b>${e.type}</b> · ${e.stat==='regen'?`${(e.bonus*100).toFixed(2)}% HP/s`:`+${(e.bonus*100).toFixed(1)}% ${e.stat}`}<small>${e.sources.join(', ')} · 1,5× perto</small></div>`).join('') : '<div>Nenhuma estrutura posicionada</div>';
@@ -442,17 +582,31 @@ function renderTerrainTools() {
   const signature=`${canEdit()}:${terrainTool}:${selectedStructure}:${player?.structureInventory?.map(s=>`${s.id}-${s.count}`).join(',')}:${structurePoints(player)}`;
   if(signature===terrainSignature)return;
   terrainSignature=signature;
-  $('terrain-tools').innerHTML=Object.entries(TERRAIN).filter(([id])=>id!=='neutro').map(([id,t])=>`<button class="terrain-tool${terrainTool===id?' selected':''}" type="button" data-id="${id}" title="Pintar ${t.name}" ${canEdit()?'':'disabled'}><span class="swatch" style="background:${t.color}"></span><small>${t.name}</small></button>`).join('');
-  $('terrain-tools').querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{terrainTool=button.dataset.id;selectedStructure=null;terrainSignature='';renderHud();}));
+  $('terrain-tools').innerHTML=Object.entries(TERRAIN).filter(([id])=>id!=='neutro').map(([id,t])=>
+    `<button class="terrain-tool${terrainTool===id?' selected':''}" type="button" data-id="${id}" title="Pintar terreno: ${t.name}" ${canEdit()?'':'disabled'}><canvas width="116" height="58" aria-hidden="true"></canvas><small>${t.name}</small></button>`).join('');
+  $('terrain-tools').querySelectorAll('button').forEach(button=>{
+    const preview=button.querySelector('canvas');
+    paintTilePreview(preview,button.dataset.id);
+    button.addEventListener('click',()=>{terrainTool=button.dataset.id;selectedStructure=null;terrainSignature='';renderHud();});
+  });
   const inventory=player?.structureInventory||[];
   $('structure-inventory').innerHTML=Array.from({length:6},(_,i)=>{
-    const stack=inventory[i];const item=STRUCTURE_BY_ID[stack?.id];
-    return `<button type="button" class="structure-slot${selectedStructure===stack?.id&&terrainTool==='structure'?' selected':''}" data-index="${i}" ${!item||!canEdit()?'disabled':''} title="${item?.name||'Inventário vazio'}"><small>${item?.name||'Vazio'}</small>${stack?`<span class="stack-count">×${stack.count}</span>`:''}</button>`;
+    const stack=inventory[i],item=STRUCTURE_BY_ID[stack?.id];
+    return `<button type="button" class="structure-slot${item?'':' empty'}${selectedStructure===stack?.id&&terrainTool==='structure'?' selected':''}" data-index="${i}" ${!item||!canEdit()?'disabled':''} title="${item?.name||'Espaço para estrutura'}"><canvas width="116" height="58" aria-hidden="true"></canvas><small>${item?.name||' '}</small>${stack?`<span class="stack-count">×${stack.count}</span>`:''}</button>`;
   }).join('');
-  $('structure-inventory').querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{
-    selectedStructure=inventory[Number(button.dataset.index)]?.id||null;
-    terrainTool='structure';terrainSignature='';renderHud();
-  }));
+  $('structure-inventory').querySelectorAll('button').forEach(button=>{
+    const index=Number(button.dataset.index),item=STRUCTURE_BY_ID[inventory[index]?.id];
+    if(item)drawStructurePreview(button.querySelector('canvas'),item);
+    button.addEventListener('click',()=>{
+      if(suppressShopClick)return;
+      selectedStructure=inventory[index]?.id||null;
+      terrainTool='structure';terrainSignature='';renderHud();
+    });
+    button.addEventListener('pointerdown',e=>{
+      if(e.button!==0||!canEdit()||!item)return;
+      structurePointer={pointer:e.pointerId,id:item.id,start:{x:e.clientX,y:e.clientY},dragging:false};
+    });
+  });
 }
 function renderDetails() {
   const mon=selectedMon();
@@ -493,7 +647,7 @@ function renderShop() {
   const kinds=player?.shopKinds||[];
   if(localMatch) {
     const odds=shopOddsForBattle(localMatch.round);
-    $('shop-rarity-odds').innerHTML=Object.keys(RARITY_COLORS).map((rarity,i)=>`<span style="--rarity:${RARITY_COLORS[rarity]}" title="${RARITY_LABELS[rarity]}">${RARITY_LABELS[rarity]} <b>${odds[i]}%</b></span>`).join('');
+    $('shop-rarity-odds').innerHTML=Object.keys(RARITY_COLORS).map((rarity,i)=>`<span class="rarity-odd" style="--rarity:${RARITY_COLORS[rarity]}" title="${RARITY_LABELS[rarity]}"><i class="rarity-dot"></i>${RARITY_LABELS[rarity]} <b>${odds[i]}%</b></span>`).join('');
   }
   const signature=`${editable}:${offers.join(',')}:${kinds.join(',')}:${player?.gold}:${player?.structureInventory?.map(s=>s.id).join(',')}`;
   if(signature===shopSignature)return;
@@ -504,7 +658,7 @@ function renderShop() {
       const def=STRUCTURE_BY_ID[id];
       const inventory=player.structureInventory||[];
       const fullStacks=inventory.length>=6&&!inventory.some(stack=>stack.id===id);
-      return `<button type="button" class="shop-card structure-offer rarity-${def.rarity}" data-index="${i}" ${!editable||player.gold<def.price||fullStacks?'disabled':''} title="${def.name}, ${def.size}×${def.size}"><span class="shop-rarity">Estrutura ${def.rarity}</span><span class="shop-portrait"><span class="structure-symbol">${def.size===2?'▦':'◆'}</span></span><span class="shop-footer"><b>${def.name}</b><span class="shop-price">${coinSvg}<span>${def.price}</span></span></span></button>`;
+      return `<button type="button" class="shop-card structure-offer rarity-${def.rarity}" style="--rarity:${def.rarity==='lendaria'?'#ffda52':def.rarity==='rara'?'#5aa5ff':'#9ca3af'}" data-index="${i}" ${!editable||player.gold<def.price||fullStacks?'disabled':''} title="${def.name}, ${def.size}×${def.size}"><span class="shop-portrait"><canvas class="structure-preview" width="100" height="92" aria-hidden="true"></canvas></span><span class="shop-footer"><b>${def.name}</b><span class="shop-price">${coinSvg}<span>${def.price}</span></span></span></button>`;
     }
     if(!id) {
       const waiting=kinds[i]==='item'?'Item · etapa 10':kinds[i]==='estrutura'?'Estrutura · etapa 9':'Vazio';
@@ -512,16 +666,17 @@ function renderShop() {
     }
     const p=BY_ID[id];
     const disabled=!editable||player.gold<p.price;
-    return `<button type="button" class="shop-card rarity-${p.rarity}" data-index="${i}" style="--rarity:${RARITY_COLORS[p.rarity]}" ${disabled?'disabled':''} aria-label="Comprar ${p.name} por ${p.price} ouro"><span class="shop-rarity">${RARITY_LABELS[p.rarity]}</span><span class="shop-portrait"><canvas class="portrait-fallback visible" width="70" height="70" aria-hidden="true"></canvas></span><span class="shop-footer"><b>${p.name}</b><span class="shop-price">${coinSvg}<span>${p.price}</span></span></span></button>`;
+    return `<button type="button" class="shop-card rarity-${p.rarity}" data-index="${i}" style="--rarity:${RARITY_COLORS[p.rarity]}" ${disabled?'disabled':''} aria-label="Comprar ${p.name} por ${p.price} ouro"><span class="shop-portrait"><canvas class="portrait-fallback visible" width="70" height="70" aria-hidden="true"></canvas></span><span class="shop-footer"><b>${p.name}</b><span class="shop-price">${coinSvg}<span>${p.price}</span></span></span></button>`;
   }).join('');
   $('shop-slots').querySelectorAll('.shop-card').forEach(card=>{
     const index=Number(card.dataset.index);
     const id=offers[index];
     if(!id)return;
     if(BY_ID[id])drawSmallSprite(card.querySelector('canvas'),BY_ID[id],0);
+    else if(STRUCTURE_BY_ID[id])drawStructurePreview(card.querySelector('canvas'),STRUCTURE_BY_ID[id]);
     card.addEventListener('click',()=>{if(!suppressShopClick)purchase(index);});
     card.addEventListener('pointerdown',e=>{
-      if(e.button!==0||!canEdit()||!BY_ID[id])return;
+      if(e.button!==0||!canEdit())return;
       shopPointer={pointer:e.pointerId,index,speciesId:id,start:{x:e.clientX,y:e.clientY},dragging:false};
     });
   });
@@ -532,50 +687,203 @@ const {prepareSprites:loadSprites,getImageMeta,drawSmallSprite,warmPokemon}=crea
 async function prepareSprites() {await loadSprites(()=>renderHud());}
 function ellipse(x,y,rx,ry,color) {ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU);ctx.fill();}
 function line(x,y,toX,toY,color,width=1) {ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(toX,toY);ctx.stroke();}
-function makeTerrain() {
-  const temp = document.createElement('canvas');
-  const c = temp.getContext('2d');
-  temp.width = BOARD.width;
-  temp.height = BOARD.height;
-  c.imageSmoothingEnabled = false;
-  c.fillStyle = '#18351f';
-  c.fillRect(0, 0, BOARD.width, BOARD.height);
-  for (let y = 0; y < BOARD.height; y += 28) {
-    for (let x = 0; x < BOARD.width; x += 28) {
-      c.fillStyle = hash(x, y) > .5 ? '#224a28' : '#1e4325';
-      c.fillRect(x, y, 28, 28);
-    }
+// Texturas em pixel art geradas uma única vez e compartilhadas pelo campo e pelas miniaturas.
+function makeTileArt(id,variant=0) {
+  const tile=document.createElement('canvas');tile.width=58;tile.height=58;
+  const c=tile.getContext('2d');c.imageSmoothingEnabled=false;
+  const rand=(n,s=0)=>hash(n+variant*31,s+variant*11,id.length*19);
+  const bases={neutro:['#e2e6db','#dfe4d9','#e8e9df'],grama:['#7db44e','#83ba55','#76ab49'],rosa:['#b7769a','#cc8eaa','#bf7ea3'],terra:['#a98154','#b08a5e','#987247'],lama:['#645b4e','#736554','#5c544c'],areia:['#dac189','#d2b779','#e5cd97'],neve:['#e3f2ef','#f0f5f2','#d8eae9'],rochoso:['#85877d','#93958a','#797e75'],metalico:['#778e93','#91a7ac','#809ca2'],rasa:['#6cbbba','#74c9c6','#5eafb6'],funda:['#35718b','#3b8098','#2c6788']};
+  const palette=bases[id]||bases.neutro;
+  c.fillStyle=palette[variant%3];c.fillRect(0,0,58,58);
+  const dot=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
+  const stroke=(x,y,x2,y2,color,width=1)=>{c.strokeStyle=color;c.lineWidth=width;c.beginPath();c.moveTo(x,y);c.lineTo(x2,y2);c.stroke();};
+  const arc=(x,y,r,color,start=0,end=Math.PI*2)=>{c.strokeStyle=color;c.lineWidth=1.4;c.beginPath();c.arc(x,y,r,start,end);c.stroke();};
+  for(let i=0;i<36;i++){
+    const x=rand(i,1)*57,y=rand(i,2)*57;
+    dot(x,y,1+(rand(i,3)>.8?2:0),1,rand(i,4)>.48?'#ffffff24':'#172b2822');
   }
-  c.fillStyle = '#5f8848';
-  c.fillRect(BOARD.x - 12, BOARD.y - 12, BOARD.columns * BOARD.tile + 24, BOARD.rows * BOARD.tile + 24);
-  for (let row = 0; row < BOARD.rows; row++) {
-    for (let col = 0; col < BOARD.columns; col++) {
-      const x = BOARD.x + col * BOARD.tile;
-      const y = BOARD.y + row * BOARD.tile;
-      c.fillStyle = (row === BOARD.enemyBenchRow || row === BOARD.playerBenchRow) ? '#617d4e' : ['#7db44e', '#83ba55', '#76ab49'][Math.floor(hash(col, row) * 3)];
-      c.fillRect(x, y, BOARD.tile, BOARD.tile);
-      for (let j = 0; j < 14; j++) {
-        const xx = x + hash(col * 40 + j, row, 17) * (BOARD.tile - 8) + 4;
-        const yy = y + hash(col, row * 50 + j, 26) * (BOARD.tile - 8) + 5;
-        c.strokeStyle = hash(j, col, row) > .48 ? '#609843' : '#a8cc75';
-        c.lineWidth = 1;
-        c.beginPath();
-        c.moveTo(xx, yy + 3);
-        c.lineTo(xx - 2, yy);
-        c.moveTo(xx + 1, yy + 3);
-        c.lineTo(xx + 2, yy - 1);
-        c.stroke();
+  if(id==='neutro'){
+    // Piso neutro: arenito marfim claro, com juntas finas e pequenos seixos.
+    for(let i=0;i<7;i++){
+      const x=rand(i,6)*51,y=rand(i,7)*51;
+      stroke(x,y,x+5+rand(i,8)*5,y+(rand(i,9)-.5)*2,'#bdc8bc',1);
+      if(i%2===0)dot(x+3,y+4,3,2,'#f8f8ee');
+    }
+    stroke(2,55,56,55,'#cad7cc77');
+  } else if(id==='grama'||id==='rosa'){
+    for(let j=0;j<17;j++){
+      const x=4+rand(j,9)*50,y=4+rand(j,10)*47;
+      const dark=id==='grama'?'#5b9540':'#9b5b86',light=id==='grama'?'#add376':'#f5bbd5';
+      stroke(x,y+4,x-2,y,dark);stroke(x+1,y+4,x+3,y-2,light);
+      if(id==='rosa'&&j%3===0){
+        dot(x-2,y-2,3,3,'#ffd6e6');dot(x+1,y-4,3,3,'#ffb5d8');dot(x+1,y,3,2,'#e99fc5');dot(x,y-1,2,2,'#ffe5a0');
       }
     }
+  } else if(id==='terra'){
+    for(let i=0;i<10;i++){
+      const x=rand(i,15)*53,y=rand(i,16)*54;
+      dot(x,y,4+rand(i,17)*5,3,'#795637');dot(x+1,y,3,1,'#d7b184');
+      if(i%3===0){stroke(x+11,y+3,x+17,y+6,'#d9bb8a');stroke(x+14,y+5,x+12,y+9,'#826040');}
+    }
+  } else if(id==='lama'){
+    for(let i=0;i<8;i++){
+      const x=6+rand(i,18)*44,y=5+rand(i,19)*47;
+      c.fillStyle=i%2?'#4a473f':'#8f7960';c.beginPath();c.ellipse(x,y,5+rand(i,20)*6,2+rand(i,21)*3,0,0,Math.PI*2);c.fill();
+      stroke(x-3,y-1,x+2,y-1,'#b19c7b');
+      if(i%3===0)arc(x+8,y+4,3,'#a2917d',0,Math.PI);
+    }
+  } else if(id==='areia'){
+    for(let i=0;i<7;i++){
+      const x=rand(i,22)*50,y=rand(i,23)*51;
+      c.strokeStyle=i%2?'#f9e3ae':'#bda36e';c.lineWidth=1.7;c.beginPath();c.moveTo(x,y);c.quadraticCurveTo(x+7,y-5,x+13,y-2);c.stroke();
+      dot(x+3,y+6,2,2,'#b99a62');
+    }
+  } else if(id==='neve'){
+    for(let i=0;i<7;i++){
+      const x=6+rand(i,24)*46,y=5+rand(i,25)*45;
+      stroke(x-5,y,x+5,y,'#b7d7df');stroke(x,y-5,x,y+5,'#c1dee1');
+      stroke(x-3,y-3,x+3,y+3,'#faffff');stroke(x+3,y-3,x-3,y+3,'#faffff');
+      dot(x-1,y-1,3,3,'#ffffff');
+    }
+  } else if(id==='rochoso'){
+    for(let i=0;i<10;i++){
+      const x=rand(i,26)*53,y=rand(i,27)*52,w=4+rand(i,28)*9;
+      c.fillStyle=i%2?'#5d6b64':'#aeb1a0';c.beginPath();c.moveTo(x,y+5);c.lineTo(x+3,y-1);c.lineTo(x+w,y+1);c.lineTo(x+w-2,y+7);c.closePath();c.fill();
+      stroke(x+2,y,x+w-2,y+1,'#d0d1bc');
+    }
+  } else if(id==='metalico'){
+    c.fillStyle='#6c878f';c.fillRect(0,0,58,3);c.fillRect(0,55,58,3);
+    stroke(29,0,29,58,'#526d77',2);stroke(0,29,58,29,'#b7c8c4',1.5);
+    for(const x of [7,24,35,52])for(const y of [6,23,36,52]){
+      c.fillStyle='#c5d4d1';c.beginPath();c.arc(x,y,1.8,0,Math.PI*2);c.fill();dot(x,y,1,1,'#526e74');
+    }
+    stroke(4,4,22,4,'#bed4d0');stroke(34,34,51,34,'#c0d8d2');
+  } else if(id==='rasa'||id==='funda'){
+    for(let i=0;i<9;i++){
+      const x=rand(i,29)*47+3,y=rand(i,30)*47+3;
+      c.strokeStyle=id==='rasa'?'#c6f8df':'#7ac2d6';c.lineWidth=1.5;c.beginPath();c.moveTo(x,y+3);c.quadraticCurveTo(x+5,y-2,x+11,y+2);c.stroke();
+      if(i%3===0){arc(x+2,y+9,2,id==='rasa'?'#e5fae1':'#a3d5dc');}
+      if(id==='rasa'&&i%4===0){stroke(x+12,y+8,x+10,y+1,'#4f9680',2);stroke(x+11,y+5,x+15,y+2,'#a7d9a0');}
+    }
   }
-  c.fillStyle = '#d7df96';
-  c.fillRect(BOARD.x - 6, BOARD.y + BOARD.playerFieldStart * BOARD.tile - 3, BOARD.columns * BOARD.tile + 12, 6);
-  c.fillStyle = '#2e5a32';
-  c.fillRect(BOARD.x - 6, BOARD.y + BOARD.enemyFieldStart * BOARD.tile - 6, BOARD.columns * BOARD.tile + 12, 8);
-  c.fillRect(BOARD.x - 6, BOARD.y + BOARD.playerBenchRow * BOARD.tile - 6, BOARD.columns * BOARD.tile + 12, 8);
-  c.strokeStyle = '#e1f0b7';
-  c.lineWidth = 2;
-  c.strokeRect(BOARD.x - 1, BOARD.y - 1, BOARD.columns * BOARD.tile + 2, BOARD.rows * BOARD.tile + 2);
+  c.strokeStyle='#ffffff17';c.strokeRect(.5,.5,57,57);
+  return tile;
+}
+const TILE_ART=Object.fromEntries(Object.keys(TERRAIN).map(id=>[id,Array.from({length:4},(_,n)=>makeTileArt(id,n))]));
+function tileArt(id,col,row){return (TILE_ART[id]||TILE_ART.neutro)[(col*7+row*11+16)%4];}
+function paintTilePreview(canvas,id){
+  if(!canvas)return;
+  const c=canvas.getContext('2d');c.imageSmoothingEnabled=false;
+  c.drawImage(tileArt(id,0,0),0,0,58,58);c.drawImage(tileArt(id,1,0),58,0,58,58);
+}
+function drawStructureArt(c,item,x,y,w,h){
+  if(!item)return;
+  c.save();c.translate(x+w/2,y+h/2);c.scale(w/76,h/76);
+  c.shadowColor='#0008';c.shadowBlur=3;
+  c.fillStyle='#16251caf';c.beginPath();c.ellipse(0,22,30,9,0,0,Math.PI*2);c.fill();c.shadowBlur=0;
+  const shape=(fill,pts)=>{c.fillStyle=fill;c.beginPath();pts.forEach(([a,b],i)=>i?c.lineTo(a,b):c.moveTo(a,b));c.closePath();c.fill();};
+  const line=(stroke,pts,width=3)=>{c.strokeStyle=stroke;c.lineWidth=width;c.lineCap='round';c.lineJoin='round';c.beginPath();pts.forEach(([a,b],i)=>i?c.lineTo(a,b):c.moveTo(a,b));c.stroke();};
+  const oval=(fill,a,b,rx,ry)=>{c.fillStyle=fill;c.beginPath();c.ellipse(a,b,rx,ry,0,0,Math.PI*2);c.fill();};
+  const rock=()=>{shape('#586b70',[[-22,15],[-25,-7],[-7,-22],[15,-17],[25,10],[15,20]]);shape('#a7aaa0',[[-25,-7],[-7,-22],[5,-7],[-9,8]]);shape('#758b86',[[5,-7],[15,-17],[25,10],[2,15]]);};
+  const tree=(ancient=false)=>{
+    shape(ancient?'#6a492c':'#845431',[[-10,19],[-6,-9],[4,-11],[11,19]]);
+    line('#b3804f',[[-1,16],[-1,-7]],4);
+    for(const [xx,yy,rr] of [[-16,-8,16],[9,-11,17],[-2,-23,20],[17,-23,13]]){
+      oval(ancient?'#397e55':'#4d9455',xx,yy,rr,rr*.8);
+      oval(ancient?'#8abc66':'#a5cf75',xx-5,yy-6,rr*.5,rr*.37);
+    }
+    if(ancient){oval('#ffe6a5',4,-32,4,6);oval('#d0f4b3',19,-9,3,4);}
+  };
+  const water=()=>{
+    oval('#50777e',0,19,27,7);oval('#79b8b8',0,15,23,6);
+    c.strokeStyle='#b5f7ea';c.lineWidth=3;c.beginPath();c.moveTo(-14,13);c.quadraticCurveTo(-10,-27,0,-21);c.quadraticCurveTo(12,-29,13,13);c.stroke();
+    oval('#d9f4ee',0,-25,4,7);
+  };
+  switch(item.id){
+    case 'planta':
+      line('#396e43',[[0,20],[0,-16]],5);
+      for(const [a,b,r] of [[-11,3,-.5],[13,-4,.45],[-9,-14,-.7],[9,-23,.7]]){
+        c.save();c.translate(a,b);c.rotate(r);oval('#81c66e',0,0,11,5);oval('#c1e998',-3,-1,4,2);c.restore();
+      }break;
+    case 'flores':
+      for(const [xx,yy,color] of [[-12,0,'#ef9bc5'],[7,-15,'#e3c0f3'],[15,8,'#ffdb84']]){
+        line('#539262',[[xx,19],[xx,yy]],3);
+        for(let j=0;j<5;j++){const a=j*Math.PI*2/5;oval(color,xx+Math.cos(a)*7,yy+Math.sin(a)*7,5,5);}
+        oval('#ffed9a',xx,yy,4,4);
+      }break;
+    case 'pedra':rock();break;
+    case 'arvorezinha':tree();break;
+    case 'cacto':
+      line('#448659',[[0,22],[0,-22]],10);line('#448659',[[0,4],[-15,4],[-15,-8]],7);line('#448659',[[0,-6],[13,-6],[13,-17]],7);
+      line('#b9d27b',[[3,13],[3,-20]],2);oval('#f1a5a9',0,-23,6,4);break;
+    case 'antena':
+      shape('#697e8a',[[-18,19],[-5,-24],[5,-24],[18,19]]);line('#d0e5e6',[[-13,15],[12,15]],2);
+      line('#d5dce2',[[0,-23],[0,-31]],3);oval('#fee47c',0,-32,5,5);
+      for(const [a,b] of [[-22,-4],[22,-4]])line('#89c8de',[[0,-21],[a,b]],2);break;
+    case 'fonte':water();break;
+    case 'colmeia':
+      shape('#b8833e',[[-15,18],[-22,-5],[-10,-22],[13,-22],[23,-4],[13,18]]);
+      for(const [x,y] of [[-9,-13],[6,-13],[-15,0],[0,0],[14,0],[-8,13],[7,13]]){
+        shape('#f5c96e',[[x-6,y],[x-3,y-5],[x+3,y-5],[x+6,y],[x+3,y+5],[x-3,y+5]]);
+        oval('#946533',x,y,3,3);
+      }break;
+    case 'cristal-gelo':
+      shape('#9adae9',[[-20,14],[-13,-20],[-1,-34],[11,-18],[21,17],[3,25]]);
+      shape('#d7f8ff',[[-13,-20],[-1,-34],[4,-6],[3,25],[-8,12]]);
+      shape('#5da9cf',[[4,-6],[11,-18],[21,17],[3,25]]);break;
+    case 'braseiro':
+      shape('#7a6352',[[-21,9],[21,9],[13,20],[-14,20]]);
+      line('#d0ab7b',[[-20,9],[20,9]],4);
+      shape('#f7b53a',[[-12,8],[-16,-10],[-7,-2],[-3,-29],[6,-15],[14,-21],[13,8]]);
+      shape('#ffe99d',[[-5,8],[-7,-4],[0,-18],[5,0],[9,8]]);break;
+    case 'arvore-ancestral':tree(true);break;
+    case 'obelisco':
+      shape('#535d81',[[-20,20],[-14,-7],[0,-36],[15,-7],[20,20]]);
+      shape('#9dabc2',[[-14,-7],[0,-36],[1,19],[-20,20]]);
+      line('#ffdf74',[[0,-29],[0,14]],4);oval('#fff5bf',0,-3,5,7);break;
+    case 'templo-mares':
+      shape('#acc6bd',[[-29,-7],[0,-28],[29,-7]]);
+      for(const xx of [-19,0,19]){
+        c.fillStyle='#709ba7';c.fillRect(xx-5,-6,10,23);c.fillStyle='#c5e3de';c.fillRect(xx-5,-6,4,23);
+      }
+      c.fillStyle='#66899e';c.fillRect(-28,17,56,6);water();break;
+    case 'santuario-glacial':
+      shape('#b7d6df',[[-28,19],[-27,-8],[0,-32],[28,-8],[28,19]]);
+      shape('#ecfaff',[[-27,-8],[0,-32],[6,19],[-28,19]]);
+      shape('#649ab3',[[-8,19],[-8,2],[0,-8],[8,2],[8,19]]);
+      for(const xx of [-20,20])oval('#ffffff',xx,-9,3,8);break;
+  }
+  c.restore();
+}
+function drawStructurePreview(canvas,item){
+  if(!canvas||!item)return;
+  const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);
+  const bg=c.createLinearGradient(0,0,0,canvas.height);
+  bg.addColorStop(0,item.rarity==='lendaria'?'#52503a':item.rarity==='rara'?'#294650':'#35503c');bg.addColorStop(1,'#1b2b28');
+  c.fillStyle=bg;c.fillRect(0,0,canvas.width,canvas.height);
+  c.fillStyle='#aabf8d55';c.beginPath();c.ellipse(canvas.width/2,canvas.height*.78,35,6,0,0,Math.PI*2);c.fill();
+  drawStructureArt(c,item,canvas.width/2-30,canvas.height/2-31,60,60);
+}
+function makeTerrain(){
+  const temp=document.createElement('canvas');temp.width=BOARD.width;temp.height=BOARD.height;
+  const c=temp.getContext('2d');c.imageSmoothingEnabled=false;
+  c.fillStyle='#182e22';c.fillRect(0,0,BOARD.width,BOARD.height);
+  for(let y=0;y<BOARD.height;y+=28)for(let x=0;x<BOARD.width;x+=28){
+    c.fillStyle=hash(x,y)>.5?'#294632':'#243d2f';c.fillRect(x,y,28,28);
+  }
+  c.fillStyle='#566b5b';c.fillRect(BOARD.x-12,BOARD.y-12,BOARD.columns*BOARD.tile+24,BOARD.rows*BOARD.tile+24);
+  for(let row=0;row<BOARD.rows;row++)for(let col=0;col<BOARD.columns;col++){
+    const x=BOARD.x+col*BOARD.tile,y=BOARD.y+row*BOARD.tile;
+    c.drawImage(tileArt('neutro',col,row),x,y);
+    if(row===BOARD.enemyBenchRow||row===BOARD.playerBenchRow){
+      c.fillStyle='#6c7e80aa';c.fillRect(x+1,y+48,BOARD.tile-2,8);
+      c.fillStyle='#71848944';c.fillRect(x+4,y+4,50,1);
+    }
+  }
+  c.fillStyle='#d6c68f';c.fillRect(BOARD.x-6,BOARD.y+BOARD.playerFieldStart*BOARD.tile-3,BOARD.columns*BOARD.tile+12,5);
+  c.fillStyle='#485d57';c.fillRect(BOARD.x-6,BOARD.y+BOARD.enemyFieldStart*BOARD.tile-5,BOARD.columns*BOARD.tile+12,6);
+  c.fillRect(BOARD.x-6,BOARD.y+BOARD.playerBenchRow*BOARD.tile-5,BOARD.columns*BOARD.tile+12,6);
+  c.strokeStyle='#e9e3bd';c.lineWidth=2;c.strokeRect(BOARD.x-1,BOARD.y-1,BOARD.columns*BOARD.tile+2,BOARD.rows*BOARD.tile+2);
   return temp;
 }
 const terrain = makeTerrain();
@@ -595,19 +903,14 @@ function drawBoard(t) {
         if(!tile||field[r*10+col]==='neutro')continue;
         const row=isTop?5-r:BOARD.playerFieldStart+r;
         const x=BOARD.x+col*BOARD.tile,y=BOARD.y+row*BOARD.tile;
-        ctx.save();ctx.globalAlpha=.80;ctx.fillStyle=tile.color;ctx.fillRect(x+1,y+1,BOARD.tile-2,BOARD.tile-2);
-        ctx.globalAlpha=.22;ctx.strokeStyle='#fff';ctx.beginPath();ctx.moveTo(x+8,y+BOARD.tile-8);ctx.lineTo(x+BOARD.tile-8,y+8);ctx.stroke();ctx.restore();
+        ctx.drawImage(tileArt(field[r*10+col],col,row),x,y);
       }
       for(const structure of player.structures||[]){
+        if(drag?.kind==='placed-structure'&&drag.structure===structure)continue;
         const item=STRUCTURE_BY_ID[structure.id];if(!item)continue;
         const row=isTop?5-structure.row-(item.size-1):BOARD.playerFieldStart+structure.row;
         const x=BOARD.x+structure.col*BOARD.tile,y=BOARD.y+row*BOARD.tile;
-        ctx.save();ctx.fillStyle='#213a30dc';ctx.fillRect(x+4,y+4,BOARD.tile*item.size-8,BOARD.tile*item.size-8);
-        ctx.strokeStyle=item.rarity==='lendaria'?'#ffe09b':item.rarity==='rara'?'#a3d9ff':'#c7deb4';ctx.lineWidth=3;
-        ctx.strokeRect(x+5,y+5,BOARD.tile*item.size-10,BOARD.tile*item.size-10);
-        ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#f7f9dd';ctx.font=`${item.size===2?20:13}px sans-serif`;
-        ctx.fillText(item.size===2?'▦':'◆',x+BOARD.tile*item.size/2,y+BOARD.tile*item.size/2-6);
-        ctx.font=`bold ${item.size===2?11:8}px sans-serif`;ctx.fillText(item.name.slice(0,item.size===2?19:8),x+BOARD.tile*item.size/2,y+BOARD.tile*item.size/2+9);ctx.restore();
+        drawStructureArt(ctx,item,x+1,y+1,BOARD.tile*item.size-2,BOARD.tile*item.size-2);
       }
     }
   }
@@ -656,7 +959,15 @@ function drawSetupUnit(mon) {
 }
 function drawShopGhost(activeDrag) {
   const p = BY_ID[currentShop()[activeDrag.index] || activeDrag.speciesId];
-  if (!p || !activeDrag.world) return;
+  if (!activeDrag.world) return;
+  const structure=STRUCTURE_BY_ID[activeDrag.id||currentShop()[activeDrag.index]];
+  if(structure){
+    ctx.save();ctx.globalAlpha=.78;
+    const size=BOARD.tile*structure.size;
+    drawStructureArt(ctx,structure,activeDrag.world.x-size/2,activeDrag.world.y-size/2,size,size);
+    ctx.restore();return;
+  }
+  if(!p)return;
   ctx.save();
   ctx.globalAlpha = .8;
   groundShadow(p, activeDrag.world.x, activeDrag.world.y);
@@ -758,7 +1069,7 @@ function draw() {
   drawBoard(visualTime);
   if (!activeBattle || activeBattle.phase === 'setup') {
     allUnits().slice().sort((a, b) => monWorld(a).y - monWorld(b).y).forEach(drawSetupUnit);
-    if (drag?.kind === 'shop') drawShopGhost(drag);
+    if (drag?.kind === 'shop'||drag?.kind === 'inventory-structure'||drag?.kind === 'placed-structure') drawShopGhost(drag);
     drawEvolutionEffects();
   } else {
     activeBattle.units.filter(u => !u.dead).slice().sort((a, b) => a.y - b.y).forEach(drawBattleUnit);
@@ -806,6 +1117,14 @@ function sizeCanvas() {
   canvas.height=Math.round(screen.h*dpr);
   fitCamera();
 }
+$('compass-ring').addEventListener('pointermove',e=>{
+  const box=$('compass-ring').getBoundingClientRect();
+  const x=e.clientX-(box.left+box.width/2),y=e.clientY-(box.top+box.height/2);
+  const degrees=(Math.atan2(x,-y)*180/Math.PI+360)%360;
+  const slice=compassPieSlices.find(segment=>degrees>=segment.from&&degrees<segment.to);
+  if(slice)showCompassType(slice.type);
+});
+$('compass-widget').addEventListener('pointerleave',()=>showCompassType(compassFirstType));
 $('remove-placed').addEventListener('click',()=>{terrainTool='remove';selectedStructure=null;terrainSignature='';renderHud();});
 $('tab-pokemon').addEventListener('click',()=>{activeTab='pokemon';terrainPainting=null;renderHud();});
 $('tab-terrain').addEventListener('click',()=>{activeTab='terrain';drag=null;shopPointer=null;terrainSignature='';renderHud();});
