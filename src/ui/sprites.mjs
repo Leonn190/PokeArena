@@ -10,7 +10,7 @@ export function createSpriteCache(base, onImageReady = () => {}) {
 
   async function loadImage(p, action) {
     const key = `${p.id}:${action}`;
-    if (images.has(key) || loading.has(key) || missing.has(key)) return;
+    if (!p.spriteAvailable || images.has(key) || loading.has(key) || missing.has(key)) return;
     loading.add(key);
     const image = new Image();
     image.decoding = 'async';
@@ -36,7 +36,7 @@ export function createSpriteCache(base, onImageReady = () => {}) {
       } catch { /* Offline: metadados padrão ainda funcionam. */ }
       manifestReady = true;
     }
-    // Somente os iniciais do simulador; demais espécies entram no cache sob demanda.
+    // Os PNGs locais existem apenas para uma parte do catálogo.
     for(const p of POKEMON.filter(p => ['0001','0004','0007'].includes(p.id))) warmPokemon(p);
     onLoaded();
   }
@@ -45,7 +45,7 @@ export function createSpriteCache(base, onImageReady = () => {}) {
     if (!p.sprites[stateName]) void loadImage(p,'Idle');
     const action = meta?.asset || stateName;
     const image = images.get(`${p.id}:${action}`) || images.get(`${p.id}:Idle`);
-    if(!image) void loadImage(p,action);
+    if(!image && p.spriteAvailable) void loadImage(p,action);
     return {image,meta};
   }
   function drawSmallSprite(dest, p, direction = 0) {

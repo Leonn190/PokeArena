@@ -1,8 +1,8 @@
-import { createSandboxState, createSandboxPokemon, removeFromSandbox, nextSandboxFusion, createLocalMatchState } from '../../server/game/roster.mjs';
+import { createSandboxState, createSandboxPokemon, removeFromSandbox, nextSandboxFusion, createLocalMatchState, purchaseLocalOffer, refreshLocalShop, sellLocalUnit } from '../../server/game/roster.mjs';
 import { createCamera } from './camera.mjs';
 import { createSpriteCache } from './sprites.mjs';
 import { createSpriteRenderer } from './renderer.mjs';
-import { BY_ID, SHOP_IDS, EVOLVES_TO } from '../../server/game/pokemon.mjs';
+import { BY_ID, STARTER_SHOP_IDS, EVOLVES_TO } from '../../server/game/pokemon.mjs';
 import { MOVES_BY_ID, movePool, initialLoadout } from '../../server/game/moves.mjs';
 import { fieldLimitForBattle } from '../../server/game/rules.mjs';
 import { aliveCount, combatForPlayer, phaseRemainingSeconds, startLocalMatchCycle, updateLocalMatchCycle } from '../../server/game/match-cycle.mjs';
@@ -43,6 +43,8 @@ let mode = 'menu';
 let localMatch = null;
 let localObservedPlayerId = null;
 let savedTest = null;
+let shopSignature = '';
+let lastMatchHudTick = -1;
 
 function openMenu() {
   if (mode === 'test') savedTest = {state,battle,selectedId};
@@ -57,6 +59,7 @@ function openMenu() {
   shopPointer = null;
   selectedId = null;
   setShopSellMode(false);
+  shopSignature = '';
   updateModeDisplay();
 }
 function enterTest() {
@@ -67,6 +70,7 @@ function enterTest() {
     ({state,battle,selectedId} = savedTest);
   }
   $('entry-screen').hidden = true;
+  shopSignature = '';
   updateModeDisplay();
   renderHud();
   sizeCanvas();
@@ -78,16 +82,21 @@ function enterLocalMatch() {
   localObservedPlayerId = localMatch.ownerId;
   if (mode === 'test') savedTest = {state,battle,selectedId};
   state = createSandboxState();
+  drag = null;
+  shopPointer = null;
+  hovered = null;
+  evolutionEffects.length = 0;
   state.round = localMatch.round;
   state.gold = localMatch.players[0].gold;
   state.infiniteGold = false;
-  // Nenhuma oferta, unidade ou ação de bot é gerada nesta etapa.
+  // A loja inicial e as compras pagas dos bots vêm do domínio local.
   battle = createBattle([[],[]]);
   selectedId = null;
   resultAnnounced = false;
   mode = 'local';
   $('entry-screen').hidden = true;
   $('outcome').hidden = true;
+  shopSignature = '';
   updateModeDisplay();
   renderHud();
   sizeCanvas();
@@ -98,8 +107,8 @@ function updateModeDisplay() {
   $('alive-stat').hidden = mode !== 'local';
   $('timer-stat').hidden = mode !== 'local';
   $('match-panel').hidden = mode !== 'local';
-  $('shop-mode-note').textContent = mode === 'local' ? 'Loja: Etapa 04' : 'Ouro infinito ativo';
-  $('reroll-shop').disabled = mode !== 'test';
+  $('shop-mode-note').textContent = mode === 'local' ? 'Loja local inicial · sem itens' : 'Ouro infinito ativo';
+  $('reroll-shop').disabled = mode === 'menu' || (mode === 'local' ? !localCanEditObservedArena() || (humanParticipant()?.gold ?? 0) < 2 : battle.phase !== 'setup');
   if (mode !== 'local') return;
   const observed = observedParticipant();
   $('match-id-label').textContent = `${aliveCount(localMatch)}/${localMatch.players.length} vivos`;
@@ -128,7 +137,7 @@ function updateModeDisplay() {
     item.addEventListener('click', () => observeLocalPlayer(participant.id));
     list.append(item);
   }
-  $('observed-label').textContent = observed ? (observed.isBot ? observed.name : 'Sua arena') : 'Arena';
+  $('observed-label').textContent = observed ? (observed.isBot ? `Visitando ${observed.name}` : 'Sua arena') : 'Arena';
 }
 function humanParticipant() {
   return localMatch?.players.find(player => player.id === localMatch.ownerId) || null;
@@ -157,10 +166,10 @@ function observedCombat() {
 function observedLocalStatus() {
   const combat = observedCombat();
   if (localMatch?.phase === 'combat' && combat?.status === 'running') return 'Observando combate local calculado pelo mesmo motor de batalha.';
-  if (localMatch?.phase === 'combat' && combat?.status === 'unavailable') return 'Confronto indisponivel: faltam duas equipes validas.';
-  if (localMatch?.phase === 'combat' && combat?.status === 'bye') return 'Este participante esta de folga provisoria nesta rodada.';
+  if (localMatch?.phase === 'combat' && combat?.status === 'unavailable') return 'Confronto indisponível: faltam equipes válidas.';
+  if (localMatch?.phase === 'combat' && combat?.status === 'bye') return 'Este participante está de folga provisória nesta rodada.';
   if (localMatch?.phase === 'finished') return localMatch.lastMessage || 'Partida local encerrada.';
-  return localMatch?.lastMessage || 'Partida local em memoria.';
+  return localMatch?.lastMessage || 'Partida local em memória.';
 }
 function displayedBattle() {
   if (mode === 'local') return observedCombat()?.battle || null;
@@ -169,6 +178,9 @@ function displayedBattle() {
 function phaseForInput() {
   if (mode === 'local') return localMatch?.phase || 'preparation';
   return battle.phase;
+}
+function currentShop() {
+  return mode === 'local' ? (humanParticipant()?.shop || []) : state.shop;
 }
 function newMon(speciesId, team = 0) {
   warmPokemon(BY_ID[speciesId]);
@@ -318,6 +330,15 @@ function placeBoard(mon, team, cell, swap = true) {
   return true;
 }
 function removeUnit(mon, grantGold = false) {
+  if (mode === 'local') {
+    if (!localCanEditObservedArena()) return;
+    if (sellLocalUnit(localMatch,humanParticipant(),mon)) {
+      if (selectedId === mon.instanceId) selectedId = null;
+      renderHud();
+      showToast(`${BY_ID[mon.speciesId].name} vendido.`);
+    }
+    return;
+  }
   if (mode !== 'test') return;
   if (!mon || battle.phase !== 'setup') return;
   const p = BY_ID[mon.speciesId];
@@ -329,41 +350,64 @@ function removeUnit(mon, grantGold = false) {
   showToast(mon.team === 0 ? `${p.name} vendido por ${p.price}.` : `${p.name} removido.`);
 }
 function buyOffer(index) {
-  if (mode !== 'test') return;
-  if (battle.phase !== 'setup') return;
+  if (mode === 'local') {
+    if (!localCanEditObservedArena()) return;
+    const player = humanParticipant();
+    const id = player?.shop[index];
+    if (!id) return;
+    const purchased = purchaseLocalOffer(localMatch,player,index);
+    if (!purchased) {
+      showToast('Compra indisponível: confira ouro, banco e estoque.');
+      return;
+    }
+    warmPokemon(BY_ID[purchased.speciesId]);
+    selectedId = purchased.instanceId;
+    renderHud();
+    return;
+  }
+  if (mode !== 'test' || battle.phase !== 'setup') return;
   const speciesId = state.shop[index];
   if (!speciesId) return;
   const slot = firstBenchSlot(0);
-  if (slot < 0) {
-    showToast('Banco cheio.');
-    return;
-  }
+  if (slot < 0) { showToast('Banco cheio.'); return; }
   const p = BY_ID[speciesId];
-  if (!state.infiniteGold && state.gold < p.price) {
-    showToast('Ouro insuficiente.');
-    return;
-  }
+  if (!state.infiniteGold && state.gold < p.price) {showToast('Ouro insuficiente.');return;}
   if (!state.infiniteGold) state.gold -= p.price;
-  const mon = newMon(speciesId, 0);
-  placeBench(mon, 0, slot, false);
+  const mon = newMon(speciesId,0);
+  placeBench(mon,0,slot,false);
   state.shop[index] = null;
   evolveTeam(0);
   renderHud();
 }
 function buyOfferToCell(index, cell) {
-  if (mode !== 'test') return false;
-  if (battle.phase !== 'setup') return false;
+  if (mode === 'local') {
+    if (!localCanEditObservedArena() || !cell) return false;
+    const player = humanParticipant();
+    const id = player?.shop[index];
+    if (!id || !BY_ID[id] || player.gold < BY_ID[id].price) return false;
+    const benchCell = cell.row === BOARD.playerBenchRow;
+    if (!benchCell && !validCellForTeam(0,cell)) return false;
+    if (benchCell ? benchOccupant(0,cell.col) : boardOccupant(0,cell.col,cell.row)) return false;
+    if (!benchCell && player.board.length >= fieldLimitForBattle(localMatch.round)) return false;
+    const unit = purchaseLocalOffer(localMatch,player,index);
+    if (!unit) return false;
+    warmPokemon(BY_ID[unit.speciesId]);
+    if (benchCell ? !placeBench(unit,0,cell.col,false) : !placeBoard(unit,0,cell,false)) {
+      sellLocalUnit(localMatch,player,unit);
+      return false;
+    }
+    renderHud();
+    return true;
+  }
+  if (mode !== 'test' || battle.phase !== 'setup') return false;
   const speciesId = state.shop[index];
   if (!speciesId || !cell) return false;
   const team = isBenchCell(cell) ? benchTeamForCell(cell) : pointerTeamForCell(cell);
   if (team == null) return false;
   const p = BY_ID[speciesId];
-  if (!state.infiniteGold && state.gold < p.price) {
-    showToast('Ouro insuficiente.');
-    return false;
-  }
-  const mon = newMon(speciesId, team);
-  const placed = isBenchCell(cell) ? placeBench(mon, team, cell.col, false) : placeBoard(mon, team, cell, false);
+  if (!state.infiniteGold && state.gold < p.price) {showToast('Ouro insuficiente.');return false;}
+  const mon = newMon(speciesId,team);
+  const placed = isBenchCell(cell) ? placeBench(mon,team,cell.col,false) : placeBoard(mon,team,cell,false);
   if (!placed) return false;
   if (!state.infiniteGold) state.gold -= p.price;
   state.shop[index] = null;
@@ -372,7 +416,7 @@ function buyOfferToCell(index, cell) {
   return true;
 }
 function refillShop() {
-  state.shop = Array.from({ length:6 }, () => SHOP_IDS[Math.floor(Math.random() * SHOP_IDS.length)]);
+  state.shop = Array.from({ length:6 }, () => STARTER_SHOP_IDS[Math.floor(Math.random() * STARTER_SHOP_IDS.length)]);
   renderShop();
 }
 function evolveTeam(team) {
@@ -443,7 +487,7 @@ function prepareSameTeams() {
   renderHud();
 }
 function togglePause() {
-  if (battle.phase !== 'fighting') return;
+  if (mode !== 'test' || battle.phase !== 'fighting') return;
   battle.paused = !battle.paused;
   renderHud();
 }
@@ -470,6 +514,7 @@ function hitUnit(world) {
   let proximity = 36;
   for (const mon of allUnits()) {
     const p = monWorld(mon);
+    if (mode === 'local' && mon.team !== 0) continue;
     const d = Math.hypot(world.x - p.x, world.y - p.y + 15);
     if (d < proximity) {
       hit = mon;
@@ -580,7 +625,7 @@ document.addEventListener('pointermove', e => {
   }
   if (shopPointer.dragging && drag?.kind === 'shop') {
     drag.world = clientToWorld(e.clientX, e.clientY);
-    hovered = mode === 'test' && battle.phase === 'setup' ? cellAtClient(e.clientX, e.clientY) : null;
+    hovered = (mode === 'test' && battle.phase === 'setup' || localCanEditObservedArena()) ? cellAtClient(e.clientX, e.clientY) : null;
   }
 });
 document.addEventListener('pointerup', e => {
@@ -607,7 +652,7 @@ canvas.addEventListener('wheel', e => {
 }, { passive:false });
 window.addEventListener('keydown', e => {
   if (e.code === 'Space') spaceDown = true;
-  if (mode === 'test' && (e.key === 'Delete' || e.key === 'Backspace')) {
+  if ((mode === 'test' || localCanEditObservedArena()) && (e.key === 'Delete' || e.key === 'Backspace')) {
     const mon = selectedMon();
     if (mon) removeUnit(mon, mon.team === 0);
   }
@@ -633,16 +678,18 @@ function renderHud() {
     : `${state.playerBoard.length}/${maxActive()}`;
   $('gold-label').textContent = mode === 'local' ? String(human?.gold ?? 0) : state.infiniteGold ? '∞' : String(state.gold);
   $('phase-label').textContent = mode === 'local' ? phaseLabel : battle.phase === 'setup' ? 'Preparação · Teste' : battle.phase === 'finished' ? 'Resultado · Teste' : battle.paused ? 'Pausado · Teste' : 'Combate · Teste';
-  $('hp-label').textContent = mode === 'local' ? String(human?.hp ?? 0) : '';
+  $('hp-label').textContent = mode === 'local' ? String(observed?.hp ?? 0) : '';
   $('alive-label').textContent = mode === 'local' ? `${aliveCount(localMatch)}/${localMatch.players.length}` : '';
   $('timer-label').textContent = mode === 'local' ? `${phaseRemainingSeconds(localMatch,now)}s` : '';
   $('start').disabled = mode !== 'test' || battle.phase !== 'setup' || !state.playerBoard.length || !state.enemyBoard.length;
   $('pause').disabled = mode !== 'test' || battle.phase !== 'fighting';
   $('pause').textContent = battle.paused ? '▶' : 'Ⅱ';
   $('prepare').disabled = mode !== 'test' || battle.phase === 'setup';
-  $('reroll-shop').disabled = mode !== 'test';
+  $('reroll-shop').disabled = mode === 'local'
+    ? !localCanEditObservedArena() || (human?.gold ?? 0) < 2
+    : mode !== 'test' || battle.phase !== 'setup';
   renderDetails();
-  if (mode === 'test' || !$('shop-slots').children.length) renderShop();
+  renderShop();
   updateModeDisplay();
 }
 function renderDetails() {
@@ -660,7 +707,7 @@ function renderDetails() {
   const b = benchIndex(mon);
   $('selected-place').textContent = b ? `Slot ${b.slot + 1}` : `Posição ${mon.col + 1},${mon.row + 1}`;
   $('selected-iv').textContent = `IV geral ${mon.iv}%`;
-  $('sell-value').textContent = mode === 'local' ? 'Somente preparacao propria' : mon.team === 0 ? `Venda: ${p.price} ouro` : 'Remover inimigo';
+  $('sell-value').textContent = mode === 'local' ? `Venda: ${mon.purchaseCost ?? p.price} ouro` : mon.team === 0 ? `Venda: ${p.price} ouro` : 'Remover inimigo';
   drawSmallSprite($('selected-avatar'), p, mon.team ? 0 : 4);
   $('stats-list').innerHTML = keys.map(k => {
     const baseValue = p.stats[k];
@@ -675,7 +722,7 @@ function renderDetails() {
     btn.disabled = mode !== 'test' || battle.phase !== 'setup';
     btn.addEventListener('click', () => rerollMove(Number(btn.dataset.slot)));
   });
-  $('sell-selected').disabled = mode !== 'test' || battle.phase !== 'setup';
+  $('sell-selected').disabled = mode === 'local' ? !localCanEditObservedArena() : mode !== 'test' || battle.phase !== 'setup';
 }
 function setShopSellMode(selling) {
   const shop = $('shop-slots').closest('.bottom-hud');
@@ -690,39 +737,38 @@ function updateShopSellHover(x, y) {
 }
 const coinSvg = '<svg class="coin-icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#e1a62d" stroke="#fff1a2" stroke-width="1.3"/><circle cx="10" cy="10" r="6.4" fill="#ffdb68" stroke="#b47717" stroke-width=".8"/><path d="M12.8 6.8c-.7-.7-4.7-1-4.7 1.2 0 2 4.5 1.2 4.5 3.3 0 2.2-3.8 2.2-5.2 1" fill="none" stroke="#935e12" stroke-width="1.5" stroke-linecap="round"/><path d="M10 5.3v9.4" stroke="#935e12" stroke-width="1"/></svg>';
 function renderShop() {
+  const offers = currentShop();
+  const editable = mode === 'test' && battle.phase === 'setup' || localCanEditObservedArena();
+  const signature = `${mode}:${editable}:${offers.join(',')}:${mode === 'local' ? humanParticipant()?.gold : state.gold}`;
+  if (signature === shopSignature) return;
+  shopSignature = signature;
   const slots = $('shop-slots');
-  slots.innerHTML = state.shop.map((id, i) => {
+  slots.innerHTML = offers.map((id,i) => {
     if (!id) return `<button type="button" class="shop-card empty" data-index="${i}" disabled aria-label="Slot vazio"><span class="shop-portrait"><span class="empty-mark">＋</span></span><span class="shop-footer"><b>Vazio</b></span></button>`;
     const p = BY_ID[id];
-    return `<button type="button" class="shop-card" data-index="${i}" aria-label="Comprar ${p.name} por ${p.price} ouro"><span class="shop-portrait"><canvas class="portrait-fallback visible" width="70" height="70" aria-hidden="true"></canvas></span><span class="shop-footer"><b>${p.name}</b><span class="shop-price">${coinSvg}<span>${p.price}</span></span></span></button>`;
+    const disabled = !editable || mode === 'local' && (humanParticipant()?.gold || 0) < p.price;
+    return `<button type="button" class="shop-card" data-index="${i}" ${disabled ? 'disabled' : ''} aria-label="Comprar ${p.name} por ${p.price} ouro"><span class="shop-portrait"><canvas class="portrait-fallback visible" width="70" height="70" aria-hidden="true"></canvas></span><span class="shop-footer"><b>${p.name}</b><span class="shop-price">${coinSvg}<span>${p.price}</span></span></span></button>`;
   }).join('');
   slots.querySelectorAll('.shop-card').forEach(card => {
-    const index = Number(card.dataset.index);
-    const id = state.shop[index];
-    if (id) {
-      drawSmallSprite(card.querySelector('canvas'), BY_ID[id], 0);
-    }
-    card.addEventListener('click', () => {
-      if (suppressShopClick) return;
-      buyOffer(index);
-    });
-    card.addEventListener('pointerdown', e => startShopPointer(e, index));
+    const index=Number(card.dataset.index);
+    const id=offers[index];
+    if (id) drawSmallSprite(card.querySelector('canvas'),BY_ID[id],0);
+    if (!id) return;
+    card.addEventListener('click',() => {if (!suppressShopClick) buyOffer(index);});
+    card.addEventListener('pointerdown',e => startShopPointer(e,index));
   });
 }
-
-function startShopPointer(e, index) {
-  if (mode !== 'test' || e.button !== 0 || battle.phase !== 'setup' || !state.shop[index]) return;
+function startShopPointer(e,index) {
+  if (e.button !== 0 || !currentShop()[index] ||
+      !(mode === 'test' && battle.phase === 'setup' || localCanEditObservedArena())) return;
   shopPointer = {
-    pointer:e.pointerId,
-    index,
-    speciesId:state.shop[index],
-    start:{ x:e.clientX, y:e.clientY },
-    dragging:false
+    pointer:e.pointerId,index,speciesId:currentShop()[index],
+    start:{x:e.clientX,y:e.clientY},dragging:false
   };
 }
 
 const {prepareSprites:loadSprites,getImageMeta,drawSmallSprite,warmPokemon} = createSpriteCache(base, () => {
-  if (mode === 'test') { renderDetails(); renderShop(); }
+  if (mode !== 'menu') { shopSignature = ''; renderDetails(); renderShop(); }
 });
 async function prepareSprites() {
   await loadSprites(() => {renderHud();});
@@ -790,6 +836,20 @@ function makeTerrain() {
 const terrain = makeTerrain();
 function drawBoard(t) {
   ctx.drawImage(terrain, 0, 0);
+  if (mode === 'local') {
+    const watching = observedParticipant();
+    if (watching) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(11,36,22,.78)';
+      ctx.fillRect(BOARD.x+BOARD.tile*2,BOARD.y+BOARD.tile*.39,BOARD.tile*6,25);
+      ctx.fillStyle = watching.isBot ? '#fee197' : '#d3f6cf';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 13px system-ui';
+      ctx.fillText(`CAMPO ${watching.isBot ? watching.name.toUpperCase() : 'DO JOGADOR'}`,BOARD.x+BOARD.tile*5,BOARD.y+BOARD.tile*.61);
+      ctx.restore();
+    }
+  }
   ctx.save();
   ctx.fillStyle = 'rgba(43,112,174,.10)';
   ctx.fillRect(BOARD.x, BOARD.y + BOARD.playerFieldStart * BOARD.tile, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
@@ -822,7 +882,7 @@ function drawSetupUnit(mon) {
   drawUnitSprite(p, pos.x, pos.y, 'Idle', mon.team ? 0 : 4, visualTime);
 }
 function drawShopGhost(activeDrag) {
-  const p = BY_ID[state.shop[activeDrag.index] || activeDrag.speciesId];
+  const p = BY_ID[currentShop()[activeDrag.index] || activeDrag.speciesId];
   if (!p || !activeDrag.world) return;
   ctx.save();
   ctx.globalAlpha = .8;
@@ -967,7 +1027,10 @@ function frame(timestamp) {
     $('outcome').hidden = false;
     renderHud();
   }
-  if (mode === 'local') renderHud();
+  if (mode === 'local' && Math.floor(timestamp/250) !== lastMatchHudTick) {
+    lastMatchHudTick = Math.floor(timestamp/250);
+    renderHud();
+  }
   draw();
   requestAnimationFrame(frame);
 }
@@ -987,7 +1050,13 @@ $('again').addEventListener('click', prepareSameTeams);
 $('zoom-in').addEventListener('click', () => zoomAt({ x:screen.w / 2, y:screen.h / 2 }, 1.15));
 $('zoom-out').addEventListener('click', () => zoomAt({ x:screen.w / 2, y:screen.h / 2 }, .87));
 $('camera-reset').addEventListener('click', fitCamera);
-$('reroll-shop').addEventListener('click', () => { if (mode === 'test' && battle.phase === 'setup') refillShop(); });
+$('reroll-shop').addEventListener('click', () => {
+  if (mode === 'test' && battle.phase === 'setup') refillShop();
+  else if (localCanEditObservedArena()) {
+    if (!refreshLocalShop(localMatch,humanParticipant(),Math.random,true)) showToast('Você precisa de 2 ouros para o reroll.');
+    renderHud();
+  }
+});
 $('sell-selected').addEventListener('click', () => {
   const mon = selectedMon();
   if (mon) removeUnit(mon, mon.team === 0);

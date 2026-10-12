@@ -1,5 +1,6 @@
 import { createBattle, startBattle, updateBattle, BOARD } from './battle.mjs';
 import { RULES, defeatDamage, fieldLimitForBattle } from './rules.mjs';
+import { awardLocalRoundIncome, prepareLocalRound } from './roster.mjs';
 
 export const LOCAL_PHASES = Object.freeze({
   PREPARATION: 'preparation',
@@ -66,7 +67,8 @@ export function startLocalMatchCycle(match, nowSeconds = 0) {
   match.waitingForUnavailableUntil = null;
   match.previousPairs = match.previousPairs || [];
   match.byeCursor = match.byeCursor || 0;
-  match.lastMessage = 'Preparacao local em andamento.';
+  match.lastMessage = 'Preparação local: organize o campo e compre Pokémon na loja.';
+  prepareLocalRound(match);
   return match;
 }
 
@@ -83,8 +85,18 @@ export function startCombatPhase(match, nowSeconds = 0) {
     const [leftId, rightId] = pairing.playerIds;
     const left = findPlayer(match, leftId);
     const right = findPlayer(match, rightId);
-    if (!left || !right || !hasValidTeam(left, match.round) || !hasValidTeam(right, match.round)) {
+    if (!left || !right) {
       return { ...pairing, status:'unavailable', result:{ reason:'invalid-teams', damage:0 } };
+    }
+    if (!hasValidTeam(left, match.round) || !hasValidTeam(right, match.round)) {
+      // Regra temporária: quem não montou equipe perde para a formação válida.
+      // Duas equipes vazias empatam, sem dano (o GDD ainda deixa este caso em aberto).
+      const winner = hasValidTeam(left,match.round) ? left : hasValidTeam(right,match.round) ? right : null;
+      const loser = winner === left ? right : winner === right ? left : null;
+      const survivors = winner ? clampField(winner,match.round).length : 0;
+      const damage = loser ? defeatDamage(match.round,survivors) : 0;
+      if (loser) { loser.hp = Math.max(0,loser.hp-damage); loser.eliminated = loser.hp<=0; }
+      return { ...pairing, status:'finished', result:{reason:'empty-team',winnerId:winner?.id||null,loserId:loser?.id||null,damage,survivors} };
     }
 
     const battle = createBattle([
@@ -142,6 +154,7 @@ function finishCombatPhase(match, nowSeconds = 0) {
       result: combat.result
     }))
   });
+  awardLocalRoundIncome(match);
   const alive = activePlayers(match);
   if (alive.length <= 1) {
     match.phase = LOCAL_PHASES.FINISHED;
