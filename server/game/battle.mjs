@@ -42,6 +42,16 @@ export const ivMultiplier = iv => .85 + clamp(iv, 0, 100) * .003;
 export function effectiveStats(pokemon, iv = 50) {
   return Object.fromEntries(Object.entries(pokemon.stats).map(([key, value]) => [key, Math.round(value * ivMultiplier(iv))]));
 }
+// Zygarde tem escala temporária até o GDD definir ganhos exatos por forma.
+export function effectiveUnitStats(pokemon,entry) {
+  const stats=effectiveStats(pokemon,entry.iv);
+  if(pokemon.name==='Zygarde'&&entry.zygardeProgress) {
+    const progress=Math.min(100,entry.zygardeProgress);
+    const boost=1+progress*.0025+(progress>=50?.08:0)+(progress===100?.15:0);
+    for(const key of Object.keys(stats)) stats[key]=Math.round(stats[key]*boost);
+  }
+  return stats;
+}
 export const maxHealth = stats => 60 + stats.vida * 2;
 export const moveSpeed = stats => 55 + stats.vel * .62;
 export const attackInterval = stats => clamp(1.58 - stats.vel * .0088, .46, 1.45);
@@ -74,6 +84,7 @@ export function normalizeEntry(entry, team) {
     col,
     row,
     iv: clamp(Math.round(entry.iv ?? 50), 0, 100),
+    zygardeProgress: entry.zygardeProgress ?? 0,
     activeMoves: (entry.activeMoves?.length ? entry.activeMoves : initialLoadout(speciesId)).filter(id => MOVES_BY_ID[id]).slice(0, 2),
     slots: 2
   };
@@ -82,7 +93,7 @@ function makeUnits(lineups) {
   let order = 0;
   return lineups.flatMap((list, team) => list.map(entry => {
     const type = BY_ID[entry.speciesId];
-    const stats = effectiveStats(type, entry.iv);
+    const stats = effectiveUnitStats(type,entry);
     const hp = maxHealth(stats);
     return {
       uid: entry.instanceId,

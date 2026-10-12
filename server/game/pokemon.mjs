@@ -223,15 +223,115 @@ const starterEvolutions = [
   collisionRadius:stage===3?23:19,
   price:stage===2?2:3
 }));
-export const POKEMON = [...SHOP_POKEMON,...starterEvolutions];
-export const BY_ID = Object.fromEntries(POKEMON.map(p => [p.id,p]));
-export const SHOP_IDS = SHOP_POKEMON.map(p => p.id);
-export const STARTER_SHOP_IDS = Object.freeze(['0001','0004','0007']);
-export const EVOLVES_TO = Object.freeze({
-  '0001':'0002','0002':'0003',
-  '0004':'0005','0005':'0006',
-  '0007':'0008','0008':'0009'
+// Índices estáveis de evolução. As 100 espécies acima são as ÚNICAS compráveis.
+// Atributos das formas derivadas ainda sem dados completos usam escala visual provisória
+// (sem se fazer passar por valores oficiais); iniciais preservam seus atributos já cadastrados.
+const EVOLUTION_NUMBERS = Object.freeze({
+  Ivysaur:2,Venusaur:3,Wartortle:8,Blastoise:9,Charmeleon:5,Charizard:6,
+  Kakuna:14,Beedrill:15,Metapod:11,Butterfree:12,Poliwhirl:61,Poliwrath:62,Politoed:186,
+  Machoke:67,Machamp:68,Nuzleaf:274,Shiftry:275,Lombre:271,Ludicolo:272,
+  Vanillish:583,Vanilluxe:584,Steenee:762,Tsareena:763,Gyarados:130,Garbodor:569,
+  Raichu:26,Clefairy:35,Clefable:36,Blissey:242,Golisopod:768,Avalugg:713,
+  Golbat:42,Crobat:169,Haunter:93,Gengar:94,Kadabra:64,Alakazam:65,
+  Magneton:82,Magnezone:462,Kirlia:281,Gardevoir:282,Gallade:475,
+  Combusken:256,Blaziken:257,Sealeo:364,Walrein:365,Prinplup:394,Empoleon:395,
+  Frogadier:657,Greninja:658,Braixen:654,Delphox:655,Brionne:729,Primarina:730,
+  Vaporeon:134,Jolteon:135,Flareon:136,Espeon:196,Umbreon:197,Leafeon:470,Glaceon:471,Sylveon:700,
+  Cacturne:332,Glalie:362,Froslass:478,Crustle:558,Sharpedo:319,Wailord:321,
+  Altaria:334,Noivern:715,Cofagrigus:563,Gurdurr:533,Conkeldurr:534,Abomasnow:460,
+  Lairon:305,Aggron:306,Rhydon:112,Rhyperior:464,Lampent:608,Chandelure:609,
+  Floette:670,Florges:671,Dartrix:723,Decidueye:724,Torracat:726,Incineroar:727,
+  Hattrem:857,Hatterene:858,Morgrem:860,Grimmsnarl:861,Zoroark:571,Golurk:623,
+  Trevenant:709,Dragonair:148,Dragonite:149,Gabite:444,Garchomp:445,
+  Pupitar:247,Tyranitar:248,Zweilous:634,Hydreigon:635,Doublade:680,Aegislash:681,
+  Lucario:448,Bisharp:625,Kingambit:983,Steelix:208,Scizor:212,Kleavor:900,
+  Cosmoem:790,Solgaleo:791,Lunala:792,Urshifu:892,
+  'Urshifu (Decisivo)':892,'Urshifu (Fluido)':892,Melmetal:809
 });
+const EEVEELUTIONS = 'Vaporeon|Jolteon|Flareon|Espeon|Umbreon|Leafeon|Glaceon|Sylveon';
+// Tipagens canônicas que MUDAM ao evoluir (demais formas herdam da origem).
+const EVOLUTION_TYPES = Object.freeze({
+  Butterfree:['Inseto','Voador'],Poliwrath:['Água','Lutador'],
+  Nuzleaf:['Grama','Sombrio'],Shiftry:['Grama','Sombrio'],Gyarados:['Água','Voador'],
+  Gallade:['Psíquico','Lutador'],Combusken:['Fogo','Lutador'],Blaziken:['Fogo','Lutador'],
+  Empoleon:['Água','Aço'],Greninja:['Água','Sombrio'],Delphox:['Fogo','Psíquico'],
+  Primarina:['Água','Fada'],Vaporeon:['Água'],Jolteon:['Elétrico'],Flareon:['Fogo'],
+  Espeon:['Psíquico'],Umbreon:['Sombrio'],Leafeon:['Grama'],Glaceon:['Gelo'],Sylveon:['Fada'],
+  Cacturne:['Grama','Sombrio'],Froslass:['Gelo','Fantasma'],Altaria:['Dragão','Voador'],
+  Abomasnow:['Grama','Gelo'],Decidueye:['Grama','Fantasma'],
+  Incineroar:['Fogo','Sombrio'],Hatterene:['Psíquico','Fada'],
+  Dragonite:['Dragão','Voador'],Tyranitar:['Pedra','Sombrio'],Lucario:['Lutador','Aço'],
+  Steelix:['Aço','Terrestre'],Scizor:['Inseto','Aço'],Kleavor:['Inseto','Pedra'],
+  Solgaleo:['Psíquico','Aço'],Lunala:['Psíquico','Fantasma'],
+  'Urshifu (Decisivo)':['Lutador','Sombrio'],
+  'Urshifu (Fluido)':['Lutador','Água']
+});
+// Quantidades do GDD 5.4, em cada avanço de estágio (não três para todos).
+const FIRST_STAGE_COUNTS = Object.freeze({
+  ...Object.fromEntries(['Bulbasaur','Squirtle','Charmander','Weedle','Caterpie','Poliwag','Machop',
+    'Seedot','Lotad','Vanillite','Bounsweet','Zubat','Gastly','Abra','Magnemite','Ralts',
+    'Torchic','Spheal','Piplup','Froakie','Fennekin','Popplio','Pikachu','Jigglypuff',
+    'Cacnea','Dwebble','Carvanha','Wailmer','Swablu','Noibat','Yamask','Timburr','Snover',
+    'Chansey','Zorua','Golett','Phantump','Dratini','Gible','Larvitar','Deino','Honedge',
+    'Pawniard'].map(n=>[n,3])),
+  ...Object.fromEntries(['Trubbish','Igglybuff','Pichu','Cleffa','Happiny','Wimpod','Bergmite',
+    'Eevee','Snorunt','Riolu'].map(n=>[n,4])),
+  Magikarp:6,Munchlax:5,
+  ...Object.fromEntries(['Aron','Rhyhorn','Litwick','Flabébé','Rowlet','Litten','Hatenna',
+    'Impidimp','Onix','Scyther','Cosmog','Kubfu','Meltan'].map(n=>[n,2]))
+});
+const SECOND_STAGE_COUNTS = Object.freeze({
+  ...Object.fromEntries(['Ivysaur','Wartortle','Charmeleon','Kakuna','Metapod','Poliwhirl','Machoke',
+    'Nuzleaf','Lombre','Vanillish','Steenee','Jigglypuff','Pikachu','Clefairy','Chansey','Golbat'].map(n=>[n,3])),
+  ...Object.fromEntries(['Haunter','Kadabra','Magneton','Kirlia','Combusken','Sealeo',
+    'Prinplup','Frogadier','Braixen','Brionne','Gurdurr','Lairon','Rhydon','Lampent',
+    'Floette','Dartrix','Torracat','Hattrem','Morgrem','Dragonair','Gabite','Pupitar',
+    'Zweilous','Doublade','Bisharp','Cosmoem'].map(n=>[n,2]))
+});
+const PATHS = Object.fromEntries(Object.entries(EVOLUTION_PATHS).map(([name,path]) =>
+  [name,path.replace('Eeveelution',EEVEELUTIONS)
+    .replace('Urshifu','Urshifu (Decisivo)|Urshifu (Fluido)').split(',').map(step => step.split('|'))]));
+const derived = [...starterEvolutions];
+const allByName = new Map([...SHOP_POKEMON,...derived].map(p=>[p.name,p]));
+for(const [origin,steps] of Object.entries(PATHS)) {
+  let predecessor=allByName.get(origin);
+  if(!predecessor)continue;
+  for(let step=0;step<steps.length;step++) {
+    const branch=steps[step];
+    for(const name of branch) {
+      if(!allByName.has(name)) {
+        const number=EVOLUTION_NUMBERS[name];
+        if(!number)continue;
+        const id=String(number).padStart(4,'0')+(name==='Urshifu (Decisivo)'?'-dec':name==='Urshifu (Fluido)'?'-flu':'');
+        const baseStats=Object.fromEntries(Object.entries(predecessor.stats).map(([key,value]) =>
+          [key,Math.max(1,Math.round(value * (step===0?1.28:1.38)))]));
+        const evolved={...make([number,name,predecessor.rarity,
+          [baseStats.vida,baseStats.atk,baseStats.def,baseStats.spa,baseStats.spd,baseStats.vel],
+          (EVOLUTION_TYPES[name]||predecessor.types).map(type=>TYPE_NAMES.indexOf(type))]),
+          id,group:origin,stage:Math.min(3,predecessor.stage+1),
+          collisionRadius:Math.min(3,predecessor.stage+1)===3?23:19,
+          buyable:false,estimatedStats:true};
+        derived.push(evolved);
+        allByName.set(name,evolved);
+      }
+    }
+    predecessor=allByName.get(branch[0])||predecessor;
+  }
+}
+export const POKEMON=[...SHOP_POKEMON,...derived];
+export const BY_ID=Object.fromEntries(POKEMON.map(p=>[p.id,p]));
+export const SHOP_IDS=SHOP_POKEMON.map(p=>p.id);
+export const STARTER_SHOP_IDS=Object.freeze(['0001','0004','0007']);
+export const EVOLUTION_OPTIONS=Object.freeze(Object.fromEntries(Object.entries(PATHS).flatMap(([origin,steps])=>{
+  const names=[origin,...steps.slice(0,-1).map(s=>s[0])];
+  return names.map((name,index)=>[allByName.get(name)?.id,steps[index].map(n=>allByName.get(n)?.id).filter(Boolean)])
+    .filter(([id,options])=>id&&options.length);
+})));
+export const FUSION_COSTS=Object.freeze(Object.fromEntries([
+  ...Object.entries(FIRST_STAGE_COUNTS),...Object.entries(SECOND_STAGE_COUNTS)
+].map(([name,count])=>[allByName.get(name)?.id,count]).filter(([id])=>id)));
+export const EVOLVES_TO=Object.freeze(Object.fromEntries(Object.entries(EVOLUTION_OPTIONS)
+  .filter(([,options])=>options.length===1).map(([id,options])=>[id,options[0]])));
 // Endereços são metadados opcionais; não são consultados em partidas locais.
 export const artworkUrl = p => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p.number}.png`;
 export const spritePath = (p, animation) => `${p.id}/${animation}-Anim.png`;

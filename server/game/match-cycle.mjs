@@ -1,6 +1,6 @@
 import { createBattle, startBattle, updateBattle, BOARD } from './battle.mjs';
 import { RULES, defeatDamage, fieldLimitForBattle } from './rules.mjs';
-import { awardLocalRoundIncome, prepareLocalRound } from './roster.mjs';
+import { awardLocalRoundIncome, prepareLocalRound, releaseEliminatedLocalPlayer } from './roster.mjs';
 
 export const LOCAL_PHASES = Object.freeze({
   PREPARATION: 'preparation',
@@ -154,6 +154,7 @@ function finishCombatPhase(match, nowSeconds = 0) {
       result: combat.result
     }))
   });
+  for (const participant of match.players) releaseEliminatedLocalPlayer(match,participant);
   awardLocalRoundIncome(match);
   const alive = activePlayers(match);
   if (alive.length <= 1) {

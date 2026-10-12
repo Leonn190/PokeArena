@@ -77,7 +77,7 @@ const base = import.meta.env.BASE_URL;
       <div class="match-panel-heading"><div><b>Participantes</b><small id="observed-label">Sua arena</small></div><small id="match-id-label">Offline</small></div>
       <div id="match-players" class="match-players"></div>
       <button id="back-own-arena" class="back-own-arena" type="button" hidden>Voltar à minha arena</button>
-      <p class="match-pending" id="match-panel-note">Partida local em memória. Bots completos, economia e loja competitiva ficam para etapas futuras.</p>
+      <p class="match-pending" id="match-panel-note">Economia e bots locais com estoque compartilhado. Itens e estruturas serão implementados nas etapas 9 e 10.</p>
     </aside>
 
     <section class="side-hud collapsed" id="detail-panel" aria-label="Ficha do Pokémon selecionado">
@@ -106,7 +106,9 @@ const base = import.meta.env.BASE_URL;
         <b>Loja</b>
         <small id="shop-mode-note">Ouro infinito ativo</small>
         <button id="reroll-shop" type="button">Reroll 2</button>
+        <button id="lock-shop" type="button" aria-pressed="false" hidden>🔓 Travar</button>
       </div>
+      <div id="shop-rarity-odds" class="shop-rarity-odds" hidden aria-label="Chances de raridade da rodada"></div>
       <div id="shop-slots" class="shop-slots" aria-label="Loja de 6 slots. Arraste um Pokémon do mapa para um slot da loja para vender."></div>
     </section>
 

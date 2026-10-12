@@ -282,3 +282,22 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   .return-menu{min-height:36px;padding:0 6px;font-size:10px}
   .entry-panel{padding:23px 18px}
 }
+
+/* Etapas 04–05: identificação de raridade sem depender de sprites externos. */
+.bottom-hud{grid-template-columns:105px minmax(0,1fr);grid-template-rows:auto auto}
+.shop-meta{grid-row:1 / span 2}
+.shop-rarity-odds{grid-column:2;display:flex;gap:3px;align-items:center;justify-content:space-between;min-width:0}
+.shop-rarity-odds span{display:flex;gap:4px;align-items:center;font-size:10px;font-weight:700;color:var(--rarity);background:#122519da;border:1px solid color-mix(in srgb,var(--rarity),transparent 60%);padding:3px 5px;border-radius:5px}
+.shop-rarity-odds b{color:#fff;font-variant-numeric:tabular-nums}
+.shop-slots{grid-column:2}
+.shop-card:not(.empty){border:2px solid var(--rarity);box-shadow:inset 0 0 0 1px #0006}
+.shop-card:not(.empty) .shop-portrait{background:radial-gradient(circle at 50% 38%,color-mix(in srgb,var(--rarity),#425744 64%),#172d22)}
+.shop-card .shop-rarity{position:absolute;left:0;top:0;right:0;z-index:1;background:#08140dcc;color:var(--rarity);font-size:9px;text-transform:uppercase;letter-spacing:.4px;font-weight:950;padding:3px;text-align:center}
+.shop-card.rarity-mitico .shop-rarity,.shop-card.rarity-lendario .shop-rarity{color:var(--rarity)}
+#lock-shop[aria-pressed="true"]{color:#ffdf6a;border-color:#ffdf6a;background:#35432a}
+@media(max-width:720px){
+  .bottom-hud{grid-template-columns:68px minmax(0,1fr)}
+  .shop-rarity-odds{flex-wrap:wrap;gap:2px}
+  .shop-rarity-odds span{font-size:7px;padding:2px 3px}
+  .shop-card .shop-rarity{font-size:7px;padding:2px}
+}
