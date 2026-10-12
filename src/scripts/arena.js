@@ -1,319 +1,337 @@
-import { FIGHTERS, originalSpriteUrl, spriteFile } from './fighters.mjs';
-import { BOARD, createBattle, updateBattle, getSpriteFrame } from './battle.mjs';
+import { POKEMON, BY_ID, getFrame, spritePath, spriteUrl } from './pokemon.mjs';
+import { BOARD, createBattle, startBattle, updateBattle, cloneLineups, randomLineups, putPokemon, removePokemon, cellAtPixel, tilePosition, unitPosition, DEFAULT_TEAMS } from './battle.mjs';
 
-const canvas = document.getElementById('arena');
-if (!canvas) throw new Error('O elemento #arena nao foi encontrado.');
+const $ = id => document.getElementById(id);
+const canvas = $('arena');
 const ctx = canvas.getContext('2d', { alpha: false });
-const base = (canvas.dataset.base || '/').replace(/\/?$/, '/');
-const stage = document.getElementById('stage');
-const restart = document.getElementById('restart');
-const overlay = document.getElementById('outcome');
-const outcomeTitle = document.getElementById('outcome-title');
-const outcomeSubtitle = document.getElementById('outcome-subtitle');
-const stateText = document.getElementById('state-text');
-const activityText = document.getElementById('activity-text');
-const loading = document.getElementById('loading');
-const hpBars = [document.getElementById('hp-0'), document.getElementById('hp-1')];
-const hpTexts = [document.getElementById('hp-text-0'), document.getElementById('hp-text-1')];
-const avatarCanvases = [document.getElementById('avatar-0'), document.getElementById('avatar-1')];
+const base = (canvas.dataset.base || '/').replace(/\/?$/,'/');
+const spriteMap = new Map();
+let battle=createBattle();
+let chosenTeam=0;
+let selectedId='0001';
+let hovered=null;
+let autoTimer=null;
+let lastFrame=0;
+let lastHud=0;
+let visualTime=0;
+let lastPhase='';
+let resultAnnounced=false;
 
-let battle = createBattle();
-let lastTime = 0;
-let lastHudUpdate = -1;
-const sprites = new Map();
-let deviceScale = 1;
-
-function sizeCanvas() {
-  const scale = Math.min(window.devicePixelRatio || 1, 2);
-  if (deviceScale === scale && canvas.width === BOARD.width * scale) return;
-  deviceScale = scale;
-  canvas.width = BOARD.width * scale;
-  canvas.height = BOARD.height * scale;
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+function say(msg) { $('placement-tip').querySelector('p').textContent=msg; }
+function stopAutoplay() { if(autoTimer){clearTimeout(autoTimer);autoTimer=null;} }
+function firstLaunch() {
+  stopAutoplay();
+  autoTimer=setTimeout(()=>{autoTimer=null;if(battle.phase==='setup')begin();},3600);
 }
-window.addEventListener('resize', sizeCanvas);
-sizeCanvas();
-
-function loadSprite(fighter, animation) {
-  return new Promise(resolve => {
-    const pic = new Image();
-    let usingOrigin = false;
-    pic.decoding = 'async';
-    pic.onload = () => {
-      sprites.set(`${fighter.id}:${animation}`, pic);
-      resolve(true);
-    };
-    pic.onerror = () => {
-      if (!usingOrigin) {
-        usingOrigin = true;
-        pic.src = originalSpriteUrl(fighter, animation);
-      } else resolve(false);
-    };
-    pic.src = `${base}sprites/${spriteFile(fighter, animation)}`;
-  });
+function restart(preset=DEFAULT_TEAMS,auto=false){
+  stopAutoplay();battle=createBattle(preset);resultAnnounced=false;$('outcome').hidden=true;
+  say('Selecione um Pokémon e depois um quadrado da sua metade. Clique no mesmo Pokémon para remover.');
+  updateControls();updateHud();if(auto)firstLaunch();
 }
-
-const loadingImages = FIGHTERS.flatMap(type => Object.keys(type.sprites).map(action => loadSprite(type, action)));
-Promise.all(loadingImages).then(results => {
-  loading.hidden = true;
-  if (!results.some(Boolean)) activityText.textContent = 'Sprites indisponiveis; modo demonstracao ativo';
+function begin(){stopAutoplay();if(!startBattle(battle)){say('Coloque pelo menos um Pokémon em cada equipe antes de lutar.');return;}updateControls();updateHud();}
+$('start').addEventListener('click',()=>battle.phase==='setup'?begin():restart());
+$('reset').addEventListener('click',()=>restart(battle.lineups));
+$('shuffle').addEventListener('click',()=>restart(randomLineups()));
+$('again').addEventListener('click',()=>restart(randomLineups(),true));
+for (const team of [0,1]) $( `pick-${team}` ).addEventListener('click',()=>{
+  stopAutoplay();chosenTeam=team;updateControls();
+  say(battle.phase==='setup'?`Editando equipe ${team===0?'AZUL (cima)':'VERMELHA (baixo)'}. Escolha um Pokémon e toque num quadrado.`:'Para mudar posições, clique em PREPARAR.');
 });
 
-const glow = (x, y, radius, color, opacity = 1) => {
-  ctx.save();
-  ctx.globalAlpha = opacity;
-  const g = ctx.createRadialGradient(x, y, 1, x, y, radius);
-  g.addColorStop(0, color);
-  g.addColorStop(1, 'transparent');
-  ctx.fillStyle = g;
-  ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
-  ctx.restore();
-};
+function sizeCanvas(){
+  const scale=Math.min(2,Math.max(1,window.devicePixelRatio||1));
+  if(canvas.width===Math.round(BOARD.width*scale)&&canvas.height===Math.round(BOARD.height*scale))return;
+  canvas.width=Math.round(BOARD.width*scale);canvas.height=Math.round(BOARD.height*scale);
+  ctx.setTransform(scale,0,0,scale,0,0);
+  ctx.imageSmoothingEnabled=false;
+}
+window.addEventListener('resize',sizeCanvas);
+sizeCanvas();
 
-function ellipse(x, y, rx, ry, fill, stroke, width = 1) {
-  ctx.beginPath();
-  ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-  if (stroke) { ctx.lineWidth = width; ctx.strokeStyle = stroke; ctx.stroke(); }
+function pointerCell(event){
+  const rect=canvas.getBoundingClientRect();
+  const x=(event.clientX-rect.left)*BOARD.width/rect.width;
+  const y=(event.clientY-rect.top)*BOARD.height/rect.height;
+  return cellAtPixel(x,y,battle.gap);
+}
+canvas.addEventListener('pointermove',event=>{hovered=battle.phase==='setup'?pointerCell(event):null;});
+canvas.addEventListener('pointerleave',()=>{hovered=null;});
+canvas.addEventListener('click',event=>{
+  if(battle.phase!=='setup')return;
+  const cell=pointerCell(event);if(!cell)return;
+  stopAutoplay();const team=cell.row<4?0:1;
+  if(team!==chosenTeam){
+    chosenTeam=team;updateControls();
+  }
+  const occupying=battle.lineups[team].find(p=>p.col===cell.col&&p.row===cell.row);
+  if(occupying?.id===selectedId){removePokemon(battle,team,cell.col,cell.row);say(`Removido de (${cell.col+1},${cell.row+1}). Toque no quadrado para recolocar.`);}
+  else if(putPokemon(battle,team,selectedId,cell.col,cell.row))say(`${BY_ID[selectedId].name} posicionado no time ${team===0?'AZUL':'VERMELHO'}!`);
+  else say('Equipe cheia (máximo de três). Toque em um quadrado ocupado para substituir ou selecione um Pokémon já presente para movê-lo.');
+  updateHud();updateControls();
+});
+canvas.addEventListener('contextmenu',e=>{
+  e.preventDefault();if(battle.phase!=='setup')return;
+  stopAutoplay();const cell=pointerCell(e);if(!cell)return;
+  if(removePokemon(battle,cell.row<4?0:1,cell.col,cell.row)){
+    say('Pokémon removido.');updateHud();updateControls();
+  }
+});
+canvas.addEventListener('keydown',e=>{
+  if(battle.phase!=='setup')return;
+  if(!['ArrowDown','ArrowUp','ArrowLeft','ArrowRight','Enter',' '].includes(e.key))return;
+  e.preventDefault();
+  if(!hovered)hovered={col:3,row:chosenTeam?5:2};
+  if(e.key==='ArrowDown')hovered.row=Math.min(7,hovered.row+1);
+  if(e.key==='ArrowUp')hovered.row=Math.max(0,hovered.row-1);
+  if(e.key==='ArrowRight')hovered.col=Math.min(7,hovered.col+1);
+  if(e.key==='ArrowLeft')hovered.col=Math.max(0,hovered.col-1);
+  if(e.key==='Enter'||e.key===' '){
+    const team=hovered.row<4?0:1;chosenTeam=team;
+    const old=battle.lineups[team].find(u=>u.col===hovered.col&&u.row===hovered.row);
+    if(old?.id===selectedId)removePokemon(battle,team,hovered.col,hovered.row);
+    else putPokemon(battle,team,selectedId,hovered.col,hovered.row);
+    stopAutoplay();updateHud();updateControls();
+  }
+});
+
+const roster=$('roster-grid');
+for(const p of POKEMON){
+  const card=document.createElement('button');card.type='button';card.className='roster-mon';card.dataset.id=p.id;
+  card.innerHTML=`<span class="dex">#${String(p.number).padStart(3,'0')}</span><canvas width="70" height="63" aria-hidden="true"></canvas><span class="mon-name">${p.name}</span><span class="type-bar"></span>`;
+  card.querySelector('.type-bar').style.background=p.color;
+  card.setAttribute('aria-label',`Selecionar ${p.name}`);
+  card.addEventListener('click',()=>{
+    stopAutoplay();selectedId=p.id;updateDetails();updateControls();
+    if(battle.phase==='setup')say(`Selecionado: ${p.name}. Agora toque num quadrado da equipe ${chosenTeam===0?'AZUL':'VERMELHA'}.`);
+    else say('Para alterar os times, clique em PREPARAR.');
+  });roster.appendChild(card);
+}
+function updateDetails(){
+  const p=BY_ID[selectedId];$('detail-name').textContent=p.name;
+  $('dex-number').textContent='#'+String(p.number).padStart(3,'0');
+  $('detail-type').textContent=p.type.toUpperCase();
+  $('detail-type').style.color=p.color;
+  $('stats-list').innerHTML=['vida','atk','spa','def','spd','vel'].map(key=>{
+    const n=p.stats[key],width=Math.round(n/120*100);
+    return `<div class="stat"><span>${key.toUpperCase()}</span><div class="stat-line"><div class="stat-fill" style="width:${Math.min(100,width)}%;background:${p.color}"></div></div><span class="stat-val">${n}</span></div>`;
+  }).join('');
+  drawSmallSprite($('selected-avatar').querySelector('canvas'),p,0);
+}
+function updateControls(){
+  document.querySelectorAll('.roster-mon').forEach(el=>{
+    const selected=el.dataset.id===selectedId;
+    el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));
+  });
+  for(const team of [0,1]){
+    const b=$(`pick-${team}`);b.classList.toggle('chosen',chosenTeam===team);b.setAttribute('aria-pressed',String(chosenTeam===team));
+  }
+  $('start').disabled=battle.phase==='setup'&&(!battle.lineups[0].length||!battle.lineups[1].length);
+  $('start-label').textContent=battle.phase==='setup'?'COMEÇAR AGORA':'REFAZER LUTA';
+  $('start-icon').textContent=battle.phase==='setup'?'▶':'↻';
+  $('shuffle').disabled=battle.phase!=='setup';
+  $('phase-label').textContent=({setup:'MONTANDO TIMES',joining:'UNINDO AS ARENAS',fighting:'BATALHA EM ANDAMENTO',finished:'BATALHA ENCERRADA'})[battle.phase];
 }
 
-function drawStage(t) {
-  const bg = ctx.createLinearGradient(0, 0, 0, BOARD.height);
-  bg.addColorStop(0, '#111d31');
-  bg.addColorStop(.48, '#152440');
-  bg.addColorStop(1, '#080f20');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, BOARD.width, BOARD.height);
+function addLog(text,kind='normal'){
+  const log=$('battle-log');
+  if(log.querySelector('.log-empty'))log.innerHTML='';
+  const m=Math.floor(battle.elapsed/60),s=Math.floor(battle.elapsed%60);
+  const stamp=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  const node=document.createElement('div');node.className=`log-entry ${kind}`;
+  const time=document.createElement('span');time.className='time';time.textContent=stamp;
+  node.append(time,document.createTextNode(text));
+  log.prepend(node);
+  while(log.children.length>11)log.lastElementChild.remove();
+}
+function updateHud(){
+  for(const team of [0,1]){
+    const list=$(`team-${team}-list`), members=battle.units.filter(u=>u.team===team);
+    $(`alive-${team}`).textContent=String(members.filter(u=>!u.dead).length);
+    $(`count-${team}`).textContent=`${members.length} / 3`;
+    list.innerHTML=members.length?members.map(u=>{
+      const hp=Math.round(u.health/u.maxHealth*100);
+      return `<div class="unit-item ${u.dead?'is-out':''}"><div class="unit-portrait"><canvas width="35" height="35" data-mon="${u.type.id}"></canvas></div><div class="unit-label"><b>${u.type.name}</b><small>#${String(u.type.number).padStart(3,'0')} · VEL ${u.type.stats.vel}</small></div><div class="unit-life"><div class="life-track"><div class="life-fill" style="width:${hp}%"></div></div><small>${Math.ceil(u.health)} / ${u.maxHealth}</small></div></div>`;
+    }).join(''):'<div class="log-empty">Nenhum Pokémon posicionado.</div>';
+    list.querySelectorAll('canvas[data-mon]').forEach(el=>drawSmallSprite(el,BY_ID[el.dataset.mon],0));
+  }
+  const seconds=Math.floor(Math.max(0,battle.elapsed-(battle.phase==='joining'?battle.joinProgress*1.15:1.15)));
+  $('clock').textContent=`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
+  if(battle.phase!==lastPhase){
+    lastPhase=battle.phase;
+    if(battle.phase==='joining')addLog('As duas arenas estão se unindo.');
+    if(battle.phase==='fighting')addLog('Combate iniciado. As equipes avançam!');
+  }
+  const msgs={
+    setup:['PREPARE AS EQUIPES','Selecione os Pokémon nos quadrados do tabuleiro.'],
+    joining:['ARENAS SE APROXIMANDO','As duas metades estão virando um campo só.'],
+    fighting:['COMBATE AUTOMÁTICO','Os Pokémon caminham, escolhem alvos e atacam.'],
+    finished:['CONFRONTO TERMINADO',`O time ${battle.winner===0?'azul':'vermelho'} venceu a batalha.`]
+  };
+  $('status-title').textContent=msgs[battle.phase][0];$('status-description').textContent=msgs[battle.phase][1];
+  if(battle.phase==='finished'&&!resultAnnounced){
+    resultAnnounced=true;
+    $('result-title').textContent=`TIME ${battle.winner===0?'AZUL':'VERMELHO'} VENCEU!`;
+    $('result-title').style.color=battle.winner===0?'#8fdafa':'#f7b6c3';
+    $('result-note').textContent=`${battle.units.filter(u=>u.team===battle.winner&&!u.dead).length} Pokémon sobreviveram.`;
+    $('outcome').hidden=false;updateControls();
+  }
+}
+async function loadSprite(p,action){
+  const img=new Image();img.decoding='async';
+  const key=`${p.id}:${action}`;
+  let fallback=false;
+  await new Promise(resolve=>{
+    img.onload=()=>{spriteMap.set(key,img);resolve();};
+    img.onerror=()=>{if(!fallback){fallback=true;img.src=spriteUrl(p,action);}else resolve();};
+    img.src=`${base}sprites/${spritePath(p,action)}`;
+  });
+}
+Promise.all(POKEMON.flatMap(p=>['Idle','Walk','Attack','Hurt'].map(a=>loadSprite(p,a)))).then(()=>{
+  document.querySelectorAll('.roster-mon').forEach(node=>drawSmallSprite(node.querySelector('canvas'),BY_ID[node.dataset.id],0));
+  updateDetails();updateHud();
+});
 
-  glow(222, 125, 260, '#104263', .25);
-  glow(910, 130, 280, '#45265a', .32);
-  glow(564, 310, 290, '#3a6988', .12);
+function drawSmallSprite(dest,p,direction=0){
+  if(!dest||!p)return;
+  const c=dest.getContext('2d');c.clearRect(0,0,dest.width,dest.height);
+  const image=spriteMap.get(`${p.id}:Idle`),meta=p.sprites.Idle;
+  if(image?.naturalWidth){
+    const s=Math.min((dest.width-4)/meta.width,(dest.height-4)/meta.height);
+    c.imageSmoothingEnabled=false;
+    c.drawImage(image,0,Math.min(direction,7)*meta.height,meta.width,meta.height,(dest.width-meta.width*s)/2,(dest.height-meta.height*s)/2,meta.width*s,meta.height*s);
+  }else{
+    c.fillStyle=p.color;c.beginPath();c.arc(dest.width/2,dest.height/2,Math.min(dest.width,dest.height)*.27,0,Math.PI*2);c.fill();
+    c.fillStyle='#102438';c.font=`bold ${Math.min(22,dest.width*.3)}px sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(p.name[0],dest.width/2,dest.height/2);
+  }
+}
 
-  // Arquitetura do estadio, simples e totalmente desenhada por Canvas.
-  for (const [x, flip] of [[72, 1], [1048, -1]]) {
-    ctx.save();
-    ctx.translate(x, 0); ctx.scale(flip, 1);
-    ctx.fillStyle = '#0b1627';
-    ctx.fillRect(-60, 0, 70, 480);
-    ctx.fillStyle = '#1b3150';
-    ctx.fillRect(-60, 0, 9, 480);
-    for (let i = 0; i < 5; i++) {
-      ctx.fillStyle = i % 2 ? '#203a5b' : '#162844';
-      ctx.fillRect(-52, 38 + i * 91, 62, 8);
+function roundRect(x,y,w,h,r,fill,stroke=null){
+  ctx.beginPath();ctx.roundRect(x,y,w,h,r);
+  if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
+}
+function glow(x,y,r,color,alpha=.5){
+  ctx.save();ctx.globalAlpha=alpha;
+  const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'transparent');
+  ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2);ctx.restore();
+}
+function line(x1,y1,x2,y2,color,w=1){ctx.strokeStyle=color;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+function drawBoard(t){
+  const bg=ctx.createLinearGradient(0,0,880,758);bg.addColorStop(0,'#0e2134');bg.addColorStop(.52,'#111c2b');bg.addColorStop(1,'#251d2b');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,880,758);
+  glow(275,140,265,'#3a8cad',.09);glow(655,650,255,'#b35b7c',.09);
+  for(let k=0;k<24;k++){
+    let x=(k*171.7+31)%880,y=(k*89.25+17)%758;
+    ctx.fillStyle=`rgba(137,190,215,${.045+.025*Math.sin(t+k)})`;ctx.fillRect(x,y,2,2);
+  }
+  for(const team of [0,1]){
+    const y=BOARD.y+team*4*BOARD.tile+(team===0?-battle.gap/2:battle.gap/2);
+    const color=team===0?'#72cafa':'#f39eaf';
+    roundRect(BOARD.x-13,y-14,BOARD.columns*BOARD.tile+26,4*BOARD.tile+28,12,team===0?'#122e42':'#352638',team===0?'#3c7296':'#8b566a');
+    roundRect(BOARD.x-5,y-5,BOARD.columns*BOARD.tile+10,4*BOARD.tile+10,6,'#111e2d',team===0?'#337599':'#92576d');
+    for(let r=0;r<4;r++)for(let col=0;col<8;col++){
+      const globalRow=team*4+r;
+      const xx=BOARD.x+col*BOARD.tile, yy=y+r*BOARD.tile;
+      const alt=(col+r)%2===0;
+      ctx.fillStyle=team===0?(alt?'#1c384d':'#183348'):(alt?'#3d2c3d':'#35283a');
+      ctx.fillRect(xx+1,yy+1,BOARD.tile-2,BOARD.tile-2);
+      ctx.strokeStyle=team===0?'#2b5067':'#624456';ctx.lineWidth=.75;ctx.strokeRect(xx+.5,yy+.5,BOARD.tile-1,BOARD.tile-1);
+      if(battle.phase==='setup'&&hovered?.row===globalRow&&hovered?.col===col){
+        ctx.fillStyle=team===chosenTeam?'#ffffff22':'#f8c6c817';ctx.fillRect(xx+2,yy+2,BOARD.tile-4,BOARD.tile-4);
+        ctx.lineWidth=2;ctx.strokeStyle=team===0?'#a4e8ff':'#ffd0dc';ctx.strokeRect(xx+2,yy+2,BOARD.tile-4,BOARD.tile-4);
+      }
+      if((r===1||r===2)&&(col===1||col===6)){
+        ctx.fillStyle=team===0?'#69adcf18':'#e58ba519';ctx.fillRect(xx+24,yy+24,BOARD.tile-48,BOARD.tile-48);
+      }
     }
-    ctx.restore();
+    ctx.font='900 11px system-ui';ctx.letterSpacing='1px';ctx.textAlign='left';ctx.fillStyle=color;
+    ctx.fillText(team===0?'↑ TIME AZUL  /  CAMPO SUPERIOR':'↓ TIME VERMELHO  /  CAMPO INFERIOR',BOARD.x+9,y-21);
   }
-  ctx.fillStyle = '#0c172a';
-  ctx.fillRect(0, 495, BOARD.width, 95);
-  ctx.fillStyle = 'rgba(115, 185, 211, .06)';
-  ctx.fillRect(0, 493, BOARD.width, 2);
-
-  ctx.save();
-  ctx.shadowColor = '#284e87';
-  ctx.shadowBlur = 42;
-  ellipse(560, 426, 512, 164, '#11233d', '#52708b', 2);
-  ctx.restore();
-  ellipse(560, 420, 497, 154, '#162944', '#536b85', 2);
-  ellipse(560, 419, 467, 137, null, 'rgba(119,169,201,.23)', 1.5);
-  ellipse(560, 420, 396, 112, null, 'rgba(122,176,216,.10)', 1.2);
-
-  ctx.save();
-  ctx.beginPath(); ctx.ellipse(560, 420, 465, 136, 0, 0, Math.PI * 2); ctx.clip();
-  // Linhas da quadra imitando pedras tecnomagicas.
-  for (let x = -120; x <= 1290; x += 76) {
-    ctx.strokeStyle = 'rgba(111,170,203,.085)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();ctx.moveTo(x - 190, 280);ctx.lineTo(x + 190, 580);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(x + 190, 280);ctx.lineTo(x - 190, 580);ctx.stroke();
+  if(battle.gap>2){
+    const cy=BOARD.y+4*BOARD.tile;
+    line(BOARD.x-10,cy,BOARD.x+BOARD.columns*BOARD.tile+10,cy,'#9bdaf14f');
+    ctx.textAlign='center';ctx.fillStyle='#89aebc';ctx.font='bold 9px system-ui';
+    if(battle.gap>20)ctx.fillText('AS ARENAS SE UNEM NO COMBATE',440,cy+3);
+  }else{
+    let y=BOARD.y+4*BOARD.tile;
+    glow(440,y,165,'#87cffa',.07);
+    line(BOARD.x,y,BOARD.x+8*BOARD.tile,y,'#93cde94c',2);
   }
-  for (let y = 316; y <= 560; y += 42) {
-    ctx.strokeStyle = 'rgba(100,155,186,.05)';
-    ctx.beginPath();ctx.moveTo(55, y);ctx.lineTo(1065, y);ctx.stroke();
+  ctx.letterSpacing='0px';
+}
+function drawUnit(u,t){
+  if(u.dead)return;
+  const position=unitPosition(u),{x,y}=position;
+  const color=u.team===0?'#76d3f9':'#f09eac';
+  // Sombras e seletores exatamente sob os pés, como um jogo top-down.
+  ctx.save();ctx.fillStyle='#00000058';ctx.beginPath();ctx.ellipse(x,y+20,27,11,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.globalAlpha=.8;ctx.beginPath();ctx.ellipse(x,y+21,24,11,0,0,Math.PI*2);ctx.stroke();ctx.restore();
+  const state=u.state;
+  const image=spriteMap.get(`${u.type.id}:${state}`)||spriteMap.get(`${u.type.id}:Idle`);
+  const action=image===spriteMap.get(`${u.type.id}:${state}`)?state:'Idle';
+  const meta=u.type.sprites[action];
+  if(u.hitFlash>0)glow(x,y-19,49,'#ffffff',Math.min(.5,u.hitFlash*2));
+  if(image?.naturalWidth&&meta){
+    const frame=getFrame(meta.durations,u.stateTime,action!=='Attack'&&action!=='Hurt');
+    const rows=Math.floor(image.naturalHeight/meta.height);
+    const direction=rows===8?u.facing:0;
+    const s=Math.min(2,70/u.type.sprites.Idle.height);
+    const dw=meta.width*s,dh=meta.height*s;
+    ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(image,frame*meta.width,direction*meta.height,meta.width,meta.height,
+      Math.round(x-dw/2),Math.round(y+24-dh+(state==='Walk'?Math.sin(t*13)*1.2:0)),Math.round(dw),Math.round(dh));
+    ctx.imageSmoothingEnabled=true;
+  }else{
+    ctx.fillStyle=u.type.color;ctx.beginPath();ctx.arc(x,y-12,22,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#16293a';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='900 17px system-ui';ctx.fillText(u.type.name.slice(0,2).toUpperCase(),x,y-10);
   }
-  ctx.restore();
-
-  ellipse(560, 412, 112, 58, 'rgba(81,150,191,.032)', 'rgba(105,190,219,.18)', 1.5);
-  ellipse(560, 412, 80, 40, null, 'rgba(105,190,219,.12)', 1);
-  glow(560, 410, 132, '#2878aa', .085 + .03 * Math.sin(t * 2));
-  ctx.save();ctx.translate(560, 412);ctx.scale(1, .5);ctx.rotate(t * .08);
-  ctx.strokeStyle = 'rgba(116,195,236,.17)';ctx.lineWidth = 2;
-  for (let i=0;i<4;i++){
-    ctx.rotate(Math.PI/2);
-    ctx.beginPath();ctx.moveTo(0,-39);ctx.lineTo(14,-23);ctx.lineTo(0,-6);ctx.lineTo(-14,-23);ctx.closePath();ctx.stroke();
+  // Barras acima das cabeças; não se movem em perspectiva.
+  const bw=53;
+  roundRect(x-bw/2,y-67,bw,7,3,'#05121edc');
+  const fraction=Math.max(0,u.health/u.maxHealth);
+  if(fraction>0)roundRect(x-bw/2+1,y-66,Math.max(1,(bw-2)*fraction),5,2,fraction>.35?color:'#f3bd63');
+  ctx.fillStyle='#e4f0f5';ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.font='bold 10px system-ui';
+  ctx.shadowColor='#020913';ctx.shadowBlur=5;ctx.fillText(u.type.name,x,y+38);ctx.shadowBlur=0;
+}
+function drawEffects(){
+  for(const p of battle.projectiles){
+    glow(p.x,p.y,24,p.color,.23);
+    ctx.save();ctx.shadowBlur=17;ctx.shadowColor=p.color;ctx.fillStyle=p.kind==='spa'?'#f4ffff':'#ffcf94';
+    ctx.beginPath();ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=p.color;ctx.lineWidth=2;ctx.stroke();ctx.restore();
   }
-  ctx.restore();
-  // Pontos de luz do cenario: posicoes deterministicas, sem flicker aleatorio.
-  for (let i = 0; i < 21; i++) {
-    const x = (i * 213.73 + 127) % 1120, y = (i * 73.21 + 41) % 285;
-    const alpha = .13 + .09 * Math.sin(t * 1.1 + i);
-    ctx.fillStyle = `rgba(187,218,249,${alpha})`;
-    ctx.fillRect(x, y, i % 4 === 0 ? 2 : 1, i % 4 === 0 ? 2 : 1);
+  for(const e of battle.effects){
+    const age=1-e.time/e.total;glow(e.x,e.y,48,e.color,(1-age)*.32);
+    ctx.globalAlpha=1-age;ctx.strokeStyle=e.color;ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(e.x,e.y,12+age*28,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
+  }
+  for(const n of battle.floaters){
+    const age=1-n.time/n.total;
+    ctx.globalAlpha=Math.min(1,n.time*4);ctx.textAlign='center';ctx.font='900 20px system-ui';
+    ctx.fillStyle=n.kind==='spa'?'#e0efff':'#ffd79a';ctx.shadowColor='#05111c';ctx.shadowBlur=8;
+    ctx.fillText(n.text,n.x,n.y-age*38);
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
   }
 }
-
-function drawShadow(f) {
-  ctx.save();
-  const r = f.defeated ? 23 : 57;
-  const fill = ctx.createRadialGradient(f.x, f.y + 4, 2, f.x, f.y + 4, r);
-  fill.addColorStop(0, 'rgba(0,0,0,.47)');
-  fill.addColorStop(1, 'transparent');
-  ellipse(f.x, f.y + 4, r, r * .33, fill);
-  ellipse(f.x, f.y + 5, r * .72, r * .23, null, f.defeated ? 'rgba(255,255,255,.05)' : `${f.type.color}3b`, 1.4);
-  ctx.restore();
-}
-
-function drawPokemon(f, time) {
-  if (f.defeated) return; // ao perder a vida, o Pokemon some da arena.
-  const image = sprites.get(`${f.type.id}:${f.action}`) || sprites.get(`${f.type.id}:Idle`);
-  ctx.save();
-  let offsetY = 0;
-  if (f.action === 'Walk') offsetY = Math.sin(time * 13) * 3;
-  if (f.action === 'Attack') offsetY = Math.sin(f.actionTime * 22) * -1.8;
-  if (f.hitFlash > 0) {
-    glow(f.x, f.y - 72, 80, '#ffffff', f.hitFlash * .7);
-  }
-  if (image?.naturalWidth) {
-    const action = sprites.has(`${f.type.id}:${f.action}`) ? f.action : 'Idle';
-    const meta = f.type.sprites[action];
-    const tileX = getSpriteFrame(meta.durations, f.actionTime, action !== 'Attack' && action !== 'Hurt');
-    const rows = Math.floor(image.naturalHeight / meta.height);
-    const direction = rows === 8 ? f.facing : 0;
-    const scale = f.type.id === 'gengar' ? 3.25 : 3.2;
-    const sx = tileX * meta.width, sy = direction * meta.height;
-    const width = meta.width * scale, height = meta.height * scale;
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(image, sx, sy, meta.width, meta.height,
-      Math.round(f.x - width / 2), Math.round(f.y - height + 17 + offsetY),
-      Math.round(width), Math.round(height));
-    ctx.imageSmoothingEnabled = true;
-  } else {
-    // Aparencia simples enquanto sprites sao carregados/offline.
-    glow(f.x, f.y - 83, 75, f.type.color, .14);
-    ctx.fillStyle = f.type.darkColor;
-    ellipse(f.x, f.y - 75 + offsetY, 40, 48, f.type.darkColor, f.type.color, 3);
-    ctx.textAlign = 'center';
-    ctx.font = '700 42px sans-serif';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(f.side === 0 ? '✦' : '✧', f.x, f.y - 63 + offsetY);
-  }
-  ctx.restore();
-}
-
-function drawProjectiles() {
-  for (const p of battle.projectiles) {
-    const color = battle.fighters[p.owner].type.color;
-    for (let i = p.trail.length - 1; i >= 0; i--) {
-      const trail = p.trail[i];
-      glow(trail.x, trail.y, 22, color, .06 + (p.trail.length - i) * .03);
-      ellipse(trail.x, trail.y, Math.max(1, 5 - i * .6), Math.max(1, 5 - i * .6), color);
-    }
-    glow(p.x, p.y, 45, color, .56);
-    ctx.save();ctx.shadowColor = color;ctx.shadowBlur=16;
-    ellipse(p.x,p.y,10,10,'#fff',color,3);
-    ctx.restore();
-  }
-}
-
-function drawEffects() {
-  for (const fx of battle.effects) {
-    const progress = 1 - fx.time / fx.maxTime;
-    glow(fx.x, fx.y, fx.r * (1 + progress), fx.color, (1-progress) * .65);
-    ctx.save();ctx.globalAlpha = (1-progress) * .82;
-    ellipse(fx.x, fx.y, fx.r * (.45 + progress), fx.r * (.45 + progress), null, fx.color, 4 - progress * 3);
-    ctx.restore();
-  }
-  for (const floater of battle.floaters) {
-    const progress = 1 - floater.time / floater.maxTime;
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, floater.time * 3);
-    ctx.fillStyle = floater.color;
-    ctx.shadowColor = '#000'; ctx.shadowBlur = 10;
-    ctx.textAlign = 'center';ctx.font = '800 29px system-ui, sans-serif';
-    ctx.fillText(floater.text, floater.x, floater.y - progress * 44);
-    ctx.restore();
-  }
-}
-
-function draw(t) {
-  ctx.clearRect(0, 0, BOARD.width, BOARD.height);
-  drawStage(t);
-  // Sombras antes dos sprites; todo o combate e 100% automatico.
-  battle.fighters.forEach(drawShadow);
-  battle.fighters.forEach(f => drawPokemon(f, t));
-  drawProjectiles();
+function draw(t){
+  ctx.clearRect(0,0,BOARD.width,BOARD.height);
+  drawBoard(t);
+  battle.units.filter(u=>!u.dead).sort((a,b)=>unitPosition(a).y-unitPosition(b).y).forEach(u=>drawUnit(u,t));
   drawEffects();
-  if (battle.phase === 'finished') {
-    const winner = battle.fighters[battle.winner];
-    glow(winner.x, winner.y - 105, 120, winner.type.color, .16 + .07 * Math.sin(t * 4));
+}
+function processEvents(events){
+  for(const ev of events){
+    if(ev.type==='ko')addLog(`${ev.name} foi derrotado por ${ev.by}.`,'ko');
+    if(ev.type==='finish')addLog(`Vitória da equipe ${ev.winner===0?'AZUL':'VERMELHA'}!`,'win');
+    if(ev.type==='hit'&&Math.random()<.17)addLog(`${ev.name} recebeu ${ev.damage} de dano (${ev.kind==='atk'?'ATK':'SPA'}).`);
   }
 }
-
-function drawAvatars() {
-  avatarCanvases.forEach((avatar, i) => {
-    if (!avatar) return;
-    const c = avatar.getContext('2d');
-    const f = FIGHTERS[i], sprite = sprites.get(`${f.id}:Idle`);
-    c.clearRect(0, 0, avatar.width, avatar.height);
-    if (sprite) {
-      const meta = f.sprites.Idle;
-      c.imageSmoothingEnabled = false;
-      c.drawImage(sprite, 0, 0, meta.width, meta.height, 7, 0, 80, 86);
-    }
-  });
+function frame(timestamp){
+  if(!lastFrame)lastFrame=timestamp;
+  const dt=Math.min(.05,(timestamp-lastFrame)/1000);lastFrame=timestamp;visualTime+=dt;
+  updateBattle(battle,dt);
+  if(battle.events.length)processEvents(battle.events);
+  draw(visualTime);
+  if(timestamp-lastHud>155){updateHud();lastHud=timestamp;}
+  requestAnimationFrame(frame);
 }
-Promise.all(loadingImages).then(drawAvatars);
-
-function updateHud(force = false) {
-  const now = performance.now();
-  if (!force && now - lastHudUpdate < 60) return;
-  lastHudUpdate = now;
-  battle.fighters.forEach((f, i) => {
-    hpBars[i].style.width = `${f.health}%`;
-    hpTexts[i].textContent = `${f.health} / ${f.maxHealth}`;
-    hpBars[i].classList.toggle('low-health', f.health < 30);
-  });
-  if (battle.phase === 'approaching') {
-    stateText.textContent = 'SE APROXIMANDO';
-    activityText.textContent = 'Os dois combatentes estao entrando no alcance';
-  } else if (battle.phase === 'fighting') {
-    stateText.textContent = 'EM COMBATE';
-    activityText.textContent = 'Ataques automaticos • ate restar um vencedor';
-  } else {
-    stateText.textContent = 'LUTA ENCERRADA';
-    activityText.textContent = 'Temos um vencedor!';
-  }
-}
-
-function finish() {
-  const win = battle.fighters[battle.winner];
-  outcomeTitle.textContent = `${win.type.name} venceu!`;
-  outcomeSubtitle.textContent = 'O adversario ficou sem pontos de vida.';
-  overlay.hidden = false;
-  stage.classList.add('finished');
-  restart.classList.add('ready');
-}
-
-function restartBattle() {
-  battle = createBattle();
-  overlay.hidden = true;
-  stage.classList.remove('finished');
-  restart.classList.remove('ready');
-  updateHud(true);
-}
-restart.addEventListener('click', restartBattle);
-document.getElementById('again')?.addEventListener('click', restartBattle);
-
-function tick(timestamp) {
-  const dt = lastTime ? Math.min((timestamp - lastTime) / 1000, 0.05) : 0;
-  lastTime = timestamp;
-  if (!document.hidden) {
-    const previousPhase = battle.phase;
-    updateBattle(battle, dt);
-    if (previousPhase !== 'finished' && battle.phase === 'finished') finish();
-    updateHud();
-    draw(timestamp / 1000);
-  }
-  window.requestAnimationFrame(tick);
-}
-updateHud(true);
-window.requestAnimationFrame(tick);
+updateDetails();updateControls();updateHud();firstLaunch();requestAnimationFrame(frame);

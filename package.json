@@ -1,10 +1,10 @@
 {
-  "name": "pokemon-arena-astro",
-  "version": "0.1.0",
+  "name": "pokemon-arena-kanto",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/prepare-sprites.mjs && astro dev",
+    "dev": "node scripts/prepare-sprites.mjs && astro dev --host",
     "start": "npm run dev",
     "build": "node scripts/prepare-sprites.mjs && astro build",
     "preview": "astro preview",

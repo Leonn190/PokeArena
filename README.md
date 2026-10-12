@@ -1,62 +1,82 @@
-# Pokémon Arena — protótipo Astro
+# Pokémon Arena — Kanto Auto Battle (v0.2)
 
-Um duelo **totalmente automático** de Mega Lucario contra Mega Gengar. Dois Pokémon entram na arena distantes, andam um até o outro, param a certa distância e começam a disparar projéteis. A vida vai caindo até um vencer. Tem botão de reiniciar.
+Protótipo **Astro + JavaScript + Canvas 2D** de auto-battle 3 contra 3, totalmente visto de cima. Dois tabuleiros de 8×4 quadrados (azul em cima, vermelho embaixo) se unem em um de 8×8 no início da luta. Não há servidor nem banco de dados.
 
-## Publicar no GitHub Pages (sem usar terminal)
+## O que existe na v0.2
 
-1. **Extraia este ZIP** no computador. Não envie o `.zip` fechado ao GitHub.
-2. No GitHub, crie um repositório novo, por exemplo `Pokemon-Arena`, com visibilidade **Public**.
-3. No repositório, clique em **Add file > Upload files** e envie **todos os arquivos e pastas extraídos**, incluindo `.github`, `src`, `scripts`, `tests`, `public`, `package.json` e `astro.config.mjs`.
-   - Atenção: garanta que a pasta oculta `.github/workflows/deploy.yml` seja enviada; caso seu sistema oculte arquivos/pastas, ative a visualização de itens ocultos.
-   - Os arquivos devem ficar **na raiz do repositório**, não dentro de uma pasta `pokemon-arena-astro`.
-4. Faça o commit direto na branch **main**.
-5. Em **Settings > Pages**, defina **Build and deployment > Source: GitHub Actions**.
-6. Acesse a aba **Actions** e aguarde o workflow `Publicar Arena no GitHub Pages` ficar verde. Se mudar a configuracao Pages depois do primeiro envio, clique em **Run workflow** ou faça novo commit.
-7. Abra `https://SEU_USUARIO.github.io/Pokemon-Arena/` (respeitando maiúsculas/minúsculas do nome do repositório).
+- **Nove Pokémon de Kanto disponíveis:** Bulbasaur, Ivysaur, Venusaur, Charmander, Charmeleon, Charizard, Squirtle, Wartortle e Blastoise.
+- **Dois times, com até três Pokémon em cada**, selecionados e posicionados nos quadrados das respectivas metades.
+- **Autoplay:** a luta começa sozinha após alguns segundos se você não interagir; ou clique **COMEÇAR AGORA**. A tela de preparação permite trocar posições/escolher espécies.
+- **Seis atributos para cada espécie:** VIDA, ATK, SPA, DEF, SPD, VEL. São os stats base da espécie (sem IVs, EVs nem níveis). HP de batalha = `60 + 2 × VIDA`.
+- **Combate:** deslocamento aleatório guiado por proximidade de adversários, tiro de projéteis, ataque físico usando ATK contra DEF, ou ataque especial usando SPA contra SPD. VEL modifica ritmo de movimento e ataques. A luta termina quando todos os Pokémon de um dos times forem derrotados.
+- **Sprites PMD:** arquivos de Idle, Walk, Attack e Hurt separados por Pokémon; 8 orientações incluindo cima/baixo/esquerda/direita. A orientação correta no formato PMD é **2 = esquerda** e **6 = direita**.
+- Barra de HP por lutador, vencedor, log e tela de ficha dos atributos.
+- **SORTEAR EQUIPES** cria dois times aleatórios sem repetir Pokémon entre eles; **PREPARAR** volta para edição.
 
-**Não é necessário editar caminhos:** o `astro.config.mjs` detecta automaticamente o nome do seu repositório no GitHub Actions.
+### Como montar equipes
 
-> Se o GitHub não aceitar o upload da pasta `.github` pela interface, crie o arquivo `.github/workflows/deploy.yml` pelo editor web do GitHub (Add file > Create new file, digitando o caminho completo) e copie o conteúdo do ZIP.
+1. Na lateral, escolha **AZUL** (cima) ou **VERMELHO** (baixo).
+2. Clique em qualquer um dos nove Pokémon para selecioná-lo.
+3. Clique no quadrado da sua metade onde deseja colocá-lo. Um quadrado ocupado é substituído se você escolher outra espécie.
+4. Para remover, clique novamente no Pokémon do mesmo quadrado, ou use botão direito nele. Para mover um Pokémon existente, escolha-o e clique em outro quadrado da mesma metade.
+5. Para lutar, clique em **COMEÇAR AGORA**. Se não fizer nada, uma batalha de demonstração começa automaticamente em ~3,6 segundos.
+
+Máximo de 3 por equipe. Uma espécie não pode se repetir **dentro do mesmo time**; na opção de sorteio, também não se repete entre os times.
+
+## Publicar no GitHub Pages (sem instalar nada)
+
+1. **Extraia este ZIP.** No GitHub crie um repositório público, por exemplo `Pokemon-Arena`.
+2. Envie **todos os arquivos e pastas extraídos diretamente na raiz do repositório** usando **Add file > Upload files**. Inclua `.github/workflows/deploy.yml` (a pasta `.github` pode estar oculta no Windows).
+3. Faça o commit na branch **main**.
+4. Em **Settings > Pages > Build and deployment**, selecione **Source: GitHub Actions**.
+5. Na aba **Actions** aguarde a execução do workflow **Publicar Arena no GitHub Pages**. Se for a primeira configuração de Pages e a execução anterior falhou, clique em **Run workflow** para executar novamente.
+6. Abra `https://SEU_USUARIO.github.io/NOME_DO_REPOSITORIO/`.
+
+**A configuração Astro ajusta automaticamente `base`** no GitHub Actions, mesmo em repositórios com outros nomes. Se seu repositório for `seuusuario.github.io`, a página será publicada na raiz.
+
+O workflow usa **Node 22**, instala o Astro, baixa os PNGs do PMDCollab para `public/sprites/` e publica a pasta `dist/` no Pages. Os sprites passam a ser servidos como arquivos locais no site publicado. Os PNGs não foram incluídos no ZIP para não duplicar o acervo de terceiros; por isso, o build precisa de conexão com o GitHub na primeira instalação. Se os sprites não puderem ser baixados, o GitHub Actions falha visivelmente em vez de publicar arquivos incompletos.
 
 ## Rodar no computador
 
-Requisitos: Node.js 20 ou mais novo.
+Instale **Node.js 20+** e execute:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abra `http://localhost:4321/`. Para gerar os arquivos estáticos, rode:
+Abra `http://localhost:4321/`.
 
 ```bash
-npm run build
+npm run build     # Gera o site estático na pasta dist
+npm run preview   # Abre o site compilado
+npm test          # Executa testes de lógica
 ```
 
-## Como funciona
+Se o download dos PNGs falhar localmente, o jogo usa placeholders simples ou tenta os URLs remotos. O combate funciona mesmo sem os sprites; porém, no GitHub Actions, o deploy exige que estejam presentes.
 
-- **Astro** gera o site estático.
-- **JavaScript + Canvas 2D** cuidam da movimentação, colisão dos projéteis, animações e vida dos combatentes.
-- O jogo inicia sozinho. Não precisa de conta, banco de dados, API ou backend.
-- Os PNGs das animações `Idle`, `Walk`, `Attack` e `Hurt` são baixados do projeto SpriteCollab durante `npm run build`/`npm run dev`, para `public/sprites`. Assim, quando o GitHub Pages publica a pasta `dist`, as imagens estão dentro do site.
-- Caso alguma imagem não seja baixada na etapa de preparação, o navegador tenta o caminho original no repositório SpriteCollab. O combate também tem um fallback visual simples se nem isso funcionar.
-- Os metadados de tamanho e duração dos frames vieram dos `AnimData.xml` de cada forma. Os arquivos ficam divididos em linhas (direções) e colunas (frames).
+## Estrutura
 
-### Mudar ou adicionar Pokémon
-
-Veja `src/scripts/fighters.mjs`: ali estão nomes, velocidade, dano, IDs do SpriteCollab e metadados de animação. A lógica principal fica em `src/scripts/battle.mjs` e a apresentação em `src/scripts/arena.js`. Este primeiro protótipo usa exatamente **dois Pokémon**; mais personagens exigem adaptar o HUD e a lógica.
-
-### Testes
-
-```bash
-npm test
+```text
+src/pages/index.astro       Interface Astro
+src/styles/global.css       Estilo e responsividade
+src/scripts/pokemon.mjs     Elenco, seis atributos, direção PMD, metadados de sprites
+src/scripts/battle.mjs      Regras do tabuleiro e simulador de combate
+src/scripts/arena.js        Renderização Canvas 2D e interação
+scripts/prepare-sprites.mjs Download dos PNGs oficiais/comunitários PMD
+.github/workflows/deploy.yml Deploy automático pelo GitHub Actions
+tests/battle.test.mjs       Testes de regras e animações
+astro.config.mjs            Ajuste automático de URL/base de GitHub Pages
 ```
 
-## Créditos e utilização
+## Limitações atuais
 
-As animações de Mega Lucario e Mega Gengar são do projeto [PMD Sprite Repository / SpriteCollab](https://sprites.pmdcollab.org/) e seus artistas/colaboradores. Consulte os créditos por Pokémon no site do projeto. Os recursos são destinados a usos **não comerciais e com atribuição** conforme política do SpriteCollab; Pokémon pertence aos seus respectivos titulares. Este protótipo não é afiliado a Nintendo, Creatures, GAME FREAK ou The Pokémon Company.
+É um protótipo de combate, não o sistema inteiro do TFT: não há tipos, vantagens elementais, habilidades, itens, custo de unidades, ouro, estrelas, experiência, sinergias, som ou multiplayer. As decisões de movimentação e ataque são aleatórias com preferência por inimigos próximos; elas não fazem planejamento estratégico avançado. Não há seleção manual do alvo durante o combate.
 
-Fontes:
-- https://github.com/PMDCollab/SpriteCollab
-- https://github.com/PMDCollab/SpriteCollab/blob/master/LICENSE.md
-- https://wiki.pmdo.pmdcollab.org/PMD_Sprite_Format
+## Créditos / direitos
+
+Sprites do [PMD Sprite Repository / SpriteCollab](https://sprites.pmdcollab.org/) e seus artistas. Confira a atribuição dos artistas de cada espécie e a política de uso do projeto antes de publicar. Sprites criados pelos artistas não são automaticamente de uso livre: o SpriteCollab usa condições de atribuição e **uso não comercial**. Pokémon e seus personagens pertencem aos respectivos titulares; este é um protótipo **não comercial**, não oficial nem afiliado à Nintendo, GAME FREAK, Creatures ou The Pokémon Company.
+
+- Repositório: https://github.com/PMDCollab/SpriteCollab
+- Licença/termos: https://github.com/PMDCollab/SpriteCollab/blob/master/LICENSE.md
+- Site: https://sprites.pmdcollab.org/
