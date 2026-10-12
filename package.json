@@ -4,10 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/prepare-sprites.mjs && astro dev --host",
-    "start": "npm run dev",
-    "build": "node scripts/prepare-sprites.mjs && astro build",
-    "preview": "astro preview"
+    "build": "node scripts/prepare-sprites.mjs && astro build"
   },
   "dependencies": {
     "astro": "^5.0.0"

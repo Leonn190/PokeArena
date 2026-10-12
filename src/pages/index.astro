@@ -8,37 +8,43 @@ const base = import.meta.env.BASE_URL;
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#172916" />
-  <meta name="description" content="Simulador Pokémon TFT em Astro + Canvas 2D com sprites PMD, loja, banco, evolução, IVs e combate automático." />
+  <meta name="description" content="Simulador Pokémon TFT em Astro + Canvas 2D com sprites PMD, câmera 2D, loja, banco físico, evolução, IVs e combate automático." />
   <title>Pokémon TFT Arena</title>
   <link rel="icon" href={`${base}favicon.svg`} />
 </head>
 <body>
   <main class="game-shell">
-    <canvas id="arena" width="1000" height="720" data-base={base} aria-label="Arena Pokémon TFT com inimigos no topo e seu time na parte inferior." tabindex="0"></canvas>
+    <canvas id="arena" width="1000" height="760" data-base={base} aria-label="Arena Pokémon TFT com inimigos no topo, seu time embaixo e banco físico no mapa." tabindex="0"></canvas>
 
-    <section class="top-hud" aria-label="Estado da rodada">
+    <section class="top-hud" aria-label="Estado e controles">
       <div class="hud-brand">
         <span class="pokeball-mark"></span>
         <div><b>Pokémon TFT</b><small id="phase-label">Preparação</small></div>
       </div>
       <div class="hud-stat"><small>Rodada</small><b id="round-label">1</b></div>
-      <div class="hud-stat"><small>Limite</small><b id="limit-label">1 / 6</b></div>
-      <div class="hud-stat gold"><small>Ouro</small><b>∞</b></div>
-      <div class="hud-stat"><small>Tempo</small><b id="clock">00:00</b></div>
+      <div class="hud-stat"><small>Campo</small><b id="limit-label">1/6</b></div>
+      <div class="hud-stat gold"><small>Ouro</small><b id="gold-label">∞</b></div>
       <div class="hud-actions">
         <button id="start" class="icon-button primary" type="button" title="Iniciar batalha" aria-label="Iniciar batalha">▶</button>
-        <button id="next-round" class="icon-button" type="button" title="Próxima rodada" aria-label="Próxima rodada">↻</button>
+        <button id="pause" class="icon-button" type="button" title="Pausar ou continuar" aria-label="Pausar ou continuar">Ⅱ</button>
+        <button id="prepare" class="icon-button" type="button" title="Voltar para preparação" aria-label="Voltar para preparação">↺</button>
+      </div>
+      <div class="camera-actions" aria-label="Câmera">
+        <button id="zoom-in" type="button" title="Aproximar" aria-label="Aproximar">+</button>
+        <button id="zoom-out" type="button" title="Afastar" aria-label="Afastar">−</button>
+        <button id="camera-reset" type="button" title="Resetar visão" aria-label="Resetar visão">Reset</button>
       </div>
     </section>
 
-    <section class="side-hud" aria-label="Ficha do Pokémon selecionado">
+    <section class="side-hud collapsed" id="detail-panel" aria-label="Ficha do Pokémon selecionado">
       <div class="panel-title"><span id="selected-number">#004</span><b id="selected-name">Charmander</b></div>
       <div class="selected-head">
         <canvas id="selected-avatar" width="78" height="70" aria-hidden="true"></canvas>
         <div>
           <small id="selected-type">Fogo</small>
-          <strong id="selected-place">Banco</strong>
+          <strong id="selected-place">Campo</strong>
           <p id="selected-iv">IV geral 50%</p>
+          <p id="sell-value">Venda: 3 ouro</p>
         </div>
       </div>
       <div id="stats-list" class="stats-list"></div>
@@ -48,35 +54,39 @@ const base = import.meta.env.BASE_URL;
         <div class="attack-actions">
           <button id="reroll-move" type="button">Reroll 2</button>
           <button id="unlock-move" type="button">+ Slot 4</button>
+          <button id="sell-selected" type="button">Vender</button>
         </div>
       </div>
     </section>
 
-    <section class="enemy-hud" aria-label="Criar inimigos">
-      <div class="panel-subtitle">Inimigos</div>
-      <div id="enemy-picks" class="enemy-picks"></div>
-      <small>Escolha e clique na arena de cima.</small>
-    </section>
-
-    <section class="bottom-hud" aria-label="Banco e loja">
-      <div class="bench-row" id="bench-row" aria-label="Banco de 10 slots"></div>
-      <div class="shop-row">
-        <div class="shop-meta">
-          <b>Loja</b>
-          <button id="reroll-shop" type="button">Reroll 2</button>
-        </div>
-        <div id="shop-slots" class="shop-slots" aria-label="Loja de 6 slots"></div>
+    <section class="sim-hud" aria-label="Ferramentas do simulador">
+      <div class="panel-subtitle">Simulador</div>
+      <div id="species-picks" class="species-picks"></div>
+      <div class="team-toggle" role="group" aria-label="Equipe da nova unidade">
+        <button id="pick-player" type="button">Aliado</button>
+        <button id="pick-enemy" type="button">Inimigo</button>
       </div>
+      <button id="delete-mode" class="wide-tool" type="button">Remover</button>
     </section>
 
-    <section id="battle-log" class="battle-log" aria-live="polite"></section>
+    <section class="bottom-hud" aria-label="Loja">
+      <div class="sell-zone" id="sell-zone">Vender</div>
+      <div class="shop-meta">
+        <b>Loja</b>
+        <small>Ouro infinito ativo</small>
+        <button id="reroll-shop" type="button">Reroll 2</button>
+      </div>
+      <div id="shop-slots" class="shop-slots" aria-label="Loja de 6 slots"></div>
+    </section>
+
+    <div id="toast" class="toast" hidden></div>
 
     <div class="battle-outcome" id="outcome" hidden>
       <div class="outcome-card">
         <small>Batalha encerrada</small>
         <h1 id="result-title">Vitória</h1>
-        <p id="result-note">Prepare a próxima rodada.</p>
-        <button id="again" type="button">Preparar próxima rodada</button>
+        <p id="result-note">Prepare ou reinicie com as mesmas equipes.</p>
+        <button id="again" type="button">Voltar para preparação</button>
       </div>
     </div>
   </main>
