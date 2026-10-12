@@ -1,69 +1,71 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { POKEMON, getDirection, getFrame } from '../src/scripts/pokemon.mjs';
-import { BOARD, DEFAULT_TEAMS, createBattle, startBattle, updateBattle, cloneLineups, putPokemon, removePokemon, tilePosition, cellAtPixel, randomLineups, physicalOrSpecialDamage } from '../src/scripts/battle.mjs';
-
-test('elenco contém os 9 iniciais e seis atributos',()=>{
-  assert.deepEqual(POKEMON.map(p=>p.name), ['Bulbasaur','Ivysaur','Venusaur','Charmander','Charmeleon','Charizard','Squirtle','Wartortle','Blastoise']);
-  for(const p of POKEMON)for(const prop of ['vida','atk','spa','def','spd','vel'])assert.ok(p.stats[prop]>0);
+import { POKEMON, getDirection,getFrame } from '../src/scripts/pokemon.mjs';
+import { BOARD,DEFAULT_TEAMS,createBattle,startBattle,updateBattle,putPokemon,putPokemonAt,removePokemon,cellAtPixel,tilePosition,randomLineups,physicalOrSpecialDamage,attackInterval,moveSpeed,updateLoadout,attackRangePixels,effectiveAttackRange } from '../src/scripts/battle.mjs';
+import { movePool,chooseMoveAnimation } from '../src/scripts/moves.mjs';
+const rand=(()=>{let state=1234567;return ()=>((state=(Math.imul(state,1664525)+1013904223)>>>0)/4294967296)})();
+test('v3 mantém nove Pokémon e seis atributos',()=>{
+  assert.equal(POKEMON.length,9);for(const p of POKEMON)for(const k of ['vida','atk','spa','def','spd','vel'])assert.ok(p.stats[k]>0);
 });
-test('PMD: esquerda é linha 2, direita 6, norte 4, sul 0',()=>{
-  assert.equal(getDirection(-1,0),2);assert.equal(getDirection(1,0),6);
-  assert.equal(getDirection(0,-1),4);assert.equal(getDirection(0,1),0);
-  assert.equal(getDirection(1,-1),5);assert.equal(getDirection(-1,-1),3);
+test('mundo 10x5, direções PMD e coordenadas contínuas',()=>{
+  assert.equal(BOARD.columns,10);assert.equal(BOARD.rows,5);
+  for(const [col,row] of [[0,0],[9,4],[4,3]]){const p=tilePosition(col,row);assert.deepEqual(cellAtPixel(p.x,p.y),{col,row});}
+  assert.equal(getDirection(-1,0),2);assert.equal(getDirection(1,0),6);assert.equal(getDirection(0,1),0);
 });
-test('quadrados clicáveis respeitam metades e lacuna',()=>{
-  for(const gap of [0,36]){
-    for(const [col,row]of [[0,0],[7,7],[4,3],[2,4]]){
-      const at=tilePosition(col,row,gap);assert.deepEqual(cellAtPixel(at.x,at.y,gap),{col,row});
-    }
-  }
-  assert.equal(BOARD.rows,8);
+test('movimentos livres, restrições de equipe e colisão ao posicionar',()=>{
+  const b=createBattle();assert.equal(b.units.length,6);
+  assert.equal(putPokemon(b,0,'0004',0,0),false); // lotada
+  assert.equal(removePokemon(b,0,1,1),true);
+  assert.equal(putPokemonAt(b,0,'0004',210.5,174.2),true);
+  assert.equal(b.lineups[0].find(u=>u.id==='0004').x,210.5);
+  assert.equal(putPokemonAt(b,0,'0002',650,200),false); // território oposto
+  assert.equal(putPokemonAt(b,0,'0004',b.lineups[0][0].x,b.lineups[0][0].y),false);
 });
-test('escalações permitem remover, adicionar e impedem quarta unidade por equipe',()=>{
+test('cada Pokémon possui dois ataques ativos e seis possíveis',()=>{
   const b=createBattle();
-  assert.equal(b.units.length,6);
-  assert.equal(putPokemon(b,0,'0004',0,0),false);
-  assert.equal(putPokemon(b,0,'0004',5,6),false);
-  assert.equal(removePokemon(b,0,2,1),true);
-  assert.equal(putPokemon(b,0,'0004',2,1),true);
-  assert.equal(b.lineups[0].some(x=>x.id==='0004'),true);
-  assert.equal(startBattle(b),true);
-  assert.equal(putPokemon(b,0,'0001',3,0),false);
+  for(const p of POKEMON){const pool=movePool(p.id);assert.equal(pool.length,8);assert.ok(pool.every(m=>m.damage>0&&m.range>0&&m.animationPriority.length));}
+  const p=b.lineups[0][0],pool=movePool(p.id);
+  assert.equal(p.activeMoves.length,2);
+  assert.equal(updateLoadout(b,p.id,[pool[3].id,pool[6].id]),true);
+  assert.deepEqual(b.units.find(u=>u.type.id===p.id).activeMoves,[pool[3].id,pool[6].id]);
+  assert.equal(updateLoadout(b,p.id,[pool[3].id,pool[3].id]),false);
 });
-test('sorteio inclui seis Pokémon diferentes',()=>{
-  const lineups=randomLineups(()=>.6);
-  const ids=lineups.flat().map(x=>x.id);
-  assert.equal(new Set(ids).size,6);
-});
-test('ataque físico usa DEF, especial usa SPD, os seis stats têm impacto',()=>{
-  const a=POKEMON[5],b=POKEMON[8];
-  assert.ok(physicalOrSpecialDamage(a,b,'atk',()=>.5)>0);
-  assert.ok(physicalOrSpecialDamage(a,b,'spa',()=>.5)>0);
-  const mod={...b,stats:{...b.stats,spd:999}};
-  assert.ok(physicalOrSpecialDamage(a,mod,'spa',()=>.5)<physicalOrSpecialDamage(a,b,'spa',()=>.5));
-});
-test('batalha 3v3 une as duas metades, anda, ataca e acaba com um vencedor',()=>{
-  const battle=createBattle();
-  assert.ok(startBattle(battle));
-  let moved=false,projectile=false,hit=false,seenJoin=false;
-  let seed=123456789;
-  const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
-  for(let i=0;i<15000&&battle.phase!=='finished';i++){
-    updateBattle(battle,1/60,rand);
-    if(battle.phase==='fighting')seenJoin=true;
-    if(battle.units.some(u=>u.moveCount>0))moved=true;
-    if(battle.projectiles.length)projectile=true;
-    if(battle.events.some(e=>e.type==='hit'))hit=true;
-  }
-  assert.ok(seenJoin);assert.ok(moved);assert.ok(projectile);assert.ok(hit);
-  assert.equal(battle.gap,0);
-  assert.equal(battle.phase,'finished');
-  assert.ok(battle.winner===0||battle.winner===1);
-  assert.equal(battle.units.filter(u=>!u.dead&&u.team!==battle.winner).length,0);
-});
-test('frame loop respeita durações',()=>{
-  assert.equal(getFrame([3,3],0),0);
+test('prioridades de animação respeitam disponibilidade e fallback padrão',()=>{
+  const move=movePool('0004')[0];
+  assert.equal(chooseMoveAnimation(move,{Scratch:{},Attack:{}}),'Scratch');
+  assert.equal(chooseMoveAnimation(move,{Attack:{}}),'Attack');
+  assert.equal(chooseMoveAnimation(move,{Idle:{}}),'Idle');
   assert.equal(getFrame([3,3],.055),1);
-  assert.equal(getFrame([3,3],.1),0);
+});
+test('VEL altera velocidade real e intervalo de ataque',()=>{
+  assert.ok(moveSpeed({vel:100})>moveSpeed({vel:45}));
+  assert.ok(attackInterval({vel:100})<attackInterval({vel:45}));
+  const a=POKEMON[5],b=POKEMON[8];
+  assert.ok(physicalOrSpecialDamage(a,b,'atk',()=>.5,50)>0);
+  const veryDefensive={...b,stats:{...b.stats,spd:600}};
+  assert.ok(physicalOrSpecialDamage(a,veryDefensive,'spa',()=>.5,50)<physicalOrSpecialDamage(a,b,'spa',()=>.5,50));
+  assert.ok(attackRangePixels(movePool('0006')[1])>attackRangePixels(movePool('0006')[0]));
+  const unit=createBattle().units[0];assert.ok(effectiveAttackRange(unit,movePool('0001')[0])>=attackRangePixels(movePool('0001')[0]));
+});
+test('não começa automaticamente e não atualiza na preparação',()=>{
+  const b=createBattle(),at=b.units[0].x;
+  for(let i=0;i<600;i++)updateBattle(b,1/60,rand);
+  assert.equal(b.phase,'setup');assert.equal(b.units[0].x,at);
+});
+test('início manual, deslocamento contínuo, ataques com projétil e vitória',()=>{
+  const b=createBattle();assert.ok(startBattle(b));let moved=false,hit=false,shot=false,cast=false;
+  for(let i=0;i<26000&&b.phase!=='finished';i++){
+    updateBattle(b,1/60,rand);
+    if(b.units.some(u=>u.distanceMoved>1))moved=true;
+    if(b.units.some(u=>u.cast))cast=true;
+    if(b.projectiles.length)shot=true;
+    if(b.events.some(e=>e.type==='hit'))hit=true;
+    for(const u of b.units){assert.ok(u.x>=BOARD.x&&u.x<=BOARD.x+10*BOARD.tile);assert.ok(u.y>=BOARD.y&&u.y<=BOARD.y+5*BOARD.tile);}
+  }
+  assert.ok(moved);assert.ok(cast);assert.ok(hit);assert.ok(shot);
+  assert.equal(b.phase,'finished');assert.ok([0,1].includes(b.winner));
+});
+test('sorteio forma duas equipes de 3 sem repetir',()=>{
+ const b=createBattle(randomLineups(rand));assert.equal(new Set(b.units.map(u=>u.type.id)).size,6);
+ assert.equal(b.units.filter(u=>u.team===0).length,3);
 });

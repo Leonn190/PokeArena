@@ -15,7 +15,7 @@ const SPRITES = {
 const mk = (id, name, group, type, color, hp, atk, spa, def, spd, vel) => ({
   id, number: Number(id), name, group, type, color,
   stats: {vida:hp, atk, spa, def, spd, vel},
-  sprites: Object.fromEntries(Object.entries(SPRITES[id]).map(([key,[width,height,durations]]) => [key,{width,height,durations}]))
+  sprites: Object.fromEntries(Object.entries(SPRITES[id]).map(([key,[width,height,durations]]) => [key,{width,height,durations,hitFrame:Math.floor(durations.length*.55),asset:key}]))
 });
 export const POKEMON = [
   mk('0001','Bulbasaur','Bulbasaur','Grama','#75d8a9',45,49,65,49,65,45),
@@ -47,4 +47,13 @@ export function getFrame(durations, seconds, loop=true) {
   ticks = loop ? ticks % total : Math.min(ticks,total-1);
   for(let i=0;i<durations.length;i++) { if (ticks<durations[i])return i; ticks-=durations[i]; }
   return durations.length-1;
+}
+
+// A construção do jogo lê AnimData.xml de cada espécie, e o cliente mescla os
+// metadados verificados e aliases CopyOf no carregamento dos sprites.
+export function applySpriteManifest(manifest){
+  for(const p of POKEMON){
+    const anims=manifest?.pokemon?.[p.id];
+    if(anims&&Object.keys(anims).length)p.sprites={...p.sprites,...anims};
+  }
 }

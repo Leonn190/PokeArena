@@ -1,82 +1,68 @@
-# Pokémon Arena — Kanto Auto Battle (v0.2)
+# Pokémon Arena Kanto — V3 (protótipo 2D)
 
-Protótipo **Astro + JavaScript + Canvas 2D** de auto-battle 3 contra 3, totalmente visto de cima. Dois tabuleiros de 8×4 quadrados (azul em cima, vermelho embaixo) se unem em um de 8×8 no início da luta. Não há servidor nem banco de dados.
+Reescrita da V2 em **Astro + Canvas 2D + JavaScript**, preservando os **nove Pokémon disponíveis no ZIP original**: Bulbasaur, Ivysaur, Venusaur, Charmander, Charmeleon, Charizard, Squirtle, Wartortle e Blastoise.
 
-## O que existe na v0.2
+## Instalar e jogar no Windows
 
-- **Nove Pokémon de Kanto disponíveis:** Bulbasaur, Ivysaur, Venusaur, Charmander, Charmeleon, Charizard, Squirtle, Wartortle e Blastoise.
-- **Dois times, com até três Pokémon em cada**, selecionados e posicionados nos quadrados das respectivas metades.
-- **Autoplay:** a luta começa sozinha após alguns segundos se você não interagir; ou clique **COMEÇAR AGORA**. A tela de preparação permite trocar posições/escolher espécies.
-- **Seis atributos para cada espécie:** VIDA, ATK, SPA, DEF, SPD, VEL. São os stats base da espécie (sem IVs, EVs nem níveis). HP de batalha = `60 + 2 × VIDA`.
-- **Combate:** deslocamento aleatório guiado por proximidade de adversários, tiro de projéteis, ataque físico usando ATK contra DEF, ou ataque especial usando SPA contra SPD. VEL modifica ritmo de movimento e ataques. A luta termina quando todos os Pokémon de um dos times forem derrotados.
-- **Sprites PMD:** arquivos de Idle, Walk, Attack e Hurt separados por Pokémon; 8 orientações incluindo cima/baixo/esquerda/direita. A orientação correta no formato PMD é **2 = esquerda** e **6 = direita**.
-- Barra de HP por lutador, vencedor, log e tela de ficha dos atributos.
-- **SORTEAR EQUIPES** cria dois times aleatórios sem repetir Pokémon entre eles; **PREPARAR** volta para edição.
-
-### Como montar equipes
-
-1. Na lateral, escolha **AZUL** (cima) ou **VERMELHO** (baixo).
-2. Clique em qualquer um dos nove Pokémon para selecioná-lo.
-3. Clique no quadrado da sua metade onde deseja colocá-lo. Um quadrado ocupado é substituído se você escolher outra espécie.
-4. Para remover, clique novamente no Pokémon do mesmo quadrado, ou use botão direito nele. Para mover um Pokémon existente, escolha-o e clique em outro quadrado da mesma metade.
-5. Para lutar, clique em **COMEÇAR AGORA**. Se não fizer nada, uma batalha de demonstração começa automaticamente em ~3,6 segundos.
-
-Máximo de 3 por equipe. Uma espécie não pode se repetir **dentro do mesmo time**; na opção de sorteio, também não se repete entre os times.
-
-## Publicar no GitHub Pages (sem instalar nada)
-
-1. **Extraia este ZIP.** No GitHub crie um repositório público, por exemplo `Pokemon-Arena`.
-2. Envie **todos os arquivos e pastas extraídos diretamente na raiz do repositório** usando **Add file > Upload files**. Inclua `.github/workflows/deploy.yml` (a pasta `.github` pode estar oculta no Windows).
-3. Faça o commit na branch **main**.
-4. Em **Settings > Pages > Build and deployment**, selecione **Source: GitHub Actions**.
-5. Na aba **Actions** aguarde a execução do workflow **Publicar Arena no GitHub Pages**. Se for a primeira configuração de Pages e a execução anterior falhou, clique em **Run workflow** para executar novamente.
-6. Abra `https://SEU_USUARIO.github.io/NOME_DO_REPOSITORIO/`.
-
-**A configuração Astro ajusta automaticamente `base`** no GitHub Actions, mesmo em repositórios com outros nomes. Se seu repositório for `seuusuario.github.io`, a página será publicada na raiz.
-
-O workflow usa **Node 22**, instala o Astro, baixa os PNGs do PMDCollab para `public/sprites/` e publica a pasta `dist/` no Pages. Os sprites passam a ser servidos como arquivos locais no site publicado. Os PNGs não foram incluídos no ZIP para não duplicar o acervo de terceiros; por isso, o build precisa de conexão com o GitHub na primeira instalação. Se os sprites não puderem ser baixados, o GitHub Actions falha visivelmente em vez de publicar arquivos incompletos.
-
-## Rodar no computador
-
-Instale **Node.js 20+** e execute:
+1. Extraia **todo o ZIP** numa pasta (não abra os arquivos dentro do ZIP).
+2. Instale o Node.js 20+ (preferencialmente **22**).
+3. Dê duplo clique em **INICIAR_JOGO.bat** ou abra um terminal na pasta e rode:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abra `http://localhost:4321/`.
+4. Entre em **http://localhost:4321/**.
 
-```bash
-npm run build     # Gera o site estático na pasta dist
-npm run preview   # Abre o site compilado
-npm test          # Executa testes de lógica
-```
+**A primeira execução precisa de internet para baixar os PNGs/animações do PMDCollab.** Se a conexão ao repositório falhar, o jogo ainda abre e funciona com desenhos substitutos, mas sem os sprites reais. O script guarda as imagens localmente na pasta `public/sprites`, para não ter que baixar tudo novamente.
 
-Se o download dos PNGs falhar localmente, o jogo usa placeholders simples ou tenta os URLs remotos. O combate funciona mesmo sem os sprites; porém, no GitHub Actions, o deploy exige que estejam presentes.
+## Mudanças da v3
 
-## Estrutura
+- **Mapa único com 10 colunas e 5 linhas** (10×5), gramado verde, arbustos e árvores decorativas estilo pixel-art. O centro da arena não é uma parede: os indicadores de times aparecem **somente na preparação**.
+- O time **azul começa à esquerda** e o **vermelho à direita**, três Pokémon por equipe. Cada Pokémon é um objeto posicionado em **coordenadas contínuas**; a grade só serve como escala espacial do mundo e área de preparação.
+- **Arraste** os Pokémon do catálogo para a metade desejada; **arraste os já colocados** para novas posições (inclusive com precisão fracionária). Clicar em um Pokémon o seleciona; clicar numa posição vazia adiciona o Pokémon selecionado; botão direito remove. Para touchscreen, use arrastar; teclado aceita as setas e Enter no canvas.
+- **Batalha iniciada exclusivamente pelo jogador**: não existe contagem regressiva nem autoplay. Botões **INICIAR BATALHA**, **PREPARAR** e **SORTEAR EQUIPES**.
+- **Movimento real com pixels/segundo**, direção e sprites Walk/Idle; separação de corpos, limites da arena e perseguição/afastamento em função dos alcances dos golpes.
+- **Velocidade (VEL)** determina tanto pixels/s de caminhada quanto **intervalo entre ataques**; ATK/SPA e DEF/SPD influenciam os danos físico/especial. O alcance é calculado a partir das **bordas dos corpos**, usando raio aproximado baseado na largura do sprite `Idle`. Golpes de contato recebem apenas um pequeno ajuste pelo tamanho do frame de ataque; não é considerada toda a área transparente da spritesheet (evita golpes corpo-a-corpo à distância).
+- Cada espécie tem **8 golpes cadastrados**: 2 equipados + 6 na reserva de possibilidades. Cada golpe possui categoria (`atk`/`spa`), dano-base, alcance em células e prioridade de animações. Durante a preparação, selecione um slot e clique num golpe de reserva para testar outra dupla. **Sorteio/drop de golpes após combate ainda não foi implementado**: os seis de reserva são a futura pool de drops.
+- **Animações PMDCollab verificadas em tempo de preparação**: o script lê `AnimData.xml` de cada Pokémon e descobre as animações existentes, dimensões, durações, `CopyOf` e `HitFrame`. Só baixa PNGs presentes no XML. No combate, cada golpe busca sua lista ordenada de animações: `Slash`, `Scratch`, `Shoot`, `SpAttack`, etc. Se a espécie não possuir a preferida, usa a próxima; último recurso **Attack**, depois **Idle**. O frame de impacto orienta quando o dano ou projétil sai.
+- Projéteis de ataques à distância seguem os alvos; ataques corpo-a-corpo testam o alcance no instante do impacto. Há efeitos visuais por ataque, texto de dano, HP e vencedor.
+
+## Estrutura do projeto
 
 ```text
-src/pages/index.astro       Interface Astro
+src/pages/index.astro       Layout do jogo
 src/styles/global.css       Estilo e responsividade
-src/scripts/pokemon.mjs     Elenco, seis atributos, direção PMD, metadados de sprites
-src/scripts/battle.mjs      Regras do tabuleiro e simulador de combate
-src/scripts/arena.js        Renderização Canvas 2D e interação
-scripts/prepare-sprites.mjs Download dos PNGs oficiais/comunitários PMD
-.github/workflows/deploy.yml Deploy automático pelo GitHub Actions
-tests/battle.test.mjs       Testes de regras e animações
-astro.config.mjs            Ajuste automático de URL/base de GitHub Pages
+src/scripts/arena.js        Canvas, sprites, controles, mapa e interface
+src/scripts/battle.mjs      Física, IA, golpes, projéteis, posicionamento e HP
+src/scripts/moves.mjs       8 movimentos / espécie, alcance, dano e animações
+src/scripts/pokemon.mjs     9 espécies e atributos, metadados de fallback
+scripts/prepare-sprites.mjs Lê XML e baixa sprites existentes, gera manifest.json
+public/sprites/             Gerada automaticamente na primeira execução
+tests/battle.test.mjs       Testes de lógica independentes do browser
+INICIAR_JOGO.bat            Inicializador Windows
+.github/workflows/deploy.yml Publicação no GitHub Pages
 ```
 
-## Limitações atuais
+## Comandos
 
-É um protótipo de combate, não o sistema inteiro do TFT: não há tipos, vantagens elementais, habilidades, itens, custo de unidades, ouro, estrelas, experiência, sinergias, som ou multiplayer. As decisões de movimentação e ataque são aleatórias com preferência por inimigos próximos; elas não fazem planejamento estratégico avançado. Não há seleção manual do alvo durante o combate.
+```bash
+npm test         # 9 testes de combate e formação
+npm run dev      # prepara sprites e inicia modo desenvolvimento
+npm run build    # prepara sprites e gera site estático em dist/
+npm run preview  # mostra a compilação estática
+```
 
-## Créditos / direitos
+**Atenção:** o campo possui *10×5*, mas não há movimento discreto entre quadrados. O movimento é contínuo, com velocidade em pixels/s.
 
-Sprites do [PMD Sprite Repository / SpriteCollab](https://sprites.pmdcollab.org/) e seus artistas. Confira a atribuição dos artistas de cada espécie e a política de uso do projeto antes de publicar. Sprites criados pelos artistas não são automaticamente de uso livre: o SpriteCollab usa condições de atribuição e **uso não comercial**. Pokémon e seus personagens pertencem aos respectivos titulares; este é um protótipo **não comercial**, não oficial nem afiliado à Nintendo, GAME FREAK, Creatures ou The Pokémon Company.
+## Limites deste protótipo
 
-- Repositório: https://github.com/PMDCollab/SpriteCollab
-- Licença/termos: https://github.com/PMDCollab/SpriteCollab/blob/master/LICENSE.md
-- Site: https://sprites.pmdcollab.org/
+- Apenas os **nove Pokémon que já estavam no ZIP V2**. Não foram incluídos os ~100 Pokémon de listas externas ao arquivo, pois não constam do projeto recebido.
+- O sistema ainda não inclui vantagem de tipos, itens, evolução, tiers, economia, IA estratégica complexa, loja, drops aleatórios ou multiplayer.
+- A posição de impacto dos sprites é aproximada pelo `HitFrame` e pelos raios do corpo, não por leitura de pixels das mãos/efeitos nem pelos arquivos de offsets. Essa é uma aproximação visual/física inicial, passível de refinamento.
+- Quando a internet está indisponível e `AnimData.xml` não está em cache, usam-se as quatro animações antigas como metadados de fallback. Para testar animações especiais de cada golpe, execute com internet.
+
+## Direitos e atribuição
+
+Sprites coletados do **[PMDCollab SpriteCollab](https://sprites.pmdcollab.org/)**, projeto de artistas da comunidade. **CC BY-NC 4.0 (atribuição, uso não comercial)** para contribuições da comunidade; verifique atribuição e licença específicas antes de uma eventual publicação. Pokémon pertence a seus respectivos titulares; este protótipo de fãs não é oficial e não está associado à Nintendo/Game Freak/Creatures/The Pokémon Company.
