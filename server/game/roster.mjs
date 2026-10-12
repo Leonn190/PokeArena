@@ -1,10 +1,11 @@
 import { RULES, fieldLimitForBattle, interestForGold, shopOddsForBattle } from './rules.mjs';
 import { BY_ID, SHOP_POKEMON, FUSION_COSTS, EVOLUTION_OPTIONS } from './pokemon.mjs';
+import {calculateCompass, speciesCompassWeight, weightedSpeciesPick,ALL_TYPES} from './compass.mjs';
+import {newTerrain,STRUCTURES} from './terrain.mjs';
 
 // Todas as operações de partida são síncronas e executadas em memória.
 // match.pool representa somente cópias LIVRES; ofertas possuem reservas próprias.
 const RARITIES = Object.keys(RULES.rarityPrice);
-const choose = (array, random) => array[Math.min(array.length - 1, Math.floor(random() * array.length))];
 const purchasedCopies = unit => unit.provenance || [{speciesId:unit.speciesId, cost:unit.purchaseCost ?? BY_ID[unit.speciesId]?.price ?? 0}];
 const ownedUnits = participant => [...participant.board, ...participant.bench.filter(Boolean)];
 const soldValue = unit => Math.max(0, purchasedCopies(unit).reduce((sum, part) => sum + part.cost, 0) - (unit.evolutionSteps || 0));
@@ -15,7 +16,8 @@ export function createParticipant({id,name,isBot}) {
     id,name,isBot,hp:RULES.startingHp,gold:RULES.startingGold,
     bench:Array(RULES.bankSlots).fill(null),board:[],shop:Array(RULES.shopSlots).fill(null),
     shopKinds:Array(RULES.shopSlots).fill(null),
-    shopLocked:false,items:[],structures:[],fieldEffects:[],eliminated:false,
+    shopLocked:false,items:[],structures:[],structureInventory:[],terrain:newTerrain(),
+    compass:Object.fromEntries(ALL_TYPES.map(type=>[type,0])),eliminated:false,
     unitInventory:[],reservedOffers:Array(RULES.shopSlots).fill(null)
   };
 }
@@ -67,7 +69,8 @@ function rollSpecies(match,participant,random) {
   const total=tiers.reduce((sum,t)=>sum+t.weight,0);
   let roll=random()*total;
   const tier=tiers.find(t => (roll-=t.weight)<0) || tiers[tiers.length-1];
-  return choose(tier.species,random).id;
+  participant.compass=calculateCompass(participant);
+  return weightedSpeciesPick(tier.species,participant.compass,random)?.id||null;
 }
 function kindForSlot(slot,random) {
   if(slot>=RULES.flexibleShopSlots)return 'pokemon';
@@ -83,7 +86,13 @@ export function refreshLocalShop(match,participant,random=Math.random,paid=false
   for(let i=0;i<RULES.shopSlots;i++) {
     const kind=kindForSlot(i,random);
     participant.shopKinds[i]=kind;
-    // Itens e estruturas só serão ofertados quando houver catálogos e ações próprios.
+    // Itens continuam reservados à etapa 10; estruturas têm catálogo real na etapa 09.
+    if(kind==='estrutura') {
+      const weighted=STRUCTURES.map(s=>({s,weight:s.rarity==='comum'?65:s.rarity==='rara'?27:8}));
+      let pick=random()*weighted.reduce((sum,x)=>sum+x.weight,0);
+      participant.shop[i]=(weighted.find(x=>(pick-=x.weight)<0)||weighted.at(-1)).s.id;
+      continue;
+    }
     if(kind!=='pokemon')continue;
     const id=rollSpecies(match,participant,random);
     if(!id)continue;
@@ -105,20 +114,9 @@ function chooseEvolution(unit,participant,random) {
   const options=EVOLUTION_OPTIONS[unit.speciesId] || [];
   if(!options.length)return null;
   if(options.length===1)return options[0];
-  // Fórmula ponderada PROVISÓRIA: +5 por tipo em campo, +2 no banco,
-  // dividir entre tipos duplos, pesos 1 + min(influência/15, 3).
-  const influence={};
-  for(const ally of ownedUnits(participant)) {
-    const p=BY_ID[ally.speciesId];
-    if(!p)continue;
-    const add=(participant.board.includes(ally)?5:2)/Math.max(1,p.types.length);
-    for(const type of p.types)influence[type]=(influence[type]||0)+add;
-  }
-  const weighted=options.map(id => {
-    const p=BY_ID[id];
-    const score=p?.types?.reduce((sum,type)=>sum+(influence[type]||0),0)/Math.max(1,p?.types?.length||1) || 0;
-    return {id,weight:1+Math.min(3,Math.max(0,score)/15)};
-  });
+  const influence=calculateCompass(participant);
+  const weighted=options.map(id=>({id,weight:speciesCompassWeight(BY_ID[id],influence)}));
+  participant.compass=influence;
   let pick=random()*weighted.reduce((sum,item)=>sum+item.weight,0);
   return (weighted.find(item=>(pick-=item.weight)<0)||weighted.at(-1)).id;
 }
@@ -167,6 +165,7 @@ export function fuseLocalUnits(match,participant,random=Math.random) {
     keeper.items=collected.slice(0,RULES.maxEquippedItems);
     participant.items.push(...collected.slice(RULES.maxEquippedItems));
     count++;
+    participant.compass=calculateCompass(participant);
     match.revision++;
   }
   return count;
@@ -223,6 +222,7 @@ export function purchaseLocalOffer(match,participant,index,random=Math.random) {
       if(free>=0)participant.bench[free]=extra;
     }
   }
+  participant.compass=calculateCompass(participant);
   match.revision++;
   return ownedUnits(participant).find(u=>u.provenance?.includes(part)) || unit;
 }
@@ -232,6 +232,7 @@ export function sellLocalUnit(match,participant,unit) {
   participant.gold+=soldValue(unit);
   participant.items.push(...(unit.items||[]));
   for(const part of purchasedCopies(unit))returnToPool(match,part.speciesId);
+  participant.compass=calculateCompass(participant);
   match.revision++;
   return true;
 }

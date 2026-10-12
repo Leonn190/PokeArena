@@ -58,7 +58,14 @@ const base = import.meta.env.BASE_URL;
       <div class="match-panel-heading"><div><b>Participantes</b><small id="observed-label">Sua arena</small></div><small id="match-id-label">Offline</small></div>
       <div id="match-players" class="match-players"></div>
       <button id="back-own-arena" class="back-own-arena" type="button" hidden>Voltar à minha arena</button>
-      <p class="match-pending" id="match-panel-note">Economia e bots locais com estoque compartilhado. Itens e estruturas serão implementados nas etapas 9 e 10.</p>
+      <p class="match-pending" id="match-panel-note">Partida local com estoque, bússola e terreno. Itens chegam na etapa 10.</p>
+    </aside>
+
+    <aside id="environment-panel" class="environment-panel" hidden aria-label="Bússola e efeitos do campo">
+      <div class="environment-title">Bússola <small>18 tipos</small></div>
+      <div id="compass-list" class="compass-list"></div>
+      <div class="environment-title">Efeitos de estruturas <small id="capacity-label">0/8</small></div>
+      <div id="environment-effects" class="environment-effects"></div>
     </aside>
 
     <section class="side-hud collapsed" id="detail-panel" aria-label="Ficha do Pokémon selecionado">
@@ -84,12 +91,21 @@ const base = import.meta.env.BASE_URL;
 
     <section class="bottom-hud" aria-label="Loja">
       <div class="shop-meta">
-        <b>Loja</b>
+        <b id="shop-title">Loja</b>
+        <button id="tab-pokemon" class="game-tab selected" type="button" aria-pressed="true">Pokémon</button>
+        <button id="tab-terrain" class="game-tab" type="button" aria-pressed="false">Terreno</button>
         <small id="shop-mode-note">Pool compartilhado · Pokémon</small>
+        <button id="remove-placed" type="button" hidden>Remover do campo</button>
+        <button id="discard-structure" type="button" hidden title="Descarta uma estrutura do inventário sem reembolso">Descartar −1</button>
         <button id="reroll-shop" type="button">Reroll 2</button>
         <button id="lock-shop" type="button" aria-pressed="false" hidden>🔓 Travar</button>
       </div>
       <div id="shop-rarity-odds" class="shop-rarity-odds" hidden aria-label="Chances de raridade da rodada"></div>
+      <div id="terrain-pane" class="terrain-pane" hidden aria-label="Ferramentas de terrenos e seis pilhas de estruturas">
+        <div class="terrain-tools" id="terrain-tools"></div>
+        <div class="structure-inventory" id="structure-inventory"></div>
+        <small id="terrain-note">Pinte seu campo gratuitamente · arraste para pintar · Shift: pincel 3×3 · use “Remover do campo” e clique numa estrutura para devolvê-la</small>
+      </div>
       <div id="shop-slots" class="shop-slots" aria-label="Loja de 6 slots. Arraste um Pokémon do mapa para um slot da loja para vender."></div>
     </section>
 

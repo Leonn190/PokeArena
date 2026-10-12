@@ -1,7 +1,0 @@
-PokeArena - Relatorio de sprites PMDCollab
-Pedidos: 215
-Com pelo menos uma animacao: 213
-Sem animacao: 2
-
-0950: AnimData.xml nao disponivel
-0558: AnimData.xml nao disponivel

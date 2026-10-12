@@ -12,7 +12,7 @@ export function createSpriteRenderer(ctx, getImageMeta) {
     const key = `${p.id}:${action}:${frame}:${direction}`;
     if(frameBounds.has(key)) return frameBounds.get(key);
     const {image,meta}=getImageMeta(p,action);
-    if(!image?.naturalWidth||!meta) return null;
+    if(!image?.naturalWidth||!meta||!meta.width||!meta.height||frame>=Math.floor(image.naturalWidth/meta.width)) return null;
     const directions=Math.floor(image.naturalHeight/meta.height);
     const dir=directions===8?direction:0;
     const w=meta.width,h=meta.height;
@@ -59,9 +59,13 @@ export function createSpriteRenderer(ctx, getImageMeta) {
   }
   function drawUnitSprite(type,x,y,stateName,facing,stateTime,castElapsed=0,cast=null) {
     const {image,meta}=getImageMeta(type,stateName);
-    if(image?.naturalWidth&&meta){
+    if(image?.naturalWidth&&meta&&meta.width>0&&meta.height>0&&image.naturalWidth>=meta.width&&image.naturalHeight>=meta.height){
       const direction=Math.floor(image.naturalHeight/meta.height)===8?facing:0;
-      const frame=getFrame(meta.durations,cast?castElapsed:stateTime,!cast&&stateName!=='Hurt');
+      const declared=getFrame(meta.durations,cast?castElapsed:stateTime,!cast&&stateName!=='Hurt');
+      // Validar dimensões reais da folha: metadados incompatíveis jamais
+      // recortam o frame vizinho e o exibem como outro Pokémon.
+      const columns=Math.floor(image.naturalWidth/meta.width);
+      const frame=clamp(declared,0,Math.max(0,columns-1));
       const bounds=visibleFrameBounds(type,stateName,frame,direction)||visibleFrameBounds(type,'Idle',0,direction);
       const scale=unitScale(type),footY=y+7;
       ctx.imageSmoothingEnabled=false;

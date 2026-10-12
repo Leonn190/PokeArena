@@ -291,3 +291,35 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   .shop-rarity-odds span{font-size:7px;padding:2px 3px}
   .shop-card .shop-rarity{font-size:7px;padding:2px}
 }
+
+/* Etapas 08–09: bússola, terreno pintável e inventário de estruturas. */
+.environment-panel{position:absolute;z-index:3;left:12px;top:82px;width:216px;max-height:calc(100dvh - 268px);overflow-y:auto;padding:10px;border-radius:9px;border:1px solid #b1ce8a66;background:linear-gradient(#173021f2,#0e2519ed);box-shadow:0 12px 32px #0006;font-size:11px}
+.environment-title{display:flex;align-items:center;justify-content:space-between;color:#ffe394;font-weight:950;margin:5px 0 7px}
+.environment-title small{color:#c5dbb0;font-size:10px}
+.compass-list{display:grid;grid-template-columns:1fr 1fr;gap:3px 7px;margin-bottom:11px}
+.compass-entry{display:flex;justify-content:space-between;gap:3px;padding:3px 4px;background:#10281dbb;border-radius:4px;color:#dce8cf}
+.compass-entry b{color:#ffdf83;font-variant-numeric:tabular-nums}
+.environment-effects{display:grid;gap:4px}
+.environment-effects div{padding:5px;background:#183827;border:1px solid #cedcab2f;border-radius:5px;line-height:1.45}
+.environment-effects small{display:block;color:#abc49d}
+.game-shell[data-mode="local"] .side-hud{left:242px;right:auto;max-height:calc(100dvh - 268px)}
+.game-tab{border:1px solid #dae4bd55!important;min-height:26px!important}
+.game-tab.selected{color:#ffe17c;background:#375037!important;border-color:#ffe17c!important}
+.terrain-pane{grid-column:2;display:grid;grid-template-rows:auto auto auto;align-content:center;gap:5px;min-width:0}
+.terrain-tools,.structure-inventory{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+.terrain-tool,.structure-slot{min-width:0;min-height:34px;display:grid;place-items:center;padding:3px;border-radius:5px;border:1px solid #d6e5bd44;background:#22412d;color:#f2f9e8;text-align:center;font-size:10px;font-weight:900;line-height:1.2}
+.terrain-tool small,.structure-slot small{font-size:8px;color:#ccdac2}
+.terrain-tool.selected,.structure-slot.selected{outline:2px solid #ffe17c;outline-offset:-2px;border-color:#ffe17c}
+.terrain-tool .swatch{width:14px;height:12px;border-radius:3px;border:1px solid #ffffff77}
+.structure-inventory{grid-template-columns:repeat(6,minmax(0,1fr))}
+.structure-slot{min-height:37px;position:relative}
+.structure-slot .stack-count{position:absolute;right:2px;top:0;color:#ffe586;font-size:10px}
+#terrain-note{font-size:9px;color:#b9d3a6}
+.bottom-hud.terrain-active .shop-rarity-odds,.bottom-hud.terrain-active .shop-slots{display:none}
+.bottom-hud.terrain-active .terrain-pane{display:grid}
+@media(max-width:920px){.environment-panel{width:160px;left:7px;font-size:10px}.game-shell[data-mode="local"] .side-hud{left:172px;max-width:230px}.compass-list{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.environment-panel{max-height:25dvh;top:60px;width:145px}.game-shell[data-mode="local"] .side-hud{left:7px;top:calc(25dvh + 68px);max-height:25dvh;width:200px}.terrain-tools{grid-template-columns:repeat(5,1fr)}.terrain-tool,.structure-slot{min-height:29px;font-size:9px}.structure-inventory{grid-template-columns:repeat(6,1fr)}#terrain-note{font-size:8px}}
+
+#remove-placed.selected{background:#64512c;color:#fff0b1;border-color:#ffe28b}
+.structure-symbol{font-size:34px;line-height:1;color:#dfdfb4;text-shadow:0 2px 12px #141e19}
+.structure-offer .shop-rarity{color:#d0eee2}

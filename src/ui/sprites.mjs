@@ -40,13 +40,23 @@ export function createSpriteCache(base, onImageReady = () => {}) {
     for(const p of POKEMON.filter(p => ['0001','0004','0007'].includes(p.id))) warmPokemon(p);
     onLoaded();
   }
+  const cleanOnly=new Set(['0702','0131','0582']);
   function getImageMeta(p, stateName) {
-    const meta = p.sprites[stateName] || p.sprites.Idle;
-    if (!p.sprites[stateName]) void loadImage(p,'Idle');
-    const action = meta?.asset || stateName;
-    const image = images.get(`${p.id}:${action}`) || images.get(`${p.id}:Idle`);
-    if(!image && p.spriteAvailable) void loadImage(p,action);
-    return {image,meta};
+    // Certas folhas de golpes incluem efeitos em redor da criatura. O visual
+    // desses três Pokémon usa uma folha limpa, sem mudar seu ataque real.
+    const visualAction=cleanOnly.has(p.id)&&!['Idle','Walk','Hurt'].includes(stateName)
+      ? (p.sprites.Walk?'Walk':'Idle') : stateName;
+    const desired=p.sprites[visualAction] || p.sprites.Idle;
+    const action=desired?.asset || visualAction;
+    const image=images.get(`${p.id}:${action}`);
+    if(!image&&p.spriteAvailable)void loadImage(p,action);
+    if(image)return {image,meta:desired};
+    // Nunca combinar imagem Idle com dimensões/durações de Attack/Walk/Shoot:
+    // isso fazia um quadro cortar frames adjacentes, criando sprites "extras".
+    const idle=p.sprites.Idle;
+    const idleImage=images.get(`${p.id}:${idle?.asset||'Idle'}`);
+    if(!idleImage&&p.spriteAvailable)void loadImage(p,idle?.asset||'Idle');
+    return {image:idleImage||null,meta:idle};
   }
   function drawSmallSprite(dest, p, direction = 0) {
     if(!dest||!p) return;

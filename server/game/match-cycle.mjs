@@ -104,6 +104,9 @@ export function startCombatPhase(match, nowSeconds = 0) {
     const battle = createBattle([
       clampField(left, match.round).map(unit => toCombatEntry(unit, 0)),
       clampField(right, match.round).map(unit => toCombatEntry(unit, 1))
+    ], [
+      {terrain:left.terrain,structures:left.structures},
+      {terrain:right.terrain,structures:right.structures}
     ]);
     startBattle(battle);
     return { ...pairing, status:'running', battle, result:null };

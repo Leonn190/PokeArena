@@ -3,6 +3,8 @@
 import { BY_ID, FUSION_COSTS } from './pokemon.mjs';
 import { RULES, fieldLimitForBattle } from './rules.mjs';
 import { purchaseLocalOffer, refreshLocalShop, sellLocalUnit } from './roster.mjs';
+import { buyStructure, placeStructure, paintTerrain } from './terrain.mjs';
+import {calculateCompass} from './compass.mjs';
 
 const owned = player => [...player.board, ...player.bench.filter(Boolean)];
 const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
@@ -116,8 +118,22 @@ export function prepareLocalBots(match,random=Math.random) {
       if(!refreshLocalShop(match,bot,random,true))break;
       rerolls++;
     }
+    // Mesmas operações de estrutura/terreno que o jogador; sem objetos grátis.
+    if(bot.gold>=5 && bot.structures.length<3){
+      const index=bot.shop.findIndex((id,i)=>i<2 && bot.shopKinds[i]==='estrutura');
+      if(index>=0)buyStructure(match,bot,index);
+    }
+    const toPlace=bot.structureInventory?.[0];
+    if(toPlace){
+      const positions=[[1,1],[6,2],[3,3],[7,0],[0,4]];
+      for(const [col,row] of positions)if(placeStructure(match,bot,toPlace.id,col,row))break;
+    }
+    // Uma área temática limitada, com as mesmas ferramentas de pintura gratuitas.
+    const theme=style==='front'?'rochoso':style==='back'?'grama':style==='evolution'?'rosa':'terra';
+    for(let col=0;col<4;col++)for(let row=0;row<2;row++)paintTerrain(match,bot,col,row,theme);
     // Formação alterada só em preparação; sem teletransporte ou manipulação durante duelos.
     reorganizeBot(bot,match.round,style);
+    bot.compass=calculateCompass(bot);
     match.revision++;
   }
 }

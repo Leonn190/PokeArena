@@ -1,6 +1,7 @@
 import { BY_ID, getDirection } from './pokemon.mjs';
 import { MOVES_BY_ID, initialLoadout, chooseMoveAnimation } from './moves.mjs';
 import { chooseCombatTarget, chooseCombatAttack } from './ai.mjs';
+import {combatTerrainAt,terrainModifiers,structureModifiers} from './terrain.mjs';
 
 export const BOARD = Object.freeze({
   columns: 10,
@@ -84,9 +85,9 @@ export function typeMultiplier(attackType, defendingTypes) {
 export function physicalOrSpecialDamage(attacker, defender, kind, random = Math.random, baseDamage = 30, attackType = 'Normal') {
   const a = attacker.stats[kind === 'atk' ? 'atk' : 'spa'];
   const d = defender.stats[kind === 'atk' ? 'def' : 'spd'];
-  const multiplier = typeMultiplier(attackType, defender.type.types);
+  const multiplier = typeMultiplier(attackType, defender.type.types) * (1+(attacker.environmentMods?.damage||0));
   if (multiplier === 0) return 0;
-  return Math.max(1, Math.round(baseDamage * (.62 + a / 105) * (100 / (80 + d)) * multiplier * (.92 + random() * .16)));
+  return Math.max(1, Math.round(baseDamage * (.62 + a / 105) * (100 / (80 + d * (1+(defender.terrainMods?.def||0)))) * multiplier * (.92 + random() * .16)));
 }
 export function normalizeEntry(entry, team) {
   const speciesId = entry.speciesId ?? entry.id;
@@ -108,17 +109,26 @@ export function normalizeEntry(entry, team) {
     slots: 2
   };
 }
-function makeUnits(lineups) {
+function makeUnits(lineups,environment=[{},{}]) {
   let order = 0;
   return lineups.flatMap((list, team) => list.map(entry => {
     const type = BY_ID[entry.speciesId];
-    const stats = effectiveUnitStats(type,entry);
+    const rawStats = effectiveUnitStats(type,entry);
+    const stats = {...rawStats};
+    const start={type,x:entry.x,y:entry.y};
+    const structures=structureModifiers(environment,start);
+    for(const stat of ['vida','atk','def','spa','spd','vel']) {
+      if(structures[stat])stats[stat]=Math.round(stats[stat]*(1+structures[stat]));
+    }
     const hp = maxHealth(stats);
     return {
       uid: entry.instanceId,
       team,
       type,
       stats,
+      baseStats:rawStats,
+      environmentMods:structures,
+      terrainMods:{},
       iv: entry.iv,
       slots: entry.slots,
       activeMoves: entry.activeMoves.slice(0, entry.slots),
@@ -142,14 +152,14 @@ function makeUnits(lineups) {
     };
   }));
 }
-export function createBattle(lineups = [[], []]) {
+export function createBattle(lineups = [[], []],environment=[{},{}]) {
   const clean = lineups.map((list, team) => list.map(entry => normalizeEntry(entry, team)));
-  return { phase:'setup', paused:false, elapsed:0, winner:null, lineups:clean, units:makeUnits(clean), projectiles:[], effects:[], floaters:[], events:[], kills:[0,0] };
+  return { phase:'setup', paused:false, elapsed:0, winner:null, environment, lineups:clean, units:makeUnits(clean,environment), projectiles:[], effects:[], floaters:[], events:[], kills:[0,0] };
 }
 export function syncLineups(b, lineups) {
   if (b.phase !== 'setup') return false;
   b.lineups = lineups.map((list, team) => list.map(entry => normalizeEntry(entry, team)));
-  b.units = makeUnits(b.lineups);
+  b.units = makeUnits(b.lineups,b.environment);
   return true;
 }
 export function startBattle(b) {
@@ -162,7 +172,7 @@ export function startBattle(b) {
   b.projectiles = [];
   b.effects = [];
   b.floaters = [];
-  b.units = makeUnits(b.lineups);
+  b.units = makeUnits(b.lineups,b.environment);
   return true;
 }
 const alive = (b, team) => b.units.filter(u => !u.dead && u.team === team);
@@ -247,7 +257,7 @@ function handleCast(b, u, dt, random) {
   if (cast.elapsed >= cast.length) {
     u.cast = null;
     setState(u, 'Idle');
-    u.cooldown = attackInterval(u.stats) * (.88 + random() * .24);
+    u.cooldown = attackInterval(u.stats) / (1+(u.environmentMods?.attackSpeed||0)) * (.88 + random() * .24);
   }
 }
 function collideAndClamp(b, u) {
@@ -288,7 +298,7 @@ function moveToTarget(b, u, target, dt, ideal) {
   }
   const oldX = u.x;
   const oldY = u.y;
-  const speed = moveSpeed(u.stats);
+  const speed = moveSpeed(u.stats) * (u.terrainMods?.speed||1) * (1+(u.environmentMods?.moveSpeed||0));
   u.vx = dx / d * speed * intensity;
   u.vy = dy / d * speed * intensity;
   u.x += u.vx * dt;
@@ -313,6 +323,20 @@ export function updateBattle(b, seconds, random = Math.random) {
     }
   }
   for (const u of b.units) {
+    // Distância à estrutura é avaliada com a posição atual: reforço local 1,5×.
+    const structural=structureModifiers(b.environment,u);
+    u.environmentMods=structural;
+    for(const key of Object.keys(u.baseStats)) {
+      u.stats[key]=Math.round(u.baseStats[key]*(1+(structural[key]||0)));
+    }
+    const nextMax=maxHealth(u.stats);
+    if(nextMax!==u.maxHealth) {u.health=Math.min(nextMax,u.health*(nextMax/u.maxHealth));u.maxHealth=nextMax;}
+    const tile=combatTerrainAt(b.environment,u.team,u.x,u.y);
+    u.terrainMods=terrainModifiers(tile,u.type.types);
+    if(!u.dead&&b.phase==='fighting') {
+      const regen=(u.environmentMods?.regen||0)+(u.terrainMods.regen||0);
+      if(regen)u.health=Math.min(u.maxHealth,u.health+u.maxHealth*regen*dt);
+    }
     u.stateTime += dt;
     u.hitFlash = Math.max(0, u.hitFlash - dt);
     u.hurtTime = Math.max(0, u.hurtTime - dt);
