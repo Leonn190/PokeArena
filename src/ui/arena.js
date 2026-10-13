@@ -3,7 +3,7 @@ import { createLocalMatchState, purchaseLocalOffer, refreshLocalShop, sellLocalU
 import { createCamera } from './camera.mjs';
 import { createSpriteCache } from './sprites.mjs';
 import { createSpriteRenderer } from './renderer.mjs';
-import { BY_ID, getDirection } from '../../server/game/pokemon.mjs';
+import { BY_ID, POKEMON, getDirection } from '../../server/game/pokemon.mjs';
 import { MOVES_BY_ID } from '../../server/game/moves.mjs';
 import { fieldLimitForBattle, shopOddsForBattle, RULES, STAGES, STAGE_NAMES, chapterForBattle, stageForBattle, battleKind, interestForGold, streakBonus, PVE_DIFFICULTIES } from '../../server/game/rules.mjs';
 import { aliveCount, combatForPlayer, phaseRemainingSeconds, startLocalMatchCycle, updateLocalMatchCycle } from '../../server/game/match-cycle.mjs';
@@ -44,6 +44,8 @@ const evolutionEffects=[];
 const summonEffects=[];
 let returnAnimation=null;
 let lastReturnedBattle=null;
+let specialDismissedRound=-1;
+let rosterRendered=false;
 const TYPE_ASSETS={Normal:'normal',Lutador:'fighting',Voador:'flying',Venenoso:'poison',Terrestre:'ground',Pedra:'rock',Inseto:'bug',Fantasma:'ghost',Aço:'steel',Fogo:'fire',Água:'water',Grama:'grass',Elétrico:'electric',Psíquico:'psychic',Gelo:'ice',Dragão:'dragon',Sombrio:'dark',Fada:'fairy'};
 const typeIcon=type=>`<img class="type-icon" src="${base}assets/tipos/${TYPE_ASSETS[type]}.svg" alt="${type}" />`;
 
@@ -106,6 +108,9 @@ function startMatch() {
   returnAnimation=null;
   lastReturnedBattle=null;
   $('entry-screen').hidden=true;
+  $('roster-screen').hidden=true;
+  specialDismissedRound=-1;
+  $('special-overlay').hidden=true;
   $('outcome').hidden=true;
   document.querySelector('.game-shell').dataset.mode='local';
   shopSignature='';
@@ -123,6 +128,8 @@ function openMenu() {
   ballPointer=null;
   pan=null;
   $('entry-screen').hidden=false;
+  $('roster-screen').hidden=true;
+  $('special-overlay').hidden=true;
   $('outcome').hidden=true;
   $('toast').hidden=true;
   document.querySelector('.game-shell').dataset.mode='menu';
@@ -419,6 +426,8 @@ function renderHud() {
   $('alive-stat').hidden=!localMatch;
   $('timer-stat').hidden=!localMatch;
   $('round-label').textContent=`${localMatch?.chapter||1}-${localMatch?.stage||1}`;
+  $('chapter-name').textContent=`Capítulo ${localMatch?.chapter||1}`;
+  $('stage-name').textContent=STAGE_NAMES[battleKind(localMatch?.round||1)];
   $('limit-label').textContent=`${observed?.board.length||0}/${fieldLimitForBattle(localMatch?.round||1)}`;
   $('gold-label').textContent=player?.gold??9;
   $('shop-gold-value').textContent=player?.gold??9;
@@ -477,7 +486,7 @@ function renderHud() {
 let synergySignature='';
 let cloneVisual=null;
 let consumableSignature='';
-const stageIcons={normal:'•',gold:'●',triple:'Ⅲ',pve:'◆',double:'×2',quadruple:'Ⅳ',legendary:'★'};
+const stageIcons={normal:'⚔',gold:'◉',triple:'⚔',pve:'♙',double:'ϟ',quadruple:'⚔',legendary:'♛'};
 function renderChapterControls(){
   const player=humanParticipant();
   if(!player)return;
@@ -486,10 +495,16 @@ function renderChapterControls(){
     const round=(chapter-1)*10+i+1,result=player.history.find(h=>h.round===round);
     const state=result?result.result:localMatch.stage===i+1?'current':'future';
     const label=result?({win:'vitória',loss:'derrota',neutral:'neutro'}[result.result])+(result.place?` · ${result.place}º`:''):'aguardando';
-    return `<span class="stage-mark ${state}" title="${chapter}-${i+1}: ${STAGE_NAMES[kind]} · ${label}" aria-label="${chapter}-${i+1}: ${STAGE_NAMES[kind]} · ${label}">${stageIcons[kind]}</span>`;
+    return `<span class="stage-mark ${state} stage-${kind}" title="${chapter}-${i+1}: ${STAGE_NAMES[kind]} · ${label}" aria-label="${chapter}-${i+1}: ${STAGE_NAMES[kind]} · ${label}">${stageIcons[kind]}</span>`;
   }).join('');
   $('economy-bonuses').innerHTML=`<span title="Juros previstos: +${interestForGold(player.gold)}. Um por 10 ouros, máximo 3; saldo antes da renda.">◉ ${interestForGold(player.gold)}</span><span title="Vitória concede +1 ouro, além da renda básica de 5.">⚑ +1</span><span title="Sequência de ${player.streak.result==='win'?'vitórias':player.streak.result==='loss'?'derrotas':'resultados'}: ${player.streak.count}. Bônus a partir do terceiro resultado, máximo 3. Neutros preservam a sequência.">${player.streak.result==='loss'?'↓':'↑'} +${streakBonus(player.streak.count)}</span>`;
-  $('bet-controls').hidden=battleKind(localMatch.round)!=='gold';
+  $('next-income').textContent=`+${RULES.baseRoundGold+RULES.victoryBonusGold+interestForGold(player.gold)+streakBonus(player.streak.count)}`;
+  const event=battleKind(localMatch.round);
+  const showSpecial=localMatch.phase==='preparation'&&observedId===localMatch.ownerId&&!player.eliminated&&specialDismissedRound!==localMatch.round&&((event==='gold'&&!player.bet)||event==='pve');
+  $('special-overlay').hidden=!showSpecial;
+  $('special-title').textContent=event==='gold'?'Aposte no resultado':event==='pve'?'Escolha seu desafio':'';
+  $('special-description').textContent=event==='gold'?'Preveja sua vitória ou derrota e aposte de 1 a 5 ouros. Acertar dobra o valor.':'Defina a dificuldade dos inimigos desta batalha PvE. A recompensa aumenta conforme o desafio.';
+  $('bet-controls').hidden=event!=='gold';
   const bet=player.bet,editable=canEdit()&&!bet;
   $('bet-prediction').disabled=!editable;$('bet-amount').disabled=!editable;
   $('bet-amount').max=String(Math.min(5,player.gold));
@@ -497,7 +512,8 @@ function renderChapterControls(){
   $('bet-status').textContent=bet?`${bet.amount} ouro · ${bet.prediction==='win'?'vitória':'derrota'}${bet.settled?' · liquidada':''}`:'Aposta opcional: 1–5 ouros';
   $('pve-controls').hidden=battleKind(localMatch.round)!=='pve';
   $('pve-difficulty').disabled=!canEdit();$('pve-difficulty').value=player.pveDifficulty;
-  $('pve-budget').textContent=`${chapter+PVE_DIFFICULTIES[player.pveDifficulty].points} pontos na vitória`;
+  $('pve-budget').textContent=`${chapter+PVE_DIFFICULTIES[player.pveDifficulty].points} pontos de espólio na vitória`;
+  $('pve-controls').querySelectorAll('[data-difficulty]').forEach(button=>button.classList.toggle('selected',button.dataset.difficulty===player.pveDifficulty));
   $('pending-rewards').textContent=player.pendingRewards.length?`${player.pendingRewards.length} Pokémon aguardando espaço no banco`:'';
   const signature=`${canEdit()}:${player.consumables.join(',')}`;
   if(signature!==consumableSignature){
@@ -511,23 +527,49 @@ function renderChapterControls(){
     }));
   }
 }
-function damageVisualUnit(unit){
-  const combat=observedCombat(),outcome=combat?.result?.outcomes?.[observedId];
-  const ownTeam=combat?.playerIds.indexOf(observedId);
-  if(localMatch?.phase!=='result'||!outcome?.damage||unit.team===ownTeam)return unit;
-  const avatar=observedParticipant().avatar;
-  const t=clamp((performance.now()/1000-localMatch.phaseStartedAt)/1.5,0,1);
-  return {...unit,x:unit.x+(avatar.x-unit.x)*t,y:unit.y+(avatar.y-unit.y)*t,state:t<1?'Walk':'Attack',stateTime:visualTime,facing:getDirection(avatar.x-unit.x,avatar.y-unit.y)};
+// O dano ao treinador é mostrado como energia, sem deslocar ou atacar fisicamente o treinador.
+function damageVisualUnit(unit){return unit;}
+function drawTrainerEnergy(){
+  if(localMatch?.phase!=='result')return;
+  const combat=observedCombat(),battle=combat?.battle;
+  if(!battle||!combat?.result)return;
+  const mine=combat.playerIds.indexOf(observedId),result=combat.result.outcomes?.[observedId];
+  const damaging=combat.result.outcomes&&Object.values(combat.result.outcomes).some(o=>o.damage>0);
+  if(!damaging)return;
+  const losingMine=(result?.damage||0)>0;
+  const target=losingMine?observedParticipant()?.avatar:{x:BOARD.x+BOARD.tile*5,y:BOARD.y+BOARD.tile*.5};
+  if(!target)return;
+  if(!losingMine){
+    ctx.save();ellipse(target.x,target.y+3,14,5,'#09221c99');ellipse(target.x,target.y-8,13,17,'#d86867');ellipse(target.x,target.y-24,11,11,'#f6dcb5');
+    ctx.fillStyle='#222d39';ctx.fillRect(target.x-13,target.y-35,27,9);ctx.restore();
+  }
+  const winners=battle.units.filter(u=>!u.dead&&u.team===battle.winner);
+  const t=clamp((performance.now()/1000-localMatch.phaseStartedAt)/1.45,0,1);
+  winners.forEach((unit,i)=>{
+    const delay=i*.08,step=clamp((t-delay)/(1-delay),0,1);
+    if(step>=1)return;
+    const x=unit.x+(target.x-unit.x)*step;
+    const y=unit.y-25+(target.y-23-(unit.y-25))*step-Math.sin(step*Math.PI)*28;
+    ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle='#60d3ff88';ctx.lineWidth=4;
+    ctx.beginPath();ctx.moveTo(unit.x,unit.y-25);ctx.quadraticCurveTo((unit.x+target.x)/2,(unit.y+target.y)/2-55,x,y);ctx.stroke();
+    ellipse(x,y,8,8,'#a5f3ff');ellipse(x,y,3,3,'#fff');ctx.restore();
+  });
 }
 function drawAvatarAndLoot(){
   const player=observedParticipant();if(!player)return;
   for(const loot of player.loot){
-    const size={gray:10,blue:15,yellow:21}[loot.color],color={gray:'#c4cad1',blue:'#65baff',yellow:'#ffd55c'}[loot.color];
-    ellipse(loot.x,loot.y+size*.6,size,5,'#132e2277');
-    ctx.fillStyle=color;ctx.fillRect(loot.x-size,loot.y-size,size*2,size*1.5);
-    ctx.strokeStyle='#fff5c0';ctx.lineWidth=2;ctx.strokeRect(loot.x-size,loot.y-size,size*2,size*1.5);
-    ctx.fillStyle='#234139';ctx.fillRect(loot.x-2,loot.y-5,4,7);
-    if(loot.reward.kind==='gold'){ellipse(loot.x+size,loot.y-8,7,9,'#ffd763');ellipse(loot.x+size,loot.y-8,3,5,'#c48d2e');}
+    const size={gray:11,blue:14,yellow:18}[loot.color],color={gray:'#dce7f3',blue:'#69b7ff',yellow:'#ffcf54'}[loot.color];
+    const pulse=1+Math.sin(visualTime*3+loot.x*.05)*.06;
+    ctx.save();ctx.translate(loot.x,loot.y-12+Math.sin(visualTime*2+loot.y)*3);ctx.scale(pulse,pulse);
+    ctx.shadowBlur=loot.color==='yellow'?27:19;ctx.shadowColor=color;
+    const glow=ctx.createRadialGradient(-size*.35,-size*.5,1,0,0,size);
+    glow.addColorStop(0,'#fffef1');glow.addColorStop(.33,color);glow.addColorStop(.8,loot.color==='gray'?'#677c8f':loot.color==='blue'?'#2565ae':'#a16d0f');glow.addColorStop(1,'#172d3c');
+    ctx.beginPath();ctx.arc(0,0,size,0,TAU);ctx.fillStyle=glow;ctx.fill();
+    ctx.shadowBlur=0;ctx.strokeStyle='#fff9c4b8';ctx.lineWidth=1.4;ctx.stroke();
+    ctx.strokeStyle='#ffffffaa';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(-1,-1,size*.67,3.7,5.65);ctx.stroke();
+    ctx.font=`900 ${size*.83}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fffad3';ctx.fillText('✦',0,1);
+    ctx.restore();
+    ellipse(loot.x,loot.y+size*.55,size*.84,3,'#071b1c66');
   }
   const a=player.avatar;
   ellipse(a.x,a.y+5,16,6,'#102d2266');
@@ -653,10 +695,10 @@ function renderDetails() {
   $('selected-iv').textContent=mon.bossIv?`Chefe · IV ${mon.bossIv}%`:`IV geral ${mon.iv}%${mon.zygardeProgress?` · Zygarde ${mon.zygardeProgress}%`:''}${mon.babyPerfect?' · Baby perfeito':''}`;
   $('sell-value').textContent=`Venda: ${saleValueLocal(mon)} ouro`;
   drawPortrait($('selected-avatar'),p);
-  $('stats-list').innerHTML=keys.map(k=>`<div class="stat"><span>${k.toUpperCase()}</span><div><b>${stats[k]}</b><small>base ${p.stats[k]} · IV ${mon.iv}%</small></div></div>`).join('');
+  $('stats-list').innerHTML=keys.map(k=>`<div class="stat"><span>${k.toUpperCase()}</span><div><b>${stats[k]}</b><small>base ${p.stats[k]} · IV ${mon.iv}%</small></div></div>`).join('')+`<div class="stat"><span>ENERGIA</span><div><b>+1/s</b><small>carrega o golpe especial</small></div></div><div class="stat"><span>REGEN</span><div><b>0/s</b><small>base, sem estruturas</small></div></div>`;
   $('moves-active').innerHTML=mon.activeMoves.slice(0,2).map((id,i)=>{
     const move=MOVES_BY_ID[id];
-    return `<div class="move-row"><button type="button" class="move-card" tabindex="-1"><b>${move.name}</b><small>${move.category==='atk'?'Físico':'Especial'} · ${move.damage} · ${move.range.toFixed(1)}</small></button><button type="button" class="move-reroll" data-slot="${i}" title="Trocar golpe por 2 de ouro" aria-label="Trocar golpe por 2 de ouro">↻ 2</button></div>`;
+    return `<div class="move-row"><button type="button" class="move-card" tabindex="-1"><b>${move.name} <em>${move.kind==='charged'?'CARREGADO':'REGULAR'}</em></b><small>${move.category==='atk'?'Físico':'Especial'} · ${move.damage} · ${move.kind==='charged'?`Custo ${move.energyCost} de energia`:'uso contínuo'}</small></button><button type="button" class="move-reroll" data-slot="${i}" title="Trocar golpe por 2 de ouro" aria-label="Trocar golpe por 2 de ouro">↻ 2</button></div>`;
   }).join('');
   $('moves-active').querySelectorAll('.move-reroll').forEach(btn=>{
     btn.disabled=!canEdit()||!ownsUnit(mon)||humanParticipant().gold<RULES.moveChangeCostGold;
@@ -824,13 +866,36 @@ function drawStructurePreview(canvas,item){
   drawStructureArt(c,item,(canvas.width-size)/2,(canvas.height-size)/2,size,size);
 }
 function drawArenaFloor(){
-  const columns=displayedBattle()?.columns||10;
-  ctx.fillStyle='#182e22';ctx.fillRect(0,0,BOARD.x+columns*BOARD.tile+100,BOARD.height);
-  ctx.fillStyle='#566b5b';
-  ctx.fillRect(BOARD.x-12,BOARD.y-12,columns*BOARD.tile+24,BOARD.rows*BOARD.tile+24);
+  const columns=displayedBattle()?.columns||10,tile=BOARD.tile;
+  // Padrão de grama sombreado e floreios desenhados no Canvas: não depende de imagens externas.
+  ctx.fillStyle='#0a211c';ctx.fillRect(0,0,BOARD.x+columns*tile+110,BOARD.height);
+  ctx.fillStyle='#293e35';ctx.fillRect(BOARD.x-16,BOARD.y-16,columns*tile+32,BOARD.rows*tile+32);
+  ctx.fillStyle='#152b25';ctx.fillRect(BOARD.x-9,BOARD.y-9,columns*tile+18,BOARD.rows*tile+18);
   for(let row=0;row<BOARD.rows;row++)for(let col=0;col<columns;col++){
-    ctx.fillStyle=(col+row)%2?'#789574':'#809c7b';ctx.fillRect(BOARD.x+col*BOARD.tile,BOARD.y+row*BOARD.tile,BOARD.tile,BOARD.tile);
+    const x=BOARD.x+col*tile,y=BOARD.y+row*tile,bench=row===BOARD.enemyBenchRow||row===BOARD.playerBenchRow;
+    const seed=(col*71+row*43)%17;
+    if(bench){
+      ctx.fillStyle=(col+row)%2?'#475c5b':'#506661';ctx.fillRect(x,y,tile,tile);
+      ctx.fillStyle='#283f3b';ctx.fillRect(x+3,y+4,tile-6,tile-8);
+      ctx.fillStyle='#697d72';ctx.fillRect(x+5,y+6,tile-10,2);
+      ctx.strokeStyle='#7d968a55';ctx.lineWidth=1;ctx.strokeRect(x+5,y+5,tile-10,tile-10);
+      ctx.fillStyle='#9eae9560';ctx.fillRect(x+8,y+tile-8,tile-16,1);
+    }else{
+      ctx.fillStyle=(col+row)%2?'#4a9362':'#4d9967';ctx.fillRect(x,y,tile,tile);
+      ctx.fillStyle='#94c58b18';ctx.fillRect(x+2,y+2,tile-4,tile/2-2);
+      ctx.fillStyle='#2e794e4f';ctx.fillRect(x+2,y+tile/2,tile-4,tile/2-2);
+      ctx.strokeStyle='#b6e3ad17';ctx.strokeRect(x+.5,y+.5,tile-1,tile-1);
+      for(let blade=0;blade<5;blade++){
+        const gx=x+7+(blade*13+seed*3)%(tile-13),gy=y+10+(blade*17+seed)%(tile-16);
+        ctx.strokeStyle=blade%2?'#a1d68d4d':'#20694549';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(gx,gy+3);ctx.lineTo(gx-3,gy-2);ctx.moveTo(gx,gy+3);ctx.lineTo(gx+3,gy-4);ctx.stroke();
+      }
+    }
   }
+  ctx.fillStyle='#e9dcb92b';ctx.fillRect(BOARD.x,BOARD.y+BOARD.playerFieldStart*tile-2,columns*tile,4);
+  ctx.fillStyle='#d4e5a877';ctx.font='bold 9px system-ui';ctx.textAlign='left';
+  ctx.fillText('RESERVA ADVERSÁRIA',BOARD.x+7,BOARD.y+12);
+  ctx.fillText('SEU BANCO',BOARD.x+7,BOARD.y+(BOARD.playerBenchRow+1)*tile-9);
 }
 function drawBoard(t) {
   drawArenaFloor();
@@ -951,16 +1016,23 @@ function drawBattleUnit(u) {
   groundShadow(u.type, u.x, u.y, selectedId === u.uid ? (u.team === 0 ? '#70cfff' : '#ffaaa0') : null);
   if (u.hitFlash > 0) ellipse(u.x, u.y - 16, 32, 28, `rgba(255,250,210,${u.hitFlash * 1.9})`);
   drawUnitSprite(u.type, u.x, u.y, intro?'Idle':u.state, intro?(u.team===0?Math.round(progress*4):0):u.facing, u.stateTime, u.cast?.elapsed ?? 0, u.cast);
-  const bw = clamp(32 + unitScale(u.type) * 4, 38, 50);
-  const bh = 6;
-  const py = u.y - ([0, 48, 64, 79][u.type.stage]);
-  const health = clamp(u.health / u.maxHealth, 0, 1);
-  ctx.fillStyle = '#142b1cdd';
-  ctx.fillRect(u.x - bw / 2, py, bw, bh);
-  ctx.fillStyle = health > .35 ? '#87e26f' : '#ffbd66';
-  ctx.fillRect(u.x - bw / 2 + 1, py + 1, (bw - 2) * health, bh - 2);
-  ctx.strokeStyle=['#6dcfff','#ff8f91','#d2a0ff','#ffd776'][u.team];ctx.lineWidth=2;ctx.strokeRect(u.x-bw/2,py,bw,bh);
-  ctx.fillStyle=ctx.strokeStyle;ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.fillText(`E${u.team+1}`,u.x,py-4);
+  const bw = clamp(39 + unitScale(u.type) * 4, 44, 58);
+  const hpHeight=9,energyHeight=4;
+  const py=u.y-([0,48,64,79][u.type.stage]);
+  const hp=clamp(u.health/u.maxHealth,0,1),energy=clamp(u.energy/Math.max(1,u.maxEnergy),0,1);
+  ctx.save();ctx.shadowColor='#000a';ctx.shadowBlur=4;ctx.shadowOffsetY=2;
+  ctx.fillStyle='#071912';ctx.beginPath();ctx.roundRect(u.x-bw/2-2,py-2,bw+4,hpHeight+energyHeight+7,3);ctx.fill();ctx.restore();
+  ctx.fillStyle='#192b23';ctx.fillRect(u.x-bw/2,py,bw,hpHeight);
+  ctx.fillStyle=hp>.45?'#48d179':hp>.22?'#f0cc5a':'#ed6b6d';
+  ctx.fillRect(u.x-bw/2+1,py+1,(bw-2)*hp,hpHeight-2);
+  ctx.fillStyle='#ebfff533';ctx.fillRect(u.x-bw/2+1,py+1,(bw-2)*hp,2);
+  const ticks=Math.max(1,Math.round(u.maxHealth/60));
+  ctx.fillStyle='#071a18d9';
+  for(let t=1;t<ticks;t++){const x=u.x-bw/2+bw*t/ticks;ctx.fillRect(Math.round(x),py,1,hpHeight);}
+  ctx.fillStyle='#092b42';ctx.fillRect(u.x-bw/2,py+hpHeight+2,bw,energyHeight);
+  ctx.fillStyle='#3cbdff';ctx.fillRect(u.x-bw/2+1,py+hpHeight+3,(bw-2)*energy,energyHeight-2);
+  ctx.fillStyle='#b6efff77';ctx.fillRect(u.x-bw/2+1,py+hpHeight+3,(bw-2)*energy,1);
+  ctx.strokeStyle=['#65cfff','#ff9699','#cda0ff','#ffd776'][u.team];ctx.lineWidth=1;ctx.strokeRect(u.x-bw/2-.5,py-.5,bw+1,hpHeight+1);
   ctx.restore();
 }
 
@@ -1049,6 +1121,7 @@ function draw() {
   } else {
     activeBattle.units.filter(u => !u.dead).slice().sort((a, b) => a.y - b.y).forEach(u=>drawBattleUnit(damageVisualUnit(u)));
     if(activeBattle.phase==='fighting')drawEffects(activeBattle);
+    drawTrainerEnergy();
     observedParticipant()?.bench.filter(Boolean).forEach(drawSetupUnit);
     if(drag?.kind==='shop')drawShopGhost(drag);
   }
@@ -1111,10 +1184,33 @@ function sizeCanvas() {
   canvas.height=Math.round(screen.h*dpr);
   fitCamera();
 }
+function renderRoster(){
+  const term=$('roster-search').value.trim().toLocaleLowerCase('pt-BR');
+  const rarity=$('roster-rarity').value;
+  const filtered=POKEMON.filter(p=>(!rarity||p.rarity===rarity)&&(!term||p.name.toLocaleLowerCase('pt-BR').includes(term)||String(p.number).includes(term)));
+  $('roster-count').textContent=`${filtered.length} Pokémon`;
+  $('roster-grid').innerHTML=filtered.map(p=>`<article class="roster-card rarity-${p.rarity}" style="--rarity:${RARITY_COLORS[p.rarity]}"><div class="roster-portrait"><span class="roster-placeholder" aria-hidden="true">◉</span><img src="${base}portraits/${p.id}.png" alt="" loading="lazy" onerror="this.style.display='none'" /><small>#${String(p.number).padStart(3,'0')}</small></div><div class="roster-body"><b>${p.name}</b><span>${p.types.map(type=>typeIcon(type)).join('')}<small>${RARITY_LABELS[p.rarity]}</small></span></div></article>`).join('');
+}
+$('open-roster').addEventListener('click',()=>{
+  $('entry-screen').hidden=true;$('roster-screen').hidden=false;
+  document.querySelector('.game-shell').dataset.mode='roster';
+  renderRoster();
+});
+$('close-roster').addEventListener('click',openMenu);
+$('roster-search').addEventListener('input',renderRoster);
+$('roster-rarity').addEventListener('change',renderRoster);
+$('skip-bet').addEventListener('click',()=>{specialDismissedRound=localMatch?.round||-1;renderHud();});
+$('confirm-difficulty').addEventListener('click',()=>{if(!canEdit())return;specialDismissedRound=localMatch.round;renderHud();});
+$('pve-controls').querySelectorAll('[data-difficulty]').forEach(button=>button.addEventListener('click',()=>{
+  if(!canEdit())return;
+  const difficulty=button.dataset.difficulty;
+  if(selectPveDifficulty(localMatch,humanParticipant(),difficulty)){$('pve-difficulty').value=difficulty;renderHud();}
+}));
 $('confirm-match').addEventListener('click',startMatch);
 $('confirm-bet').addEventListener('click',()=>{
   if(!localMatch)return;
   const ok=confirmLocalBet(localMatch,humanParticipant(),$('bet-prediction').value,Number($('bet-amount').value));
+  if(ok)specialDismissedRound=localMatch.round;
   showToast(ok?'Aposta confirmada.':'Aposta indisponível.');renderHud();
 });
 $('pve-difficulty').addEventListener('change',()=>{if(localMatch)selectPveDifficulty(localMatch,humanParticipant(),$('pve-difficulty').value);renderHud();});

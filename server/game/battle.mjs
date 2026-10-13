@@ -1,6 +1,6 @@
 import { BY_ID, getDirection } from './pokemon.mjs';
 import { RULES } from './rules.mjs';
-import { MOVES_BY_ID, initialLoadout, chooseMoveAnimation } from './moves.mjs';
+import { MOVES_BY_ID, initialLoadout, chooseMoveAnimation, ENERGY_PER_SECOND, BASE_REGENERATION_PER_SECOND } from './moves.mjs';
 import { chooseCombatTarget, chooseCombatAttack } from './ai.mjs';
 import {structureModifiers} from './structures.mjs';
 
@@ -121,7 +121,7 @@ export function normalizeEntry(entry, team) {
     provenance: entry.provenance?.map(part=>({...part})),
     evolutionSteps: entry.evolutionSteps ?? 0,
     babyPerfect: entry.babyPerfect ?? false,
-    activeMoves: (entry.activeMoves?.length ? entry.activeMoves : initialLoadout(speciesId)).filter(id => MOVES_BY_ID[id]).slice(0, 2),
+    activeMoves: (()=>{const moves=entry.activeMoves?.length===2?entry.activeMoves:initialLoadout(speciesId);return MOVES_BY_ID[moves[0]]?.kind==='regular'&&MOVES_BY_ID[moves[1]]?.kind==='charged'?[...moves]:initialLoadout(speciesId);})(),
     slots: 2
   };
 }
@@ -149,6 +149,8 @@ function makeUnits(lineups,environment=[{},{}]) {
       iv: entry.iv,
       slots: entry.slots,
       activeMoves: entry.activeMoves.slice(0, entry.slots),
+      energy:0,energyRegen:ENERGY_PER_SECOND,regeneration:BASE_REGENERATION_PER_SECOND,
+      maxEnergy:MOVES_BY_ID[entry.activeMoves[1]]?.energyCost||4,
       x: entry.x,
       y: entry.y,
       col: entry.col,
@@ -213,6 +215,7 @@ function beginAttack(b, u, target, move) {
   const length = clamp(natural, .28, 1.15);
   const hitFrame = clamp(meta?.hitFrame ?? Math.floor(durations.length * .55), 0, durations.length - 1);
   const hitAt = clamp(durations.slice(0, hitFrame).reduce((s, n) => s + n, 0) / 60, .08, length * .92);
+  if(move.kind==='charged')u.energy=Math.max(0,u.energy-move.energyCost);
   u.cast = { moveId:move.id, animation, length, hitAt, elapsed:0, fired:false, targetId:target.uid };
   u.vx = 0;
   u.vy = 0;
@@ -361,8 +364,9 @@ export function updateBattle(b, seconds, random = Math.random) {
     const nextMax=Math.round(maxHealth(u.stats,u.hpScale));
     if(nextMax!==u.maxHealth) {u.health=Math.min(nextMax,u.health*(nextMax/u.maxHealth));u.maxHealth=nextMax;}
     if(!u.dead&&b.phase==='fighting') {
-      const regen=u.environmentMods?.regen||0;
-      if(regen)u.health=Math.min(u.maxHealth,u.health+u.maxHealth*regen*dt);
+      const regen=u.regeneration+(u.environmentMods?.regen||0)*u.maxHealth;
+      if(regen)u.health=Math.min(u.maxHealth,u.health+regen*dt);
+      u.energy=Math.min(u.maxEnergy,u.energy+u.energyRegen*dt);
     }
     u.stateTime += dt;
     u.hitFlash = Math.max(0, u.hitFlash - dt);
@@ -389,13 +393,18 @@ export function updateBattle(b, seconds, random = Math.random) {
     const target = getTarget(b, u);
     if (!target) continue;
     const moves = getMoves(u);
-    const inRange = moves.filter(m => edgeDistance(u, target) <= effectiveAttackRange(u, m));
-    u.cooldown -= dt;
-    if (u.cooldown <= 0 && inRange.length) {
-      beginAttack(b, u, target, chooseCombatAttack(u,target,inRange,BOARD.tile) || inRange[0]);
-      continue;
-    }
-    moveToTarget(b, u, target, dt, Math.max(...moves.map(m => effectiveAttackRange(u, m))) * .72);
+    const [regular,charged]=moves;
+    const gap=edgeDistance(u,target);
+    const chargedReady=!!charged&&u.energy+1e-6>=charged.energyCost;
+    const chargedInRange=chargedReady&&gap<=effectiveAttackRange(u,charged);
+    const regularInRange=!!regular&&gap<=effectiveAttackRange(u,regular);
+    u.cooldown-=dt;
+    // Energia cheia prioriza o carregado; o regular continua enquanto recarrega.
+    // O alcance nunca autoriza usar o especial sem a energia suficiente.
+    if(chargedInRange){beginAttack(b,u,target,charged);continue;}
+    if(u.cooldown<=0&&regularInRange){beginAttack(b,u,target,regular);continue;}
+    const approach=chargedReady?charged:regular;
+    moveToTarget(b,u,target,dt,Math.max(0,effectiveAttackRange(u,approach||regular)-BOARD.tile*.20));
   }
   for (let i = b.projectiles.length - 1; i >= 0; i--) {
     const p = b.projectiles[i];

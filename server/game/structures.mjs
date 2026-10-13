@@ -1,9 +1,10 @@
+import {STRUCTURE_PRICES} from '../../config/precos.mjs';
 // Estruturas físicas; regras puras, sem DOM, HTTP ou efeitos de solo.
 // Catálogo funcional inicial escolhido dentre as 31 opções do GDD v0.4.
 export const FIELD_WIDTH=10;
 export const FIELD_HEIGHT=5;
 const makeStructure=(id,name,rarity,size,type,stat,bonus,points,regen=false)=>
-  Object.freeze({id,name,rarity,size,price:{comum:2,rara:5,lendaria:8}[rarity],type,stat,bonus,points,regen});
+  Object.freeze({id,name,rarity,size,price:STRUCTURE_PRICES[rarity],type,stat,bonus,points,regen});
 export const STRUCTURES=Object.freeze([
   makeStructure('planta','Planta','comum',1,'Grama','regen',.0005,{Grama:2,Inseto:1},true),
   makeStructure('flores','Flores','comum',1,'Fada','spd',.01,{Fada:2,Inseto:1}),

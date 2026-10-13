@@ -1,3 +1,5 @@
+import {LOOT_TIERS,BALL_CONFIG} from '../../config/espolios.mjs';
+import {initialLoadout, MOVES_BY_ID} from './moves.mjs';
 import { RULES, fieldLimitForBattle, interestForGold, shopOddsForBattle, roomModifier, battleKind, streakBonus, PVE_DIFFICULTIES } from './rules.mjs';
 import { BY_ID, SHOP_POKEMON, FUSION_COSTS, EVOLUTION_OPTIONS } from './pokemon.mjs';
 import {calculateCompass, speciesCompassWeight, weightedSpeciesPick,ALL_TYPES} from './compass.mjs';
@@ -27,7 +29,7 @@ export function createParticipant({id,name,isBot}) {
 export function createMatchPokemon(speciesId,team,instanceId,random=Math.random) {
   return {
     instanceId,speciesId,team,iv:Math.min(100,Math.floor(random()*101)),
-    activeMoves:['disparo','investida'],slots:2,
+    activeMoves:initialLoadout(speciesId),slots:2,
     col:team?5:4,row:team?2:7
   };
 }
@@ -174,8 +176,7 @@ export function fuseLocalUnits(match,participant,random=Math.random) {
     }
     keeper.evolutionSteps=Math.max(...copies.map(unit=>unit.evolutionSteps||0))+1;
     keeper.speciesId=targetId;
-    keeper.activeMoves=keeper.activeMoves.filter(m=>['disparo','investida','ataque-legal'].includes(m)).slice(0,2);
-    if(keeper.activeMoves.length<2)keeper.activeMoves=['disparo','investida'];
+    keeper.activeMoves=keeper.activeMoves?.length===2 && MOVES_BY_ID[keeper.activeMoves[0]]?.kind==='regular' && MOVES_BY_ID[keeper.activeMoves[1]]?.kind==='charged' ? [...keeper.activeMoves]:initialLoadout(targetId);
     keeper.slots=2;
     // Os itens não são comercializados nesta etapa, mas as fusões preservam até dois.
     const collected=copies.flatMap(unit=>unit.items||[]);
@@ -274,10 +275,10 @@ export function changeLocalMove(match,participant,unit,slot) {
   if(match.phase!=='preparation'||participant.eliminated||
     !ownedUnits(participant).includes(unit)||!Number.isInteger(slot)||slot<0||slot>1||
     participant.gold<RULES.moveChangeCostGold)return false;
-  const available=['disparo','investida','ataque-legal'];
   const equipped=(unit.activeMoves||[]).slice(0,2);
-  if(equipped.length!==2||!equipped.every(id=>available.includes(id)))return false;
-  const replacement=available.find(id=>!equipped.includes(id));
+  const kind=slot===0?'regular':'charged';
+  if(equipped.length!==2||MOVES_BY_ID[equipped[slot]]?.kind!==kind)return false;
+  const replacement=Object.values(MOVES_BY_ID).find(move=>move.kind===kind && move.id!==equipped[slot])?.id;
   if(!replacement)return false;
   participant.gold-=RULES.moveChangeCostGold;
   equipped[slot]=replacement;
@@ -317,12 +318,7 @@ export function recordLocalResult(match,player,result,damage=0,place=null) {
   player.hp=Math.max(0,player.hp-damage);player.eliminated=player.hp===0;
   player.history.push({round:match.round,result,damage,place});match.revision++;
 }
-export const BALLS=Object.freeze({
-  pokeball:{name:'Pokébola',value:2,chances:[1,.5,0,0,0,0]},
-  greatball:{name:'Great Ball',value:5,chances:[1,1,.5,0,0,0]},
-  ultraball:{name:'Ultra Ball',value:8,chances:[1,1,1,.5,0,0]},
-  masterball:{name:'Master Ball',value:12,chances:[1,1,1,1,0,0]}
-});
+export const BALLS=BALL_CONFIG;
 export function cloneLocalPokemon(match,player,ballId,unit,random=Math.random) {
   if(match?.phase!=='preparation'||player.eliminated||!ownedUnits(player).includes(unit))return null;
   const ball=BALLS[ballId],index=player.consumables.indexOf(ballId),slot=player.bench.findIndex(u=>!u);
@@ -339,7 +335,7 @@ export function cloneLocalPokemon(match,player,ballId,unit,random=Math.random) {
   player.cloneEffect={unitId:unit.instanceId,success,revision:++match.revision};
   player.compass=calculateCompass(player);return {success};
 }
-const LOOT=Object.freeze({gray:{points:1,gold:[1,4],balls:['pokeball'],rarities:['comum','incomum'],cap:5},blue:{points:2,gold:[5,10],balls:['greatball','ultraball'],rarities:['incomum','raro'],cap:12},yellow:{points:4,gold:[12,18],balls:['ultraball','masterball'],rarities:['raro','epico','mitico'],cap:20}});
+const LOOT=LOOT_TIERS;
 function rollLootReward(match,player,color,random) {
   const def=LOOT[color];
   const eligible=SHOP_POKEMON.filter(p=>def.rarities.includes(p.rarity)&&p.price<=def.cap&&poolCount(match,p.id)>0&&

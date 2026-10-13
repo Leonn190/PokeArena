@@ -1,32 +1,33 @@
+import {ECONOMY} from '../../config/economia.mjs';
+import {RARITY_ODDS,RARITY_POOL} from '../../config/raridades.mjs';
+import {RARITY_PRICES} from '../../config/precos.mjs';
 // Regras do GDD v0.4 para partidas locais; reutilizáveis futuramente pelo servidor.
 // Não substituir decisões [A definir] por convenções definitivas.
 export const RULES = Object.freeze({
   version:'chapters-1',
   minPlayers:3,
   maxPlayers:8,
-  startingHp:100,
-  startingGold:9,
+  startingHp:ECONOMY.startingHp,
+  startingGold:ECONOMY.startingGold,
   preparationSeconds:30,
   battleIntroSeconds:3,
   battleSeconds:30,
-  shopSlots:8,
-  flexibleShopSlots:2,
-  bankSlots:10,
+  shopSlots:ECONOMY.shopSlots,
+  flexibleShopSlots:ECONOMY.flexibleShopSlots,
+  bankSlots:ECONOMY.bankSlots,
   equippedMoves:2,
-  availableMoves:3,
-  baseRoundGold:5,
-  victoryBonusGold:1,
-  rerollCostGold:2,
-  moveChangeCostGold:2,
-  maxInterestGold:3,
+  availableMoves:4,
+  baseRoundGold:ECONOMY.baseRoundGold,
+  victoryBonusGold:ECONOMY.victoryBonusGold,
+  rerollCostGold:ECONOMY.rerollCostGold,
+  moveChangeCostGold:ECONOMY.moveChangeCostGold,
+  maxInterestGold:ECONOMY.maxInterestGold,
   maxEquippedItems:2,
   fieldLimits:[1,1,1,2,2,2,2,3,3,3,4,4,4,5,5,5,5,6,6,6],
-  rarityPrice:Object.freeze({comum:1,incomum:2,raro:3,epico:4,mitico:6,lendario:8}),
-  rarityPool:Object.freeze({comum:24,incomum:22,raro:20,epico:12,mitico:5,lendario:3}),
-  flexibleOdds:Object.freeze({pokemon:.60,item:0,estrutura:.40}),
-  shopRarityOdds:Object.freeze([
-    [32,30,25,12,1,0], [27,30,26,14,2,1], [23,25,28,18,4,2]
-  ])
+  rarityPrice:RARITY_PRICES,
+  rarityPool:RARITY_POOL,
+  flexibleOdds:Object.freeze({pokemon:ECONOMY.flexiblePokemonChance,item:0,estrutura:ECONOMY.flexibleStructureChance}),
+  shopRarityOdds:RARITY_ODDS
 });
 export const chapterForBattle = round => Math.floor((Math.max(1,round)-1)/10)+1;
 export const stageForBattle = round => (Math.max(1,round)-1)%10+1;

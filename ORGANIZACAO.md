@@ -17,6 +17,17 @@ Este documento prevalece sobre sugestões genéricas de estrutura e sobre o plan
 - **Etapa 01:** menu com partida local preservado e Puxar Partida criando sessão local de 3–8 participantes (um humano e bots), 100 HP, nove ouros, rodada 1. Não executar batalhas, IA, compras competitivas, economia ou rodadas prematuramente.
 - **Etapas 02–11:** evoluir a simulação local e suas regras puras nas respectivas etapas, mantendo a separação que permitirá posteriormente transferir a autoridade ao servidor. Nunca tratar resultados locais como partidas oficiais online.
 
+## Atualização obrigatória do criador — 13/10/2026 (prevalece sobre regras históricas)
+
+- **QUATRO ataques universais e somente dois equipados**: um regular (Investida corpo a corpo OU Disparo à distância) e um carregado (Impacto corpo a corpo OU Raio de Energia à distância). Os quatro existem igualmente para todos os Pokémon. Regulares são automáticos durante o combate, carregados exigem energia; taxa de energia base **+1/s**, regeneração de HP base **0/s**; gasto do carregado acontece no início do golpe. Valores configuráveis em `config/ataques.mjs`; loadouts e overrides em `config/pokemon-ataques.mjs`. Qualquer referência histórica a três golpes (Ataque Legal), três slots ou mudança livre entre categorias está revogada.
+- **Loja de seis slots, não oito**: quatro garantidos de Pokémon e dois flexíveis (60% Pokémon; 40% estrutura). Tabela por capítulo comum/incomum/raro/épico/mítico/lendário: `33/31/26/9/1/0`, `28/31/27/11/2/1`, `24/26/29/15/4/2`. Os três pontos retirados dos épicos são distribuídos +1 para cada raridade comum/incomum/rara.
+- Pasta **`config/` na raiz explicitamente aprovada**: `raridades.mjs`, `precos.mjs`, `economia.mjs`, `ataques.mjs`, `pokemon-ataques.mjs`, `espolios.mjs`. Esta decisão substitui a proibição genérica de criar pastas na raiz; não criar outras pastas desnecessárias.
+- UI ativa: tela inicial própria com *Puxar partida* e *Ver elenco*, partida única local, faixa superior de capítulos e dez marcos, barra de HP segmentada e barra azul de energia mais fina, loja estética com cadeado em aba, aposta/dificuldade no centro, arena de grama e banco visualmente distinto, esferas de espólio luminosas. O dano ao treinador é visualizado como emissão de energia sem mover fisicamente os Pokémon até o avatar. A primeira equipe nos confrontos do jogador local sempre ocupa a parte inferior.
+- Preservar a regra absoluta de **não executar** testes, builds, instalações, servidores ou scripts de verificação. Apenas inspecionar fontes.
+- **Atenção à arquitetura futura:** `server/game/*` faz importações relativas de `../../config/`. A pasta `server/` deixa de ser autocontida até que a futura migração do backend reorganize essas importações e inclua `config/` na publicação Render. Essa adaptação fica pendente; não duplicar configurações nem ativar API agora.
+
+---
+
 ## 1. Objetivo irrevogável
 
 - **Frontend**: site Astro estático no GitHub Pages, Canvas 2D, animações PMDCollab, interface, câmera, renderização, entradas de usuário e partida local (simulador offline).
