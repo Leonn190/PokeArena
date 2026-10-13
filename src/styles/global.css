@@ -38,17 +38,8 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .hud-stat{min-width:62px;height:40px;border:1px solid rgba(234,255,198,.17);border-radius:6px;background:rgba(12,25,18,.62);display:flex;flex-direction:column;justify-content:center;padding:0 9px}
 .hud-stat b{font-size:17px;line-height:1;font-variant-numeric:tabular-nums;color:#fff9bf}
 .hud-stat.gold b{color:#ffe073}
-.camera-actions{display:flex;gap:6px}
-.camera-actions button{
-  height:40px;
-  border-radius:6px;
-  border:1px solid rgba(234,255,198,.26);
-  background:#203928;
-  color:#f2f7e8;
-  font-weight:950;
-}
-.camera-actions button{min-width:36px;padding:0 9px;font-size:12px}
-.camera-actions button:hover:not(:disabled){filter:brightness(1.09)}
+.phase-progress{position:absolute;left:0;right:0;bottom:-6px;height:3px;overflow:hidden;border-radius:2px;background:#071610b3}
+.phase-progress i{display:block;height:100%;width:100%;transform-origin:left;background:linear-gradient(90deg,#87d8bd,#ffe299);box-shadow:0 0 6px #f6d480}
 .side-hud{
   right:12px;
   top:82px;
@@ -197,13 +188,11 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   .top-hud{max-width:calc(100vw - 16px);overflow:hidden}
   .hud-brand{min-width:128px}
   .hud-stat{min-width:52px;padding:0 7px}
-  .camera-actions button{min-width:32px;padding:0 7px}
 }
 @media(max-width:720px){
   .top-hud{top:7px;min-height:50px;gap:4px}
   .hud-brand{min-width:104px}.hud-brand b{font-size:12px}.hud-brand small,.hud-stat small{font-size:8px}
   .hud-stat{height:36px;min-width:42px}.hud-stat b{font-size:14px}
-  .camera-actions button{height:36px;font-size:10px}
   .side-hud{top:64px;right:8px;width:min(300px,calc(100vw - 16px));max-height:232px;padding:8px}
   .selected-head{grid-template-columns:60px 1fr;padding:7px}.selected-head canvas{width:56px;height:50px}
   .stats-list{grid-template-columns:repeat(3,1fr);gap:5px}.stat{min-height:38px;padding:6px}.stat small{display:none}
@@ -332,14 +321,14 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .shop-portrait{flex:1;aspect-ratio:auto;min-height:83px}
 .shop-portrait::before{content:'';position:absolute;inset:0;background:linear-gradient(130deg,#ffffff20,transparent 38%,#0000002b 100%);pointer-events:none}
 .shop-portrait .portrait-fallback{inset:7%;width:86%;height:86%}
-.shop-footer{min-height:30px;padding:5px 7px;border-top:1px solid #f0efbc45;background:#0d1916f2}
+.shop-footer{min-height:30px;padding:5px 7px;border-top:1px solid #f0efbc45;background:color-mix(in srgb,var(--rarity,#9ca3af) 28%,transparent);text-shadow:0 1px 3px #000b}
 .shop-footer b{font-size:11px;letter-spacing:-.25px}
 .shop-price{font-size:12px}
 .shop-card.empty{opacity:.5}
 .shop-card .structure-preview{display:block;width:72px;height:72px;image-rendering:auto;max-width:95%;max-height:92%;pointer-events:none}
 .shop-card .structure-preview:empty{display:none}
 .bottom-hud.selling .shop-card{transform:none}
-/* Fatias representam todos os pontos; detalhes ficam na lista de tipos. */
+/* Somente os cinco maiores tipos positivos aparecem no mostrador. */
 .compass-widget{position:absolute;z-index:5;right:-40px;top:8%;transform:translateY(-50%);
   width:94px;height:94px;display:grid;place-items:center;pointer-events:none}
 .compass-ring{width:90px;height:90px;border-radius:50%;position:relative;
@@ -439,3 +428,29 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 
 /* Ouro é exibido na própria loja, como no TFT. */
 .game-shell[data-mode="local"] .top-hud .hud-stat.gold{display:none}
+
+.type-tooltip{position:absolute;z-index:12;width:min(330px,calc(100vw - 16px));padding:14px 16px;border:1px solid color-mix(in srgb,var(--type-color),#efdfad 30%);border-radius:10px;background:linear-gradient(135deg,color-mix(in srgb,var(--type-color),#10241e 88%),#0b1918f5);box-shadow:0 12px 40px #0009,inset 0 1px 0 #fff2;pointer-events:none}
+.type-tooltip-heading{display:flex;align-items:center;gap:9px;padding-bottom:10px;border-bottom:1px solid #ffffff24;color:var(--type-color)}
+.type-tooltip-heading .type-icon{width:30px;height:30px;margin:0}
+.type-tooltip-heading b{font-size:16px;color:#fff1cf}
+.type-tooltip-heading strong{margin-left:auto;font-size:20px}
+.type-tooltip-heading small{font-size:9px;color:#c4d8c9}
+.type-tooltip p{font-size:11px;line-height:1.65;color:#dce9d9;margin:10px 0 0}
+.damage-panel{position:absolute;z-index:3;right:254px;top:84px;display:flex;align-items:flex-start;flex-direction:row-reverse;gap:5px;max-height:calc(100dvh - 270px)}
+#toggle-damage{display:flex;align-items:center;gap:6px;padding:9px 8px;color:#ffe6a6;border:1px solid #bda66c75;border-radius:7px;background:linear-gradient(#2c4035,#14221d);font-size:11px;box-shadow:0 5px 20px #0005}
+#damage-content{width:220px;padding:12px;border:1px solid #bda66c75;border-radius:9px;background:linear-gradient(150deg,#213b30f5,#0d1c19f2);box-shadow:0 12px 35px #0006;max-height:calc(100dvh - 270px);overflow-y:auto}
+.damage-heading{display:flex;flex-direction:column;gap:4px;padding-bottom:10px;margin-bottom:8px;border-bottom:1px solid #ffffff21}
+.damage-heading b{font-size:13px;color:#ffe6a6}.damage-heading small{font-size:10px;color:#b4cbbb}
+#damage-ranking{font-size:11px;color:#b4cbbb;line-height:1.5}
+.damage-row{display:grid;grid-template-columns:14px 34px minmax(0,1fr);align-items:center;gap:5px;padding:6px 0}
+.damage-position{font-size:10px;color:#bda66c}.damage-row canvas{width:34px;height:34px}
+.damage-name{display:flex;justify-content:space-between;gap:6px;align-items:center;font-size:10px;color:#e7efdd}
+.damage-name b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.damage-name strong{color:#ffe6a6;font-variant-numeric:tabular-nums}
+.damage-bar{display:block;height:5px;margin-top:6px;background:#ffffff12;border-radius:3px;overflow:hidden}.damage-bar i{display:block;height:100%;border-radius:3px}
+@media(max-width:720px){
+  .damage-panel{top:61px;right:182px}
+  #toggle-damage{padding:7px 6px;font-size:10px}#toggle-damage>span:first-of-type{display:none}
+  #damage-content{width:min(195px,calc(100vw - 226px));min-width:110px;padding:8px;max-height:calc(100dvh - 190px)}
+  .damage-row{grid-template-columns:10px 24px minmax(0,1fr);gap:3px}.damage-row canvas{width:24px;height:24px}
+  .damage-name{flex-wrap:wrap;gap:1px}.damage-heading b{font-size:11px}
+}

@@ -1,5 +1,5 @@
 // UI exclusiva da partida local. Toda regra competitiva é aplicada em server/game/.
-import { createLocalMatchState, purchaseLocalOffer, refreshLocalShop, sellLocalUnit, toggleLocalShopLock, changeLocalMove, saleValueLocal } from '../../server/game/roster.mjs';
+import { createLocalMatchState, purchaseLocalOffer, refreshLocalShop, sellLocalUnit, toggleLocalShopLock, changeLocalMove, saleValueLocal, canManageLocalInventory } from '../../server/game/roster.mjs';
 import { createCamera } from './camera.mjs';
 import { createSpriteCache } from './sprites.mjs';
 import { createSpriteRenderer } from './renderer.mjs';
@@ -46,15 +46,18 @@ let compassSignature='';
 let dpr=1;
 let screen={w:1000,h:760};
 const evolutionEffects=[];
+const summonEffects=[];
 let returnAnimation=null;
 let lastReturnedBattle=null;
 const TYPE_ASSETS={Normal:'normal',Lutador:'fighting',Voador:'flying',Venenoso:'poison',Terrestre:'ground',Pedra:'rock',Inseto:'bug',Fantasma:'ghost',Aço:'steel',Fogo:'fire',Água:'water',Grama:'grass',Elétrico:'electric',Psíquico:'psychic',Gelo:'ice',Dragão:'dragon',Sombrio:'dark',Fada:'fairy'};
-const typeIcon=type=>`<img class="type-icon" src="${base}assets/tipos/${TYPE_ASSETS[type]}.svg" alt="${type}" title="${type}" />`;
+const typeIcon=type=>`<img class="type-icon" src="${base}assets/tipos/${TYPE_ASSETS[type]}.svg" alt="${type}" />`;
 
 function humanParticipant() { return localMatch?.players.find(p=>p.id===localMatch.ownerId)||null; }
 function observedParticipant() { return localMatch?.players.find(p=>p.id===observedId)||humanParticipant(); }
 function canEdit() { return !!localMatch && localMatch.phase==='preparation' &&
   observedId===localMatch.ownerId && !humanParticipant()?.eliminated; }
+function canManage() { return observedId===localMatch?.ownerId&&canManageLocalInventory(localMatch,humanParticipant()); }
+function ownsUnit(mon) { const p=humanParticipant();return !!p&&(p.board.includes(mon)||p.bench.includes(mon)); }
 function observedCombat() { return combatForPlayer(localMatch,observedId); }
 function displayedBattle() { return ['intro','combat'].includes(localMatch?.phase) ? observedCombat()?.battle||null : null; }
 function currentShop() { return humanParticipant()?.shop||[]; }
@@ -62,7 +65,15 @@ function allUnits() {
   const p=observedParticipant();
   return p?[...p.board,...p.bench.filter(Boolean)]:[];
 }
-function selectedMon() { return allUnits().find(mon=>mon.instanceId===selectedId)||null; }
+function selectedMon() {
+  const battle=displayedBattle();
+  const fighter=battle?.phase!=='finished'?battle?.units.find(u=>u.uid===selectedId):null;
+  if(fighter) {
+    const original=battle.lineups[fighter.team].find(u=>u.instanceId===selectedId);
+    return {...original,speciesId:fighter.type.id,health:fighter.health,maxHealth:fighter.maxHealth,combatUnit:true};
+  }
+  return allUnits().find(mon=>mon.instanceId===selectedId)||null;
+}
 function benchIndex(mon) {
   const index=observedParticipant()?.bench.indexOf(mon)??-1;
   return index>=0?index:null;
@@ -92,6 +103,11 @@ function startMatch() {
   compassSignature='';
   announced=false;
   evolutionEffects.length=0;
+  summonEffects.length=0;
+  damageSignature='';
+  $('damage-content').hidden=true;
+  $('toggle-damage').setAttribute('aria-expanded','false');
+  $('damage-chevron').textContent='‹';
   returnAnimation=null;
   lastReturnedBattle=null;
   $('entry-screen').hidden=true;
@@ -106,6 +122,7 @@ function startMatch() {
   renderHud();
 }
 function openMenu() {
+  hideTypeTooltip();
   localMatch=null;
   observedId=null;
   selectedId=null;
@@ -126,6 +143,7 @@ function openMenu() {
   renderHud();
 }
 function observePlayer(id) {
+  hideTypeTooltip();
   if(!localMatch?.players.some(p=>p.id===id))return;
   observedId=id;
   selectedId=null;
@@ -149,13 +167,14 @@ function recordEvolution(before,previousId,unit) {
   showToast(`${BY_ID[previousId].name} evoluiu para ${BY_ID[unit.speciesId].name}!`);
 }
 function purchase(index,dropCell=null) {
-  if(!canEdit())return false;
+  if(!canManage())return false;
   const player=humanParticipant();
   const id=player.shop[index];
   if(!id)return false;
   if(player.shopKinds[index]==='estrutura') {
     const def=STRUCTURE_BY_ID[id];
     if(dropCell){
+      if(!canEdit())return false;
       if(!validCellForTeam(0,dropCell))return false;
       const col=dropCell.col,row=dropCell.row-BOARD.playerFieldStart;
       if(col+def.size>10||row+def.size>5||
@@ -172,6 +191,7 @@ function purchase(index,dropCell=null) {
   }
   if(!BY_ID[id])return false;
   if(dropCell) {
+    if(!canEdit()&&dropCell.row!==BOARD.playerBenchRow)return false;
     const valid=dropCell.row===BOARD.playerBenchRow||validCellForTeam(0,dropCell);
     if(!valid)return false;
     if(dropCell.row===BOARD.playerBenchRow&&player.bench[dropCell.col])return false;
@@ -188,13 +208,15 @@ function purchase(index,dropCell=null) {
   if(dropCell&&!priorIds.has(bought.instanceId))moveUnit(bought,dropCell,false);
   selectedId=bought.instanceId;
   recordEvolution(before,id,bought);
+  if(!priorIds.has(bought.instanceId)&&bought.speciesId===id)summonEffects.push({id:bought.instanceId,time:visualTime});
   warmPokemon(BY_ID[bought.speciesId]);
   if(id==='0718')showToast(`Zygarde ${bought.zygardeProgress}%`);
   renderHud();
   return true;
 }
 function sell(mon) {
-  if(!canEdit()||!mon)return;
+  if(mon?.combatUnit)mon=humanParticipant()?.board.find(u=>u.instanceId===mon.instanceId&&u.speciesId===mon.speciesId)||null;
+  if(!canManage()||!mon||!ownsUnit(mon))return;
   if(sellLocalUnit(localMatch,humanParticipant(),mon)) {
     if(selectedId===mon.instanceId)selectedId=null;
     renderHud();
@@ -202,12 +224,13 @@ function sell(mon) {
   }
 }
 function moveUnit(mon,target,swap=true) {
-  if(!canEdit()||!mon||!target)return false;
+  if(!canManage()||!mon||!target)return false;
   const player=humanParticipant();
   const benchTarget=target.row===BOARD.playerBenchRow;
   if(!benchTarget&&!validCellForTeam(0,target))return false;
   const fromBench=player.bench.indexOf(mon);
   const fromBoard=player.board.indexOf(mon);
+  if(!canEdit()&&(!benchTarget||fromBench<0))return false;
   if(fromBench<0&&fromBoard<0)return false;
   const other=benchTarget?player.bench[target.col]:player.board.find(u=>u.col===target.col&&u.row===target.row);
   if(other===mon)return true;
@@ -249,7 +272,15 @@ function cellAtClient(x,y) {const p=clientToWorld(x,y);return cellAtWorld(p.x,p.
 function hitUnit(world) {
   let best=null;
   let nearest=38;
-  for(const mon of allUnits()) {
+  const battle=displayedBattle();
+  if(battle&&battle.phase!=='finished') {
+    for(const unit of battle.units.filter(u=>!u.dead)) {
+      const d=Math.hypot(world.x-unit.x,world.y-unit.y+15);
+      if(d<nearest) {best={instanceId:unit.uid,combatUnit:true};nearest=d;}
+    }
+  }
+  const inventory=battle&&battle.phase!=='finished'?observedParticipant()?.bench.filter(Boolean)||[]:allUnits();
+  for(const mon of inventory) {
     const p=monWorld(mon);
     const d=Math.hypot(world.x-p.x,world.y-p.y+15);
     if(d<nearest) {best=mon;nearest=d;}
@@ -301,9 +332,13 @@ canvas.addEventListener('pointerdown',e=>{
     e.preventDefault();
     return;
   }
-  if(e.button!==0||!canEdit())return;
+  if(e.button!==0)return;
   const worldCell=cellAtClient(e.clientX,e.clientY);
-  const clickedMon=activeTab==='pokemon'?hitUnit(screenToWorld(p)):null;
+  const clickedMon=hitUnit(screenToWorld(p));
+  if(clickedMon) {
+    selectedId=clickedMon.instanceId;renderDetails();
+    if(!canManage()||clickedMon.combatUnit||(!canEdit()&&benchIndex(clickedMon)===null))return;
+  } else if(!canEdit()) {selectedId=null;renderDetails();return;}
   const placed=clickedMon?null:hitPlacedStructure(worldCell);
   if(placed&&terrainTool!=='remove') {
     const item=STRUCTURE_BY_ID[placed.id],world=screenToWorld(p);
@@ -315,7 +350,7 @@ canvas.addEventListener('pointerdown',e=>{
     canvas.setPointerCapture(e.pointerId);
     return;
   }
-  if(activeTab==='terrain'){
+  if(activeTab==='terrain'&&!clickedMon){
     terrainActionAt(e);
     if(terrainTool!=='structure'&&terrainTool!=='remove'){
       terrainPainting=e.pointerId;canvas.setPointerCapture(e.pointerId);
@@ -326,7 +361,7 @@ canvas.addEventListener('pointerdown',e=>{
   const mon=hitUnit(world);
   selectedId=mon?.instanceId||null;
   renderDetails();
-  if(mon) {
+  if(mon&&canManage()&&!mon.combatUnit) {
     const at=monWorld(mon);
     drag={kind:'unit',pointer:e.pointerId,mon,world:at,offset:{x:world.x-at.x,y:world.y-at.y}};
     canvas.setPointerCapture(e.pointerId);
@@ -442,6 +477,7 @@ function renderHud() {
   const player=humanParticipant();
   const observed=observedParticipant();
   const editing=canEdit();
+  const managing=canManage();
   $('match-panel').hidden=!localMatch;
   $('environment-panel').hidden=!localMatch;
   const terrainMode=activeTab==='terrain';
@@ -473,8 +509,8 @@ function renderHud() {
   $('alive-label').textContent=localMatch?`${aliveCount(localMatch)}/${localMatch.players.length}`:'—';
   $('timer-label').textContent=localMatch?`${phaseRemainingSeconds(localMatch,performance.now()/1000)}s`:'30s';
   $('phase-label').textContent=localMatch?.phase==='intro'?'Entrada · Local':localMatch?.phase==='combat'?'Combate · Local':localMatch?.phase==='finished'?'Fim de partida':'Preparação · Local';
-  $('reroll-shop').disabled=!editing||player.shopLocked||player.gold<RULES.rerollCostGold;
-  $('lock-shop').disabled=!editing;
+  $('reroll-shop').disabled=!managing||player.shopLocked||player.gold<RULES.rerollCostGold;
+  $('lock-shop').disabled=!managing;
   $('lock-shop').setAttribute('aria-label',player?.shopLocked?'Destravar loja':'Travar loja');
   $('lock-shop').title=player?.shopLocked?'Destravar loja':'Travar loja';
   $('lock-shop').querySelector('path').setAttribute('d',player?.shopLocked?'M8 10V7a4 4 0 0 1 8 0v3':'M8 10V7a4 4 0 0 1 7-2');
@@ -491,7 +527,7 @@ function renderHud() {
       localMatch.phase==='finished'?'Partida local encerrada.':'Monte sua equipe durante a preparação.';
     $('back-own-arena').hidden=observedId===localMatch.ownerId;
     $('observed-label').textContent=observed?.isBot?`Visitando ${observed.name}`:'Sua arena';
-    for(const participant of localMatch.players) {
+    for(const participant of localMatch.players.slice().sort((a,b)=>b.hp-a.hp)) {
       const button=document.createElement('button');
       button.type='button';
       button.className=`match-player${participant.isBot?'':' human'}${participant.id===observedId?' observed':''}${participant.eliminated?' eliminated':''}`;
@@ -515,8 +551,41 @@ function renderHud() {
   }
   renderDetails();
   renderShop();
+  renderDamageRanking();
 }
 let synergySignature='';
+let damageSignature='';
+function renderDamageRanking() {
+  $('damage-panel').hidden=!localMatch;
+  const report=humanParticipant()?.lastRoundDamage;
+  const signature=JSON.stringify(report||null);
+  if(signature===damageSignature)return;
+  damageSignature=signature;
+  $('damage-round').textContent=report?`Rodada ${report.round}`:'Última rodada';
+  const rows=(report?.units||[]).slice().sort((a,b)=>b.damage-a.damage);
+  const peak=Math.max(1,...rows.map(row=>row.damage));
+  $('damage-ranking').replaceChildren();
+  if(!rows.length){$('damage-ranking').textContent=report?'Sem dano nesta rodada.':'Conclua uma rodada para ver o dano.';return;}
+  for(const [index,row] of rows.entries()) {
+    const species=BY_ID[row.speciesId];if(!species)continue;
+    const item=document.createElement('div');item.className='damage-row';
+    item.innerHTML=`<span class="damage-position">${index+1}</span><canvas width="40" height="40" aria-hidden="true"></canvas><div><div class="damage-name"><b>${species.name}</b><strong>${Math.round(row.damage).toLocaleString('pt-BR')}</strong></div><span class="damage-bar"><i style="width:${row.damage/peak*100}%;background:${RARITY_COLORS[species.rarity]}"></i></span></div>`;
+    $('damage-ranking').append(item);drawPortrait(item.querySelector('canvas'),species);
+  }
+}
+function hideTypeTooltip() { $('type-tooltip').hidden=true; }
+function showTypeTooltip(row,entry,text) {
+  const tooltip=$('type-tooltip');
+  tooltip.replaceChildren();tooltip.style.setProperty('--type-color',TYPE_COLORS[entry.type]);
+  const heading=document.createElement('div');heading.className='type-tooltip-heading';
+  heading.innerHTML=`${typeIcon(entry.type)}<b>${entry.type}</b><strong>${pointsText(entry.score)} <small>pontos</small></strong>`;
+  tooltip.append(heading);
+  for(const note of [text,...entry.extra]) {const p=document.createElement('p');p.textContent=note;tooltip.append(p);}
+  tooltip.hidden=false;
+  const rect=row.getBoundingClientRect();
+  tooltip.style.left=`${Math.max(8,Math.min(rect.right+12,screen.w-tooltip.offsetWidth-8))}px`;
+  tooltip.style.top=`${Math.max(8,Math.min(rect.top,screen.h-tooltip.offsetHeight-8))}px`;
+}
 const TYPE_COLORS={Normal:'#a7a794',Lutador:'#d17e57',Voador:'#aabde4',Venenoso:'#b783bf',Terrestre:'#c59c62',Pedra:'#a69c87',Inseto:'#a9c46a',Fantasma:'#8575be',Aço:'#a5bac2',Fogo:'#f28a54',Água:'#60b5e3',Grama:'#80ca73',Elétrico:'#f2d868',Psíquico:'#e894be',Gelo:'#a4e3ee',Dragão:'#7881d6',Sombrio:'#7c8195',Fada:'#f1a5cf'};
 const pointsText=value=>Number(value.toFixed(1)).toLocaleString('pt-BR');
 const percentText=value=>Number(value.toFixed(2)).toLocaleString('pt-BR');
@@ -525,7 +594,7 @@ function renderCompass(player,compass) {
   const signature=`${player.id}:${ALL_TYPES.map(type=>compass[type].toFixed(3)).join(':')}`;
   if(signature===compassSignature)return;
   compassSignature=signature;
-  const entries=ALL_TYPES.map(type=>({type,score:compass[type]||0})).filter(e=>e.score>0).sort((a,b)=>b.score-a.score);
+  const entries=ALL_TYPES.map(type=>({type,score:compass[type]||0})).filter(e=>e.score>0).sort((a,b)=>b.score-a.score).slice(0,5);
   const total=entries.reduce((sum,e)=>sum+e.score,0);
   let angle=0;
   const icons=[];
@@ -557,6 +626,7 @@ function renderEnvironment() {
   const signature=JSON.stringify([player.id,compass,effects,terrains]);
   if(signature===synergySignature)return;
   synergySignature=signature;
+  hideTypeTooltip();
   const entries=ALL_TYPES.map(type=>{
     const score=compass[type]||0;
     const extra=effects.filter(e=>e.type===type).map(e=>{
@@ -578,9 +648,11 @@ function renderEnvironment() {
     row.type='button';row.className='synergy-row';
     row.style.setProperty('--type-color',TYPE_COLORS[entry.type]);
     const text=`O tipo ${entry.type} tem ${pointsText(entry.score)} pontos de vantagem da bússola.`;
-    row.title=[text,...entry.extra].join('\n\n');
-    row.setAttribute('aria-label',row.title);
+    row.setAttribute('aria-label',[text,...entry.extra].join('\n\n'));
     row.innerHTML=`${typeIcon(entry.type)}<b>${pointsText(entry.score)}</b>${entry.extra.length?'<span class="synergy-bonus" aria-hidden="true">✦</span>':''}`;
+    const show=()=>showTypeTooltip(row,entry,text);
+    row.addEventListener('pointerenter',show);row.addEventListener('focus',show);
+    row.addEventListener('pointerleave',hideTypeTooltip);row.addEventListener('blur',hideTypeTooltip);
     $('environment-effects').append(row);
   }
   if(!entries.length)$('environment-effects').textContent='Nenhum tipo ativo';
@@ -629,7 +701,7 @@ function renderDetails() {
   $('selected-name').textContent=p.name;
   $('selected-type').innerHTML=`${p.types.map(typeIcon).join('')} · ${RARITY_LABELS[p.rarity]} · ${mon.evolutionSteps?`Evolução ${mon.evolutionSteps}`:stageName[p.stage]}`;
   $('selected-type').style.color=p.color;
-  $('selected-place').textContent=slot!==null?`Banco ${slot+1}`:`Campo ${mon.col+1},${mon.row+1}`;
+  $('selected-place').textContent=mon.combatUnit?`Combate · ${Math.ceil(mon.health)}/${mon.maxHealth} HP`:slot!==null?`Banco ${slot+1}`:`Campo ${mon.col+1},${mon.row+1}`;
   $('selected-iv').textContent=`IV geral ${mon.iv}%${mon.zygardeProgress?` · Zygarde ${mon.zygardeProgress}%`:''}${mon.babyPerfect?' · Baby perfeito':''}`;
   $('sell-value').textContent=`Venda: ${saleValueLocal(mon)} ouro`;
   drawPortrait($('selected-avatar'),p);
@@ -639,20 +711,21 @@ function renderDetails() {
     return `<div class="move-row"><button type="button" class="move-card" tabindex="-1"><b>${move.name}</b><small>${move.category==='atk'?'Físico':'Especial'} · ${move.damage} · ${move.range.toFixed(1)}</small></button><button type="button" class="move-reroll" data-slot="${i}" title="Trocar golpe por 2 de ouro" aria-label="Trocar golpe por 2 de ouro">↻ 2</button></div>`;
   }).join('');
   $('moves-active').querySelectorAll('.move-reroll').forEach(btn=>{
-    btn.disabled=!canEdit()||humanParticipant().gold<RULES.moveChangeCostGold;
+    btn.disabled=!canEdit()||!ownsUnit(mon)||humanParticipant().gold<RULES.moveChangeCostGold;
     btn.addEventListener('click',()=>{
       if(changeLocalMove(localMatch,humanParticipant(),mon,Number(btn.dataset.slot))) {
         renderHud();showToast('Golpe trocado por 2 de ouro.');
       }
     });
   });
-  $('sell-selected').disabled=!canEdit();
+  const owned=mon.combatUnit?humanParticipant()?.board.some(u=>u.instanceId===mon.instanceId&&u.speciesId===mon.speciesId):ownsUnit(mon);
+  $('sell-selected').disabled=!canManage()||!owned;
 }
 const coinSvg='<svg class="coin-icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#e1a62d" stroke="#fff1a2" stroke-width="1.3"/><circle cx="10" cy="10" r="6.4" fill="#ffdb68" stroke="#b47717" stroke-width=".8"/><path d="M12.8 6.8c-.7-.7-4.7-1-4.7 1.2 0 2 4.5 1.2 4.5 3.3 0 2.2-3.8-5.2 1" fill="none" stroke="#935e12" stroke-width="1.5" stroke-linecap="round"/></svg>';
 function renderShop() {
   const player=humanParticipant();
   const offers=currentShop();
-  const editable=canEdit();
+  const editable=canManage();
   const kinds=player?.shopKinds||[];
   if(localMatch) {
     const odds=shopOddsForBattle(localMatch.round);
@@ -685,7 +758,7 @@ function renderShop() {
     else if(STRUCTURE_BY_ID[id])drawStructurePreview(card.querySelector('canvas'),STRUCTURE_BY_ID[id]);
     card.addEventListener('click',()=>{if(!suppressShopClick)purchase(index);});
     card.addEventListener('pointerdown',e=>{
-      if(e.button!==0||!canEdit())return;
+      if(e.button!==0||!canManage())return;
       shopPointer={pointer:e.pointerId,index,speciesId:id,start:{x:e.clientX,y:e.clientY},dragging:false};
     });
   });
@@ -892,21 +965,6 @@ function drawBoard(t) {
       }
     }
   }
-  if (localMatch) {
-    const watching = displayedBattle()&&observedCombat()?.playerIds?.length===2
-      ? localMatch.players.find(p=>p.id===observedCombat().playerIds[0]) : observedParticipant();
-    if (watching) {
-      ctx.save();
-      ctx.fillStyle = 'rgba(11,36,22,.78)';
-      ctx.fillRect(BOARD.x+BOARD.tile*2,BOARD.y+BOARD.tile*.39,BOARD.tile*6,25);
-      ctx.fillStyle = watching.isBot ? '#fee197' : '#d3f6cf';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = 'bold 13px system-ui';
-      ctx.fillText(`CAMPO ${watching.isBot ? watching.name.toUpperCase() : 'DO JOGADOR'}`,BOARD.x+BOARD.tile*5,BOARD.y+BOARD.tile*.61);
-      ctx.restore();
-    }
-  }
   ctx.save();
   ctx.fillStyle = 'rgba(43,112,174,.10)';
   ctx.fillRect(BOARD.x, BOARD.y + BOARD.playerFieldStart * BOARD.tile, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
@@ -927,6 +985,29 @@ function drawBoard(t) {
 }
 const {unitScale,groundShadow,drawUnitSprite} = createSpriteRenderer(ctx,getImageMeta);
 
+// A bola percorre um arco até a célula; o Pokémon se materializa sem cair.
+function drawSummon(x,y,progress,team=0) {
+  const p=clamp(progress,0,1);
+  if(p<.48) {
+    const travel=p/.48;
+    ctx.save();ctx.translate(x+(team===1?100:-100)*(1-travel),y-10-Math.sin(travel*Math.PI)*65);
+    ctx.rotate(travel*TAU*2);
+    ctx.beginPath();ctx.arc(0,0,8,Math.PI,TAU);ctx.fillStyle='#ed5a62';ctx.fill();
+    ctx.beginPath();ctx.arc(0,0,8,0,Math.PI);ctx.fillStyle='#fff5dd';ctx.fill();
+    ctx.strokeStyle='#243139';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,8,0,TAU);ctx.stroke();
+    line(-8,0,8,0,'#243139',2);ellipse(0,0,3,3,'#fff');ctx.restore();
+    return 0;
+  }
+  const release=(p-.48)/.52;
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(1-release)*.8;
+  ellipse(x,y-18,12+release*40,16+release*35,'#b8f6ff');
+  for(let i=0;i<8;i++) {
+    const a=i*TAU/8,r=12+release*52;
+    line(x+Math.cos(a)*r*.6,y-18+Math.sin(a)*r*.6,x+Math.cos(a)*r,y-18+Math.sin(a)*r,'#fff0bd',2);
+  }
+  ctx.restore();return clamp(release*2.5,0,1);
+}
+
 function drawSetupUnit(mon) {
   const p = BY_ID[mon.speciesId];
   const pos = {...monWorld(mon)};
@@ -939,7 +1020,11 @@ function drawSetupUnit(mon) {
     pos.x=prior.x+(pos.x-prior.x)*progress;
     pos.y=prior.y+(pos.y-prior.y)*progress;
     facing=(prior.facing+Math.round(((8-prior.facing)%8)*progress))%8;
-  } else if(prior?.dead&&progress<1){ctx.globalAlpha=progress;pos.y-=18*(1-progress);}
+  }
+  const arrival=summonEffects.find(effect=>effect.id===mon.instanceId);
+  const arrivalProgress=arrival?clamp((visualTime-arrival.time)/.95,0,1):1;
+  if(prior?.dead&&progress<1)ctx.globalAlpha=drawSummon(pos.x,pos.y,progress);
+  else if(arrivalProgress<1)ctx.globalAlpha=drawSummon(pos.x,pos.y,arrivalProgress);
   groundShadow(p, pos.x, pos.y, selectedId === mon.instanceId ? '#ffe177' : null);
   drawUnitSprite(p, pos.x, pos.y, 'Idle', facing, visualTime);
   ctx.restore();
@@ -964,9 +1049,9 @@ function drawShopGhost(activeDrag) {
 function drawBattleUnit(u) {
   if (u.dead) return;
   const intro=localMatch.phase==='intro';
-  const progress=intro?clamp((performance.now()/1000-localMatch.phaseStartedAt)/RULES.battleIntroSeconds,0,1):1;
+  const progress=intro?clamp((performance.now()/1000-localMatch.phaseStartedAt-u.col*.025)/1.1,0,1):1;
   ctx.save();
-  if(intro&&u.team===1){ctx.globalAlpha=progress;ctx.translate(0,-28*(1-progress));}
+  if(intro&&u.team===1&&progress<1)ctx.globalAlpha=drawSummon(u.x,u.y,progress,u.team);
   groundShadow(u.type, u.x, u.y, selectedId === u.uid ? (u.team === 0 ? '#70cfff' : '#ffaaa0') : null);
   if (u.hitFlash > 0) ellipse(u.x, u.y - 16, 32, 28, `rgba(255,250,210,${u.hitFlash * 1.9})`);
   drawUnitSprite(u.type, u.x, u.y, intro?'Idle':u.state, intro?(u.team===0?Math.round(progress*4):0):u.facing, u.stateTime, u.cast?.elapsed ?? 0, u.cast);
@@ -1067,6 +1152,7 @@ function draw() {
     activeBattle.units.filter(u => !u.dead).slice().sort((a, b) => a.y - b.y).forEach(drawBattleUnit);
     drawEffects(activeBattle);
     observedParticipant()?.bench.filter(Boolean).forEach(drawSetupUnit);
+    if(drag?.kind==='shop')drawShopGhost(drag);
   }
 }
 function frame(timestamp) {
@@ -1076,6 +1162,7 @@ function frame(timestamp) {
   visualTime+=dt;
   updateCamera(dt);
   updateEvolutionEffects(dt);
+  for(let i=summonEffects.length-1;i>=0;i--)if(visualTime-summonEffects[i].time>=.95)summonEffects.splice(i,1);
   if(localMatch) {
     const previousBattle=displayedBattle();
     const previousCombat=observedCombat();
@@ -1090,6 +1177,10 @@ function frame(timestamp) {
     if(previousPhase!==localMatch.phase||previousRound!==localMatch.round) {
       selectedId=null;
       drag=null;
+      shopPointer=null;
+      structurePointer=null;
+      terrainPainting=null;
+      setShopSellMode(false);
       shopSignature='';
       renderHud();
     }
@@ -1106,6 +1197,10 @@ function frame(timestamp) {
       renderHud();
     }
   }
+  const duration=localMatch?.phaseDeadline-localMatch?.phaseStartedAt;
+  const remaining=duration>0?clamp((localMatch.phaseDeadline-timestamp/1000)/duration,0,1):0;
+  $('phase-progress-fill').style.transform=`scaleX(${remaining})`;
+  $('phase-progress').setAttribute('aria-valuenow',String(Math.round(remaining*100)));
   draw();
   requestAnimationFrame(frame);
 }
@@ -1132,17 +1227,19 @@ $('confirm-match').addEventListener('click',startMatch);
 $('return-menu').addEventListener('click',openMenu);
 $('again').addEventListener('click',openMenu);
 $('back-own-arena').addEventListener('click',()=>observePlayer(localMatch?.ownerId));
-$('zoom-in').addEventListener('click',()=>zoomAt({x:screen.w/2,y:screen.h/2},1.15));
-$('zoom-out').addEventListener('click',()=>zoomAt({x:screen.w/2,y:screen.h/2},.87));
-$('camera-reset').addEventListener('click',fitCamera);
+$('toggle-damage').addEventListener('click',()=>{
+  const content=$('damage-content');content.hidden=!content.hidden;
+  $('toggle-damage').setAttribute('aria-expanded',String(!content.hidden));
+  $('damage-chevron').textContent=content.hidden?'‹':'›';
+});
 $('reroll-shop').addEventListener('click',()=>{
-  if(!canEdit())return;
+  if(!canManage())return;
   if(!refreshLocalShop(localMatch,humanParticipant(),Math.random,true))showToast('Reroll indisponível.');
   shopSignature='';
   renderHud();
 });
 $('lock-shop').addEventListener('click',()=>{
-  if(canEdit()) {toggleLocalShopLock(localMatch,humanParticipant());shopSignature='';renderHud();}
+  if(canManage()) {toggleLocalShopLock(localMatch,humanParticipant());shopSignature='';renderHud();}
 });
 $('sell-selected').addEventListener('click',()=>sell(selectedMon()));
 window.addEventListener('resize',sizeCanvas);

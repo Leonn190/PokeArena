@@ -82,6 +82,7 @@ export function startCombatPhase(match, nowSeconds = 0) {
   match.pairings = makePairings(match);
   match.combats = match.pairings.map(pairing => {
     if (pairing.bye) {
+      findPlayer(match,pairing.playerIds[0]).lastRoundDamage={round:match.round,units:[]};
       return { ...pairing, status:'bye', result:{ reason:'bye', damage:0 } };
     }
 
@@ -92,6 +93,7 @@ export function startCombatPhase(match, nowSeconds = 0) {
       return { ...pairing, status:'unavailable', result:{ reason:'invalid-teams', damage:0 } };
     }
     if (!hasValidTeam(left, match.round) || !hasValidTeam(right, match.round)) {
+      for(const player of [left,right])player.lastRoundDamage={round:match.round,units:clampField(player,match.round).map(unit=>({instanceId:unit.instanceId,speciesId:unit.speciesId,damage:0}))};
       // Regra temporária: quem não montou equipe perde para a formação válida.
       // Duas equipes vazias empatam, sem dano (o GDD ainda deixa este caso em aberto).
       const winner = hasValidTeam(left,match.round) ? left : hasValidTeam(right,match.round) ? right : null;
@@ -127,6 +129,10 @@ function finishCombat(match, combat) {
   const [leftId, rightId] = combat.playerIds;
   const winnerTeam = combat.battle.winner;
   combat.status = 'finished';
+  for(const [team,id] of combat.playerIds.entries()) {
+    findPlayer(match,id).lastRoundDamage={round:match.round,units:combat.battle.units.filter(unit=>unit.team===team)
+      .map(unit=>({instanceId:unit.uid,speciesId:unit.type.id,damage:unit.damageDealt||0}))};
+  }
 
   if (winnerTeam === null) {
     combat.result = { reason:'draw', winnerId:null, loserId:null, damage:0, survivors:0 };

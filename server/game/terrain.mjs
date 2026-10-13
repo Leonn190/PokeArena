@@ -59,7 +59,7 @@ export function addStructureToInventory(player,id) {
   return true;
 }
 export function buyStructure(match,player,index) {
-  if(!editing(match,player)||index<0||index>=2||player.shopKinds[index]!=='estrutura')return false;
+  if(!['preparation','intro','combat'].includes(match?.phase)||player.eliminated||index<0||index>=2||player.shopKinds[index]!=='estrutura')return false;
   const id=player.shop[index];
   const item=STRUCTURE_BY_ID[id];
   if(!item||player.gold<item.price||!addStructureToInventory(player,id))return false;

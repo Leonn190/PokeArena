@@ -106,6 +106,10 @@ export function normalizeEntry(entry, team) {
     row,
     iv: clamp(Math.round(entry.iv ?? 50), 0, 100),
     zygardeProgress: entry.zygardeProgress ?? 0,
+    purchaseCost: entry.purchaseCost,
+    provenance: entry.provenance?.map(part=>({...part})),
+    evolutionSteps: entry.evolutionSteps ?? 0,
+    babyPerfect: entry.babyPerfect ?? false,
     activeMoves: (entry.activeMoves?.length ? entry.activeMoves : initialLoadout(speciesId)).filter(id => MOVES_BY_ID[id]).slice(0, 2),
     slots: 2
   };
@@ -138,6 +142,7 @@ function makeUnits(lineups,environment=[{},{}]) {
       col: entry.col,
       row: entry.row,
       health: hp,
+      damageDealt: 0,
       maxHealth: hp,
       dead: false,
       vx: 0,
@@ -223,6 +228,7 @@ function spawnProjectile(b, u, target, move) {
 function applyHit(b, attacker, target, move, random) {
   if (target.dead) return;
   const damage = physicalOrSpecialDamage(attacker, target, move.category, random, move.damage, move.type);
+  attacker.damageDealt += Math.min(target.health,damage);
   target.health = Math.max(0, target.health - damage);
   target.hitFlash = .20;
   target.hurtTime = .16;

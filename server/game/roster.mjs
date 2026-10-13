@@ -78,8 +78,10 @@ function kindForSlot(slot,random) {
   return roll<RULES.flexibleOdds.pokemon ? 'pokemon'
     : roll<RULES.flexibleOdds.pokemon+RULES.flexibleOdds.item ? 'item':'estrutura';
 }
+export const canManageLocalInventory=(match,participant)=>!!participant&&!participant.eliminated&&
+  ['preparation','intro','combat'].includes(match?.phase);
 export function refreshLocalShop(match,participant,random=Math.random,paid=false) {
-  if(match.phase!=='preparation'||participant.eliminated||participant.shopLocked)return false;
+  if(!canManageLocalInventory(match,participant)||participant.shopLocked)return false;
   if(paid&&participant.gold<RULES.rerollCostGold)return false;
   if(paid)participant.gold-=RULES.rerollCostGold;
   releaseOffers(match,participant);
@@ -104,7 +106,7 @@ export function refreshLocalShop(match,participant,random=Math.random,paid=false
   return true;
 }
 export function toggleLocalShopLock(match,participant) {
-  if(match.phase!=='preparation'||participant.eliminated)return false;
+  if(!canManageLocalInventory(match,participant))return false;
   participant.shopLocked=!participant.shopLocked;
   match.revision++;
   return true;
@@ -171,7 +173,7 @@ export function fuseLocalUnits(match,participant,random=Math.random) {
   return count;
 }
 export function purchaseLocalOffer(match,participant,index,random=Math.random) {
-  if(match.phase!=='preparation'||participant.eliminated||!Number.isInteger(index)||index<0||index>=RULES.shopSlots)return null;
+  if(!canManageLocalInventory(match,participant)||!Number.isInteger(index)||index<0||index>=RULES.shopSlots)return null;
   const id=participant.shop[index];
   const p=BY_ID[id];
   if(!p||participant.reservedOffers[index]!==id||participant.gold<p.price)return null;
@@ -227,7 +229,7 @@ export function purchaseLocalOffer(match,participant,index,random=Math.random) {
   return ownedUnits(participant).find(u=>u.provenance?.includes(part)) || unit;
 }
 export function sellLocalUnit(match,participant,unit) {
-  if(match.phase!=='preparation'||participant.eliminated||!unit||!ownedUnits(participant).includes(unit))return false;
+  if(!canManageLocalInventory(match,participant)||!unit||!ownedUnits(participant).includes(unit))return false;
   removeOwnedUnit(participant,unit);
   participant.gold+=soldValue(unit);
   participant.items.push(...(unit.items||[]));
