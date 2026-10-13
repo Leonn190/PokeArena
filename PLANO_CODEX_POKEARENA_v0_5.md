@@ -1,5 +1,17 @@
 # PokeArena — PLANO CODEX v0.5 (servidor autoritário + organização definitiva)
 
+**ATUALIZAÇÃO PRIORITÁRIA (13/10/2026) — CAPÍTULOS E MECÂNICAS:** o comando posterior do criador substitui os trechos conflitantes das etapas 02, 04, 06–11 abaixo. Para esta atualização foi dispensado expressamente o GDD ausente. Consulte as regras vigentes completas na seção 8 de `ORGANIZACAO.md`. Os blocos históricos não autorizam restaurar terrenos, folgas, probabilidades/dano por rodada, loja de itens ou inventário separado de estruturas.
+
+- Etapa 02: capítulos de dez fases, limite até seis após fases 3/7/10, grupos completos com clones, dano por capítulo/HP real, resultados individuais e eliminação apenas de participantes reais.
+- Etapa 04: seis ofertas de Pokémon + duas flexíveis 60/40 Pokémon/estrutura; raridades por capítulo, custos mítico 6/lendário 8, renda 5, vitória 1, juros até 3 e sequências até 3; apostas e bônus da fase do ouro.
+- Etapas 06–07: mesmo motor para duelos, Battle Royale 15×10/20×10, PvE individual e chefes. Bots usam as mesmas operações de compra, estruturas, apostas, dificuldade e clonagem.
+- Etapas 08–09: bússola exclusivamente por Pokémon e estruturas; removidos solo, pintura e receitas de terreno. Estruturas físicas no banco comum, posicionamento e venda por arraste. Módulo atual: `server/game/structures.mjs`, substituindo `terrain.mjs`.
+- Etapa 10: quatro Pokébolas consumíveis de clonagem obtidas por espólios, sem ofertas na loja ou equipamento. Não adicionar itens, Megas ou golpes além do pedido atual.
+- Etapa 11: HUD capítulo-fase e dez marcos, bônus compactos junto à loja, escolhas de apostas/PvE, avatar com coleta e entrega automática de espólios antes da próxima fase. Banco cheio preserva recompensas pendentes.
+- PvE aprovado pelo criador: Fácil limite−1 (mínimo um) a 80%; Médio limite atual a 100%; Difícil limite atual com HP/ataque físico/ataque especial a 125%; máximo seis. Orçamentos capítulo+2/+4/+6. Lendário segue IV próprio 100/500/1000/+1000 por capítulo posterior e concede um amarelo por vitória.
+
+**Proibição mantida em todas as etapas:** não executar testes, builds, servidores, instalações, scripts, simulações ou comandos de verificação; não criar testes, temporários, caches, backups ou pastas auxiliares. Somente revisão estática. Nenhum teste, build, servidor ou instalação foi executado nesta atualização.
+
 **ADENDO OBRIGATÓRIO (12/10/2026) — TODAS AS ETAPAS 100% LOCAIS:** até concluir a Etapa 11, NÃO usar API HTTP, Render, Firebase, PostgreSQL, banco remoto ou servidores em execução. Toda sessão de partida e, quando forem implementados, bots, economia e combates devem ser simulados EM MEMÓRIA reutilizando `server/game/`, sem fingir multiplayer oficial. Preservar `server/` modular para FUTURA migração a servidor autoritário. Os comandos antigos abaixo que exigem endpoints, autorização HTTP ou ativação do servidor ficam **suspensos/substituídos** por esta regra e deverão ser adaptados ao modo local quando suas etapas chegarem. Não executar testes, builds, instalações ou servidores. A instrução atual do criador prevalece sobre qualquer texto contraditório neste plano.
 
 **ATUALIZAÇÃO POSTERIOR (12/10/2026):** o criador eliminou integralmente o modo livre. A única experiência jogável deve ser a partida local com bots; instruções históricas das etapas 01–05 que pedem modo paralelo ficam revogadas. Nas etapas 08–11, preservar o modo único, sem recriar simulador.

@@ -1,6 +1,6 @@
 // Etapa 08: pesos por tipo SOMENTE dentro da raridade já sorteada.
 import {BY_ID} from './pokemon.mjs';
-import {terrainInfluence,structureInfluence,recipeInfluence} from './terrain.mjs';
+import {structureInfluence,recipeInfluence} from './structures.mjs';
 export const ALL_TYPES=Object.freeze(['Normal','Lutador','Voador','Venenoso','Terrestre','Pedra','Inseto','Fantasma','Aço','Fogo','Água','Grama','Elétrico','Psíquico','Gelo','Dragão','Sombrio','Fada']);
 export function calculateCompass(player) {
   const influence=Object.fromEntries(ALL_TYPES.map(type=>[type,0]));
@@ -11,7 +11,7 @@ export function calculateCompass(player) {
       for(const type of types)if(type in influence)influence[type]+=points/types.length;
     }
   }
-  add(terrainInfluence(player));add(structureInfluence(player));add(recipeInfluence(player));
+  add(structureInfluence(player));add(recipeInfluence(player));
   return influence;
 }
 export function speciesCompassWeight(species,influence) {

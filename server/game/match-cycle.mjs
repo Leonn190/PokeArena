@@ -1,237 +1,160 @@
-import { createBattle, startBattle, updateBattle, BOARD } from './battle.mjs';
-import { RULES, defeatDamage, fieldLimitForBattle } from './rules.mjs';
-import { awardLocalRoundIncome, prepareLocalRound, releaseEliminatedLocalPlayer } from './roster.mjs';
+import { createBattle, startBattle, updateBattle, tilePosition } from './battle.mjs';
+import { RULES, defeatDamage, placementDamage, fieldLimitForBattle, chapterForBattle, stageForBattle, battleKind, bossIv, PVE_DIFFICULTIES, shopOddsForBattle } from './rules.mjs';
+import { awardLocalRoundIncome, prepareLocalRound, releaseEliminatedLocalPlayer, recordLocalResult, grantLocalLoot, collectLocalLoot, updateLocalAvatars } from './roster.mjs';
 import { prepareLocalBots } from './ai.mjs';
+import { SHOP_POKEMON } from './pokemon.mjs';
+import { STRUCTURE_BY_ID } from './structures.mjs';
 
-export const LOCAL_PHASES = Object.freeze({
-  PREPARATION: 'preparation',
-  INTRO: 'intro',
-  COMBAT: 'combat',
-  FINISHED: 'finished'
-});
+export const LOCAL_PHASES=Object.freeze({PREPARATION:'preparation',INTRO:'intro',COMBAT:'combat',RESULT:'result',FINISHED:'finished'});
+const activePlayers=match=>match.players.filter(p=>!p.eliminated&&p.hp>0);
+const findPlayer=(match,id)=>match.players.find(p=>p.id===id);
+const cloneFormation=player=>player.board.map(u=>({...u,activeMoves:[...u.activeMoves]}));
 
-const pairKey = (a, b) => [a, b].sort().join('|');
-const activePlayers = match => match.players.filter(player => !player.eliminated && player.hp > 0);
-const clampField = (player, round) => player.board.slice(0, fieldLimitForBattle(round));
-
-function toCombatEntry(unit, team) {
-  const entry = { ...unit, team };
-  if (team === 1) {
-    const mirrored = BOARD.playerBenchRow - (unit.row ?? 8);
-    entry.row = Math.max(BOARD.enemyFieldStart, Math.min(BOARD.enemyFieldStart + BOARD.enemyRows - 1, mirrored));
-  }
-  return entry;
+// Formações em setores das bordas; a terceira equipe gira 90°.
+function arenaCell(col,row,team,count,size=1) {
+  const local=row-6;
+  if(count===3&&team===2)return {col:10+local,row:1+col};
+  if(count===4&&team>=2)return {col:col+10,row:team===2?row:5-local-(size-1)};
+  return {col,row:team===1?5-local-(size-1):row};
 }
-
-function hasValidTeam(player, round) {
-  return clampField(player, round).length > 0;
+function combatLineup(member,team,count,round) {
+  return member.board.slice(0,fieldLimitForBattle(round)).map((unit,index)=>({...unit,
+    instanceId:member.clone||member.pve?`${member.id}-${index}`:unit.instanceId,
+    ...arenaCell(unit.col,unit.row,team,count),team}));
 }
-
-function survivorsInBattle(battle, team) {
-  return battle.units.filter(unit => unit.team === team && !unit.dead).length;
+function environmentFor(member,team,count) {
+  return {structures:(member.structures||[]).map(s=>{
+    const size=STRUCTURE_BY_ID[s.id]?.size||1;
+    const cell=arenaCell(s.col,s.row+6,team,count,size);
+    const pos=tilePosition(cell.col+(size-1)/2,cell.row+(size-1)/2);
+    return {...s,combatX:pos.x,combatY:pos.y};
+  })};
 }
-
-function findPlayer(match, id) {
-  return match.players.find(player => player.id === id) || null;
-}
-
-function nextBye(match, players) {
-  if (players.length % 2 === 0) return null;
-  const index = match.byeCursor % players.length;
-  match.byeCursor = (match.byeCursor + 1) % Math.max(1, match.players.length);
-  return players[index];
-}
-
-function makePairings(match) {
-  const players = activePlayers(match);
-  const bye = nextBye(match, players);
-  const waiting = players.filter(player => player !== bye);
-  const previous = new Set(match.previousPairs || []);
-  const pairings = [];
-
-  while (waiting.length >= 2) {
-    const first = waiting.shift();
-    let index = waiting.findIndex(candidate => !previous.has(pairKey(first.id, candidate.id)));
-    if (index < 0) index = 0;
-    const second = waiting.splice(index, 1)[0];
-    pairings.push({ id:`r${match.round}-${pairings.length + 1}`, playerIds:[first.id, second.id] });
-  }
-  if (bye) pairings.push({ id:`r${match.round}-bye`, playerIds:[bye.id], bye:true });
-  return pairings;
-}
-
-export function startLocalMatchCycle(match, nowSeconds = 0) {
-  match.phase = LOCAL_PHASES.PREPARATION;
-  match.phaseStartedAt = nowSeconds;
-  match.phaseDeadline = nowSeconds + RULES.preparationSeconds;
-  match.combats = [];
-  match.pairings = [];
-  match.waitingForUnavailableUntil = null;
-  match.previousPairs = match.previousPairs || [];
-  match.byeCursor = match.byeCursor || 0;
-  match.lastMessage = 'Preparação local: organize o campo e compre Pokémon na loja.';
-  prepareLocalRound(match);
-  prepareLocalBots(match);
-  return match;
-}
-
-export function startCombatPhase(match, nowSeconds = 0) {
-  match.phase = LOCAL_PHASES.INTRO;
-  match.phaseStartedAt = nowSeconds;
-  match.phaseDeadline = nowSeconds + RULES.battleIntroSeconds;
-  match.pairings = makePairings(match);
-  match.combats = match.pairings.map(pairing => {
-    if (pairing.bye) {
-      findPlayer(match,pairing.playerIds[0]).lastRoundDamage={round:match.round,units:[]};
-      return { ...pairing, status:'bye', result:{ reason:'bye', damage:0 } };
-    }
-
-    const [leftId, rightId] = pairing.playerIds;
-    const left = findPlayer(match, leftId);
-    const right = findPlayer(match, rightId);
-    if (!left || !right) {
-      return { ...pairing, status:'unavailable', result:{ reason:'invalid-teams', damage:0 } };
-    }
-    if (!hasValidTeam(left, match.round) || !hasValidTeam(right, match.round)) {
-      for(const player of [left,right])player.lastRoundDamage={round:match.round,units:clampField(player,match.round).map(unit=>({instanceId:unit.instanceId,speciesId:unit.speciesId,damage:0}))};
-      // Regra temporária: quem não montou equipe perde para a formação válida.
-      // Duas equipes vazias empatam, sem dano (o GDD ainda deixa este caso em aberto).
-      const winner = hasValidTeam(left,match.round) ? left : hasValidTeam(right,match.round) ? right : null;
-      const loser = winner === left ? right : winner === right ? left : null;
-      const survivors = winner ? clampField(winner,match.round).length : 0;
-      const damage = loser ? defeatDamage(match.round,survivors) : 0;
-      if (loser) { loser.hp = Math.max(0,loser.hp-damage); loser.eliminated = loser.hp<=0; }
-      return { ...pairing, status:'finished', result:{reason:'empty-team',winnerId:winner?.id||null,loserId:loser?.id||null,damage,survivors} };
-    }
-
-    const battle = createBattle([
-      clampField(left, match.round).map(unit => toCombatEntry(unit, 0)),
-      clampField(right, match.round).map(unit => toCombatEntry(unit, 1))
-    ], [
-      {terrain:left.terrain,structures:left.structures},
-      {terrain:right.terrain,structures:right.structures}
-    ]);
-    return { ...pairing, status:'running', battle, result:null };
+function pveTeam(match,player,random) {
+  if(battleKind(match.round)==='legendary')return {id:`boss-${player.id}`,pve:true,structures:[],board:[{
+    speciesId:match.legendaryId,col:4,row:8,iv:100,bossIv:bossIv(match.chapter),activeMoves:['disparo','investida']
+  }]};
+  const difficulty=PVE_DIFFICULTIES[player.pveDifficulty];
+  const count=Math.max(1,Math.min(6,fieldLimitForBattle(match.round)+difficulty.countOffset));
+  const odds=shopOddsForBattle(match.round),rarities=Object.keys(RULES.rarityPrice);
+  const catalog=SHOP_POKEMON.filter(p=>!['mitico','lendario'].includes(p.rarity));
+  const board=Array.from({length:count},(_,i)=>{
+    let roll=random()*catalog.reduce((sum,p)=>sum+odds[rarities.indexOf(p.rarity)]/catalog.filter(c=>c.rarity===p.rarity).length,0);
+    const species=catalog.find(p=>(roll-=odds[rarities.indexOf(p.rarity)]/catalog.filter(c=>c.rarity===p.rarity).length)<0)||catalog[0];
+    return {speciesId:species.id,col:[4,5,3,6,2,7][i],row:8,iv:Math.min(100,40+(match.chapter-1)*20),pveModifiers:difficulty,activeMoves:['disparo','investida']};
   });
-  match.previousPairs = match.pairings
-    .filter(pairing => pairing.playerIds.length === 2)
-    .map(pairing => pairKey(pairing.playerIds[0], pairing.playerIds[1]));
-  const hasRunningCombat = match.combats.some(combat => combat.status === 'running');
-  match.lastMessage = hasRunningCombat
-    ? 'Entrada dos adversários: o combate começa em 3 segundos.'
-    : 'Nenhum confronto com duas equipes validas nesta rodada.';
-  match.waitingForUnavailableUntil = null;
-  return match;
+  return {id:`pve-${player.id}`,pve:true,structures:[],board};
 }
-
-function finishCombat(match, combat) {
-  if (combat.status !== 'running' || combat.battle.phase !== 'finished') return;
-  const [leftId, rightId] = combat.playerIds;
-  const winnerTeam = combat.battle.winner;
-  combat.status = 'finished';
-  for(const [team,id] of combat.playerIds.entries()) {
-    findPlayer(match,id).lastRoundDamage={round:match.round,units:combat.battle.units.filter(unit=>unit.team===team)
-      .map(unit=>({instanceId:unit.uid,speciesId:unit.type.id,damage:unit.damageDealt||0}))};
+function makePairings(match,random) {
+  const players=activePlayers(match),kind=battleKind(match.round);
+  if(['pve','legendary'].includes(kind))return players.map((p,i)=>({id:`r${match.round}-${i}`,members:[p,pveTeam(match,p,random)]}));
+  const size=kind==='triple'?3:kind==='quadruple'?4:2;
+  // Distribui os reais antes de completar grupos, minimizando clones e grupos solitários.
+  const count=Math.ceil(players.length/size),groups=Array.from({length:count},()=>[]);
+  const offset=(match.round-1)%players.length;
+  const ordered=players.slice(offset).concat(players.slice(0,offset));
+  const waiting=[...ordered],previous=new Set(match.previousPairs||[]);
+  const pairKey=(a,b)=>[a,b].sort().join('|');
+  while(waiting.length)for(const group of groups){
+    if(!waiting.length)break;
+    const candidate=waiting.map((p,index)=>({index,score:group.filter(m=>previous.has(pairKey(m.id,p.id))).length})).sort((a,b)=>a.score-b.score)[0];
+    group.push(waiting.splice(candidate.index,1)[0]);
   }
-
-  if (winnerTeam === null) {
-    combat.result = { reason:'draw', winnerId:null, loserId:null, damage:0, survivors:0 };
-    return;
-  }
-
-  const winnerId = winnerTeam === 0 ? leftId : rightId;
-  const loserId = winnerTeam === 0 ? rightId : leftId;
-  const loser = findPlayer(match, loserId);
-  const survivors = survivorsInBattle(combat.battle, winnerTeam);
-  const damage = defeatDamage(match.round, survivors);
-  if (loser) {
-    loser.hp = Math.max(0, loser.hp - damage);
-    loser.eliminated = loser.hp <= 0;
-  }
-  combat.result = { reason:'defeat', winnerId, loserId, damage, survivors };
-}
-
-function finishCombatPhase(match, nowSeconds = 0) {
-  for (const combat of match.combats) finishCombat(match, combat);
-  match.outcomes.push({
-    round: match.round,
-    combats: match.combats.map(combat => ({
-      id: combat.id,
-      playerIds: combat.playerIds,
-      status: combat.status,
-      result: combat.result
-    }))
+  return groups.map((members,index)=>{
+    let cursor=0;
+    while(members.length<size){
+      const source=ordered.find(p=>!members.some(m=>(m.sourceId||m.id)===p.id))||ordered[cursor++%ordered.length];
+      members.push({id:`clone-${match.round}-${index}-${members.length}`,sourceId:source.id,name:`Clone de ${source.name}`,clone:true,board:cloneFormation(source),structures:source.structures.map(s=>({...s}))});
+    }
+    return {id:`r${match.round}-${index}`,members};
   });
-  for (const participant of match.players) releaseEliminatedLocalPlayer(match,participant);
+}
+export function startLocalMatchCycle(match,nowSeconds=0,random=Math.random) {
+  match.chapter=chapterForBattle(match.round);match.stage=stageForBattle(match.round);
+  if(match.legendaryChapter!==match.chapter){
+    const bosses=SHOP_POKEMON.filter(p=>p.rarity==='lendario');
+    match.legendaryId=bosses[Math.floor(random()*bosses.length)].id;match.legendaryChapter=match.chapter;
+  }
+  match.phase='preparation';match.phaseStartedAt=nowSeconds;match.phaseDeadline=nowSeconds+RULES.preparationSeconds;
+  match.combats=[];match.pairings=[];
+  for(const player of match.players){collectLocalLoot(match,player,true,random);player.bet=null;
+    player.avatar.x=Math.min(780,player.avatar.x);player.avatar.targetX=Math.min(780,player.avatar.targetX);
+  }
+  prepareLocalRound(match,random);prepareLocalBots(match,random);
+  match.lastMessage='Prepare sua equipe para a próxima fase.';return match;
+}
+export function startCombatPhase(match,nowSeconds=0,random=Math.random) {
+  match.phase='intro';match.phaseStartedAt=nowSeconds;match.phaseDeadline=nowSeconds+RULES.battleIntroSeconds;
+  match.pairings=makePairings(match,random);
+  match.combats=match.pairings.map(pairing=>{
+    const count=pairing.members.length;
+    return {...pairing,playerIds:pairing.members.map(m=>m.id),status:'running',result:null,goldKillsPaid:pairing.members.map(()=>0),
+      battle:createBattle(pairing.members.map((m,t)=>combatLineup(m,t,count,match.round)),pairing.members.map((m,t)=>environmentFor(m,t,count)))};
+  });
+  match.previousPairs=match.combats.flatMap(c=>c.members.filter(m=>!m.clone&&!m.pve).flatMap((m,i,list)=>list.slice(i+1).map(other=>[m.id,other.id].sort().join('|'))));
+  match.lastMessage='Entrada das equipes.';return match;
+}
+function finishCombat(match,combat,random) {
+  if(combat.status!=='running'||combat.battle.phase!=='finished')return;
+  const battle=combat.battle,kind=battleKind(match.round),special=['triple','quadruple'].includes(kind),pve=['pve','legendary'].includes(kind);
+  const winner=battle.winner,survivors=battle.units.filter(u=>!u.dead&&u.team===winner);
+  combat.status='finished';combat.result={winnerId:combat.members[winner]?.id||null,damage:0,survivors:survivors.length,ranking:battle.ranking.map(t=>combat.members[t].id),outcomes:{}};
+  for(const [team,member] of combat.members.entries()){
+    if(member.clone||member.pve)continue;
+    const player=findPlayer(match,member.id),place=battle.ranking.indexOf(team)+1;
+    const result=special?(place===1?'win':place===combat.members.length?'loss':'neutral'):winner===null?'neutral':winner===team?'win':'loss';
+    const damage=pve?0:special?placementDamage(match.round,place,match.roomModifier):result==='loss'?defeatDamage(match.round,survivors,match.roomModifier):0;
+    player.lastRoundDamage={round:match.round,units:battle.units.filter(u=>u.team===team).map(u=>({instanceId:u.uid,speciesId:u.type.id,damage:u.damageDealt}))};
+    if(kind==='gold')player.gold+=(result==='win'?3:0)+battle.units.filter(u=>u.team===team&&!u.dead).length;
+    if(pve&&result==='win')grantLocalLoot(match,player,kind==='legendary'?4:match.chapter+PVE_DIFFICULTIES[player.pveDifficulty].points,random,kind==='legendary');
+    recordLocalResult(match,player,result,damage,special?place:null);
+    combat.result.outcomes[player.id]={result,damage,place};
+    if(damage){combat.result.damage=Math.max(combat.result.damage,damage);combat.result.loserId=player.id;}
+  }
+}
+function finishCombatPhase(match,nowSeconds,random) {
+  for(const combat of match.combats)finishCombat(match,combat,random);
+  match.outcomes.push({round:match.round,combats:match.combats.map(c=>({id:c.id,playerIds:c.playerIds,status:c.status,result:c.result}))});
   awardLocalRoundIncome(match);
-  const alive = activePlayers(match);
-  if (alive.length <= 1) {
-    match.phase = LOCAL_PHASES.FINISHED;
-    match.phaseStartedAt = nowSeconds;
-    match.phaseDeadline = null;
-    match.championId = alive[0]?.id || null;
-    match.lastMessage = match.championId ? 'Partida local encerrada.' : 'Partida local encerrada sem vencedor.';
-    return match;
-  }
-  match.round += 1;
-  return startLocalMatchCycle(match, nowSeconds);
-}
-
-export function updateLocalMatchCycle(match, dtSeconds, nowSeconds = 0) {
-  if (!match || match.phase === LOCAL_PHASES.FINISHED) return match;
-  if (match.phase === LOCAL_PHASES.PREPARATION && nowSeconds >= match.phaseDeadline) {
-    return startCombatPhase(match, nowSeconds);
-  }
-  if (match.phase === LOCAL_PHASES.INTRO) {
-    if (nowSeconds < match.phaseDeadline) return match;
-    match.phase = LOCAL_PHASES.COMBAT;
-    match.phaseStartedAt = nowSeconds;
-    match.phaseDeadline = nowSeconds + RULES.battleSeconds;
-    match.lastMessage = 'Combates locais em andamento.';
-    for (const combat of match.combats) {
-      if (combat.status === 'running') startBattle(combat.battle);
-    }
-    return match;
-  }
-  if (match.phase !== LOCAL_PHASES.COMBAT) return match;
-
-  for (const combat of match.combats) {
-    if (combat.status !== 'running') continue;
-    updateBattle(combat.battle, dtSeconds);
-    if (combat.battle.phase === 'finished') finishCombat(match, combat);
-  }
-
-  const running = match.combats.filter(combat => combat.status === 'running');
-  if (nowSeconds >= match.phaseDeadline) {
-    for (const combat of running) {
-      // O motor avança em passos de até 50 ms; enviar toda a duração de uma vez
-      // seria truncado para 0,05 s e a partida ficaria travada nesta fase.
-      let remaining = Math.max(0,RULES.battleSeconds-combat.battle.elapsed);
-      while(remaining > 0 && combat.battle.phase === 'fighting') {
-        const step = Math.min(.05,remaining);
-        updateBattle(combat.battle,step);
-        remaining-=step;
-      }
-      finishCombat(match, combat);
-    }
-  }
-
-  if (!match.combats.some(combat => combat.status === 'running')
-    && (!match.waitingForUnavailableUntil || nowSeconds >= match.waitingForUnavailableUntil)) {
-    return finishCombatPhase(match, nowSeconds);
-  }
+  for(const p of match.players)releaseEliminatedLocalPlayer(match,p);
+  // A animação representa o HP já decidido no domínio.
+  match.phase='result';match.phaseStartedAt=nowSeconds;match.phaseDeadline=nowSeconds+4;
   return match;
 }
-
-export function phaseRemainingSeconds(match, nowSeconds = 0) {
-  if (!match?.phaseDeadline) return 0;
-  return Math.max(0, Math.ceil(match.phaseDeadline - nowSeconds));
+export function updateLocalMatchCycle(match,dtSeconds,nowSeconds=0,random=Math.random) {
+  if(!match||match.phase==='finished')return match;
+  updateLocalAvatars(match,dtSeconds,random);
+  if(match.phase==='preparation'&&nowSeconds>=match.phaseDeadline)return startCombatPhase(match,nowSeconds,random);
+  if(match.phase==='intro'){
+    if(nowSeconds<match.phaseDeadline)return match;
+    match.phase='combat';match.phaseStartedAt=nowSeconds;match.phaseDeadline=nowSeconds+RULES.battleSeconds;
+    for(const c of match.combats)startBattle(c.battle);return match;
+  }
+  if(match.phase==='result'){
+    if(nowSeconds<match.phaseDeadline)return match;
+    for(const p of match.players)collectLocalLoot(match,p,true,random);
+    const alive=activePlayers(match);
+    if(alive.length<=1){match.phase='finished';match.championId=alive[0]?.id||null;match.phaseDeadline=null;match.combats=[];match.pairings=[];return match;}
+    match.round++;return startLocalMatchCycle(match,nowSeconds,random);
+  }
+  if(match.phase!=='combat')return match;
+  for(const combat of match.combats){
+    if(combat.status!=='running')continue;
+    updateBattle(combat.battle,dtSeconds,random);
+    if(nowSeconds>=match.phaseDeadline){
+      let remaining=Math.max(0,RULES.battleSeconds-combat.battle.elapsed);
+      while(remaining>0&&combat.battle.phase==='fighting'){const step=Math.min(.05,remaining);updateBattle(combat.battle,step,random);remaining-=step;}
+    }
+    if(battleKind(match.round)==='gold')for(const [team,member] of combat.members.entries()){
+      if(member.clone||member.pve)continue;
+      const earned=combat.battle.kills[team]-combat.goldKillsPaid[team];
+      if(earned){findPlayer(match,member.id).gold+=earned;combat.goldKillsPaid[team]+=earned;match.revision++;}
+    }
+    finishCombat(match,combat,random);
+  }
+  if(match.combats.every(c=>c.status==='finished'))finishCombatPhase(match,nowSeconds,random);
+  return match;
 }
-
-export function aliveCount(match) {
-  return activePlayers(match).length;
-}
-
-export function combatForPlayer(match, playerId) {
-  return match?.combats?.find(combat => combat.playerIds.includes(playerId)) || null;
-}
+export const phaseRemainingSeconds=(match,nowSeconds=0)=>match?.phaseDeadline?Math.max(0,Math.ceil(match.phaseDeadline-nowSeconds)):0;
+export const aliveCount=match=>activePlayers(match).length;
+export const combatForPlayer=(match,id)=>match?.combats?.find(c=>c.playerIds.includes(id))||null;

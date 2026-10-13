@@ -1,12 +1,12 @@
 // Tática determinística sobre unidades de combate e planejamento econômico dos bots.
 // Recebe RNG injetável; usa exclusivamente ações públicas do domínio de partida.
 import { BY_ID, FUSION_COSTS } from './pokemon.mjs';
-import { RULES, fieldLimitForBattle } from './rules.mjs';
-import { purchaseLocalOffer, refreshLocalShop, sellLocalUnit } from './roster.mjs';
-import { buyStructure, placeStructure, paintTerrain } from './terrain.mjs';
+import { RULES, fieldLimitForBattle, battleKind } from './rules.mjs';
+import { purchaseLocalOffer, refreshLocalShop, sellLocalUnit, confirmLocalBet, selectPveDifficulty, cloneLocalPokemon, moveLocalUnit, BALLS } from './roster.mjs';
+import { buyStructure, placeStructure } from './structures.mjs';
 import {calculateCompass} from './compass.mjs';
 
-const owned = player => [...player.board, ...player.bench.filter(Boolean)];
+const owned = player => [...player.board, ...player.bench.filter(u=>u&&u.kind!=='structure')];
 const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
 const edge = (a,b) => Math.max(0,distance(a,b)-a.radius-b.radius);
 
@@ -53,7 +53,7 @@ function preference(player,speciesId,round,style) {
   return duplicates+role+economy-pricePenalty;
 }
 
-function reorganizeBot(player,round,style) {
+function reorganizeBot(match,player,round,style) {
   const limit=fieldLimitForBattle(round);
   const pool=owned(player);
   const ranked=pool.slice().sort((a,b)=>{
@@ -64,10 +64,21 @@ function reorganizeBot(player,round,style) {
     return stat(pb)*(1+(b.iv||0)*.003)-stat(pa)*(1+(a.iv||0)*.003);
   });
   const field=ranked.slice(0,limit);
-  const reserves=ranked.slice(limit);
-  player.board=field;
-  player.bench=Array(RULES.bankSlots).fill(null);
-  for(let i=0;i<Math.min(RULES.bankSlots,reserves.length);i++)player.bench[i]=reserves[i];
+  for(const unit of [...player.board]){
+    if(field.includes(unit))continue;
+    const replacement=field.find(u=>player.bench.includes(u));
+    if(replacement)moveLocalUnit(match,player,replacement,{col:unit.col,row:unit.row});
+    else {
+      const slot=player.bench.findIndex(u=>!u);
+      if(slot>=0)moveLocalUnit(match,player,unit,{col:slot,row:11});
+    }
+  }
+  for(const unit of field){
+    if(player.board.includes(unit))continue;
+    const free=Array.from({length:50},(_,i)=>({col:i%10,row:6+Math.floor(i/10)}))
+      .find(cell=>!player.board.some(u=>u.col===cell.col&&u.row===cell.row));
+    if(free)moveLocalUnit(match,player,unit,free);
+  }
   const front=field.filter(unit=>{
     const p=BY_ID[unit.speciesId];
     return p.stats.vida+p.stats.def+p.stats.spd >= p.stats.atk+p.stats.spa+p.stats.vel;
@@ -77,11 +88,7 @@ function reorganizeBot(player,round,style) {
   function place(list,startRow) {
     list.forEach((unit,index)=>{
       const columns=[4,5,3,6,2,7,1,8,0,9];
-      unit.col=columns[index%columns.length];
-      unit.row=Math.min(10,startRow+Math.floor(index/columns.length));
-      unit.x=undefined;
-      unit.y=undefined;
-      unit.team=0;
+      moveLocalUnit(match,player,unit,{col:columns[index%columns.length],row:Math.min(10,startRow+Math.floor(index/columns.length))});
     });
   }
   place(front, style==='back'?8:6);
@@ -118,21 +125,25 @@ export function prepareLocalBots(match,random=Math.random) {
       if(!refreshLocalShop(match,bot,random,true))break;
       rerolls++;
     }
-    // Mesmas operações de estrutura/terreno que o jogador; sem objetos grátis.
+    reorganizeBot(match,bot,match.round,style);
+    // Mesmas operações físicas e econômicas do jogador.
     if(bot.gold>=5 && bot.structures.length<3){
       const index=bot.shop.findIndex((id,i)=>i<2 && bot.shopKinds[i]==='estrutura');
       if(index>=0)buyStructure(match,bot,index);
     }
-    const toPlace=bot.structureInventory?.[0];
+    const toPlace=bot.bench.find(u=>u?.kind==='structure');
     if(toPlace){
       const positions=[[1,1],[6,2],[3,3],[7,0],[0,4]];
-      for(const [col,row] of positions)if(placeStructure(match,bot,toPlace.id,col,row))break;
+      for(const [col,row] of positions)if(placeStructure(match,bot,toPlace,col,row))break;
     }
-    // Uma área temática limitada, com as mesmas ferramentas de pintura gratuitas.
-    const theme=style==='front'?'rochoso':style==='back'?'grama':style==='evolution'?'rosa':'terra';
-    for(let col=0;col<4;col++)for(let row=0;row<2;row++)paintTerrain(match,bot,col,row,theme);
-    // Formação alterada só em preparação; sem teletransporte ou manipulação durante duelos.
-    reorganizeBot(bot,match.round,style);
+    for(const ball of [...bot.consumables]){
+      const target=owned(bot).filter(u=>!(u.zygardeProgress>=100)&&BALLS[ball].chances[Object.keys(RULES.rarityPrice).indexOf(BY_ID[u.speciesId].rarity)]>0)
+        .sort((a,b)=>BY_ID[b.speciesId].price-BY_ID[a.speciesId].price)[0];
+      if(target)cloneLocalPokemon(match,bot,ball,target,random);
+    }
+    reorganizeBot(match,bot,match.round,style);
+    if(battleKind(match.round)==='gold'&&bot.gold>0)confirmLocalBet(match,bot,bot.board.length===limit?'win':'loss',Math.min(5,bot.gold));
+    if(battleKind(match.round)==='pve')selectPveDifficulty(match,bot,bot.board.length<limit?'easy':style==='front'?'hard':'medium');
     bot.compass=calculateCompass(bot);
     match.revision++;
   }

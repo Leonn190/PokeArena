@@ -2,6 +2,8 @@
 
 **Versão 0.5 (12/10/2026), com decisão de interface atualizada para partida única. Leitura obrigatória antes de QUALQUER alteração por Codex.**
 
+**Atualização prioritária de 13/10/2026 — capítulos:** o comando do criador substitui as regras conflitantes do GDD e das etapas antigas. Para esta implementação, o criador dispensou expressamente a leitura do GDD ausente. Permanecem o modo local, os três golpes universais, a arquitetura e todas as proibições da seção 9. As regras vigentes estão na seção 8; não restaurar terrenos ou a antiga progressão por rodadas.
+
 **Decisão posterior:** não existe mais modo livre de testes. O site apresenta somente "Criar partida local", e a partida offline em memória é o único fluxo ativo. Não reintroduzir o segundo modo nas etapas posteriores.
 
 Este documento prevalece sobre sugestões genéricas de estrutura e sobre o plano antigo de Codex **quanto à arquitetura e à forma de executar alterações**. Para regras de jogo, consultar o `GAME_DESIGN_POKEMON_TFT_v0_4_Multiplayer_Economia_Combate.md` disponibilizado pelo criador; este arquivo NÃO precisa ser copiado para a raiz. O plano de implementação é `PLANO_CODEX_POKEARENA_v0_5.md`. **Se houver conflito, avisar o criador e não inventar regras.**
@@ -67,21 +69,22 @@ PokeArena/
         ├── roster.mjs           # inventário/economia/unidades de cada participante
         ├── pokemon.mjs          # dados de espécies e evoluções
         ├── moves.mjs            # 3 golpes universais, somente 3
-        └── battle.mjs           # motor de duelo; futuro simulador competitivo
+        ├── structures.mjs       # estruturas físicas, efeitos e transações
+        └── battle.mjs           # motor compartilhado de duas a quatro equipes
 ```
 
-**Não criar arquivos só porque aparecem em uma arquitetura idealizada.** Acrescentar `server/game/ai.mjs`, `server/game/shop.mjs`, `server/game/terrain.mjs`, `src/ui/hud.mjs`, `src/ui/input.mjs` etc. somente na etapa que de fato lhes dê código relevante. Novos arquivos permitidos apenas em pastas já legitimadas acima; nova pasta raiz somente se o criador pedir expressamente.
+**Não criar arquivos só porque aparecem em uma arquitetura idealizada.** Acrescentar módulos somente quando houver responsabilidade concreta. `server/game/structures.mjs` substitui o antigo módulo de terrenos; não restabelecer mecânicas de solo. Novos arquivos permitidos apenas em pastas já legitimadas acima; nova pasta raiz somente se o criador pedir expressamente.
 
 ## 4. Fronteiras obrigatórias entre módulos
 
-1. `server/game/*` não importa `window`, `document`, Canvas, CSS, Astro, imagens ou APIs de rede. Regras de dano, colisão, IA, compras, raridades, IV, evolução, terreno, itens e vitórias ficam aqui. Efeitos aleatórios devem aceitar RNG controlável; a simulação precisa produzir resultado consistente no backend.
+1. `server/game/*` não importa `window`, `document`, Canvas, CSS, Astro, imagens ou APIs de rede. Regras de dano, colisão, IA, compras, raridades, IV, evolução, estruturas, consumíveis, espólios e vitórias ficam aqui. Efeitos aleatórios devem aceitar RNG controlável; a simulação precisa produzir resultado consistente no backend.
 2. `server/index.mjs` é transporte: valida entrada, sessão, origem e roteamento. Não contém cálculo de dano nem regras de loja. Não aceitar `winner`, `damage`, `gold`, `hp` ou `iv` vindos do usuário como fonte de verdade.
 3. `server/match.mjs` gerencia ciclo e autorização. Somente o servidor gera ofertas, sorteios e emparelhamentos, aplica alterações com transações e publica snapshots filtrados. O servidor nunca expõe mãos/ofertas futuras ou segredos dos outros jogadores.
 4. `server/store.mjs` é o único acesso ao banco; transações e reserva do pool no mesmo estado são atômicas. A criação inicial de tabelas é permitida apenas no servidor; não escrever arquivos persistentes dentro do container Render.
 5. `src/services/api.mjs` centraliza URL da API, headers e chamadas. Quando o modo competitivo estiver implementado, a UI não recalcula vitórias, recompensas, sorteios ou vida. Pode fazer interpolação visual dos eventos do servidor, sem assumir sua autoridade.
 6. `src/ui/*` contém apenas visual, controles e o **simulador offline partida local**. Ainda existe lógica antiga concentrada em `arena.js` que deverá migrar paulatinamente para `server/game/` conforme as próximas etapas; não adicionar mecânicas competitivas novas nesse arquivo.
 7. Pokémon definem dados e `collisionRadius` de jogo; tamanho de sprite e animação nunca alteram física, alcance ou dano. Assets e cache só afetam apresentação.
-8. O motor de duelo aceita **duas equipes**; a partida da sala pode ter **3 a 8 pessoas**, emparelhadas em duelos. Nunca converter o motor para um confronto de 8 equipes num único tabuleiro.
+8. O motor aceita duas equipes nos duelos, três na fase 4 (15×10) e quatro na fase 9 (20×10), em Battle Royale sem alianças. A sala continua com 3–8 participantes. Clones completam grupos e não possuem economia, inventário, HP de jogador ou autoridade para vencer a partida. Nunca colocar os oito participantes em uma única arena.
 9. Os bots devem chamar as MESMAS operações de regra/economia utilizadas para jogadores humanos, sem acesso a resultados futuros e sem unidades gratuitas.
 10. Manter modelo serializável e com IDs estáveis; evitar `Map`, classes de Canvas e objetos DOM nos snapshots persistidos. Para anti-replay usar versão/revisão e, quando as ações forem implementadas, identificador de ação idempotente.
 
@@ -116,9 +119,20 @@ Ao implementar comandos competitivos, manter esse prefixo e o formato geral; rej
 
 ## 8. Regras de conteúdo que não devem ser violadas
 
-- Menu final de **partida local única**; API suspensa até decisão posterior. Protótipo competitivo: **3–8 participantes, pessoa + bots, 100 HP**, eliminação, preparação **45 s**, combate **60 s**, campo **10×5 por time**, banco **10**, seis ofertas, nove ouros, progressão **1,2,2,3,3,4,5,5,6,6**.
-- As chances de raridade, estoque finito por espécie, IV único `0..100`, 5 Babys de IV perfeito, a bússola, Zygarde, terreno e estruturas seguem GDD v0.4. Regra de ataque desta ORGANIZAÇÃO substitui provisoriamente a seção de golpes do GDD: **somente três universais**.
-- Pontos `[A definir]` do GDD ficam sinalizados. Se uma solução técnica provisória for inevitável (folga em sala ímpar, juros etc.), centralizar em `server/game/rules.mjs` e registrar no resumo, jamais tratá-la como definitiva.
+- Partida local única com 3–8 participantes (humano + bots), 100 HP e nove ouros iniciais. Banco físico de dez espaços compartilhado entre Pokémon e estruturas. Preservados os tempos atuais do código: preparação 30 s, entrada 3 s, combate até 30 s; resultado/coleta 4 s. Nenhuma API é ativada.
+- Cada capítulo tem dez fases: normal, ouro, normal, tripla, PvE, normal, dano dobrado, normal, quádrupla, lendário. `round` é apenas o índice absoluto de compatibilidade; capítulo e fase são derivados dele. Repete enquanto houver mais de um participante real vivo.
+- Campo começa com um Pokémon; sobe após as fases 3, 7 e 10, para a preparação seguinte, até seis. Estruturas não contam nesse limite. Duelo preserva o campo 10×5 de cada lado; arenas especiais têm dez linhas de combate, além das reservas visuais.
+- Loja com seis ofertas obrigatórias de Pokémon e duas flexíveis (60% Pokémon, 40% estruturas). Chances comum/incomum/raro/épico/mítico/lendário: capítulo 1 `32/30/25/12/1/0`; capítulo 2 `27/30/26/14/2/1`; capítulo 3+ `23/25/28/18/4/2`. Míticos custam 6, lendários 8, demais preços preservados. Sorteia raridade antes da espécie; uma raridade sem estoque deixa o slot vazio, sem redistribuir porcentagens. Bússola influencia apenas a espécie dentro da raridade.
+- Dano normal: modificador fixo da sala (0 para 3–4, 1 para 5–6, 2 para 7–8 iniciais) + capítulo + sobreviventes. Cada sobrevivente soma 1 no capítulo 1; depois soma 2 se estiver acima de 75% do próprio HP máximo, senão 1. Na fase 7 dobra somente o total de dano ao jogador.
+- Nas arenas triplas/quádruplas, primeiro recebe zero de dano; demais recebem modificador + capítulo + componente 1/4/9 para segundo/terceiro/quarto. Ordem de eliminação decide o ranking; empate de tempo usa proporção de HP restante, quantidade viva, dano causado e índice estável. Primeiro é vitória, último derrota e intermediários neutros. Clones integram o ranking, mas não recebem consequências fora do combate.
+- Renda por fase: 5 + 1 por vitória + juros `min(3,floor(saldo/10))` antes da renda + sequência `min(3,max(0,contagem-2))`. Neutros preservam a sequência sem aumentá-la. Fase 2 concede ainda 1 por abate durante a luta, 3 por vitória e 1 por sobrevivente próprio. Aposta opcional de 1–5 ouros, debitada na confirmação durante preparação, imutável: acerto paga 2×, erro zero, empate devolve o valor.
+- PvE da fase 5: Fácil tem limite−1 unidades (mínimo 1), HP e atributos de combate a 80%; Médio tem o limite atual e atributos a 100%; Difícil tem o limite atual, HP e atributos ofensivos a 125%. Máximo seis, só espécies e golpes já existentes. Parâmetros iniciais de composição: sorteio das raridades comum a épico com pesos do capítulo, IV normal `min(100,40+20×(capítulo−1))`. Derrota não causa dano. Vitória concede capítulo + 2/4/6 pontos conforme dificuldade.
+- Espólios cinza/azul/amarelo valem 1/2/4 pontos. Sorteio uniforme entre combinações de quantidades cuja soma fecha o orçamento, sem multiplicar pesos por permutações dos recipientes. Conteúdo é sorteado uma vez e armazenado. Cinza: ouro 1–4, Pokébola ou Pokémon comum/incomum (valor máximo 5); azul: ouro 5–10, Great/Ultra ou Pokémon incomum/raro (máximo 12); amarelo: ouro 12–18, Ultra/Master ou Pokémon raro/épico/mítico (máximo 20). Seleção pondera custo real dos Pokémon e valores relativos dos recursos; valores iniciais das bolas para esse sorteio são 2/5/8/12, sem preço de compra.
+- As quatro bolas são consumíveis exclusivos de espólios. Chances comum/incomum/raro/épico: Pokébola `100/50/0/0`, Great `100/100/50/0`, Ultra `100/100/100/50`, Master `100/100/100/100`. Míticos/lendários inelegíveis. Tentativa válida exige espaço e consome a bola mesmo na falha. Sucesso preserva espécie, evolução e IV, cria ID próprio e não copia equipamentos. Proveniência distingue cópias criadas de reservas da pool, impedindo inflar o estoque ao vendê-las. Zygarde continua consolidado numa única instância e não aceita cópia quando já completo.
+- Fase 10: um lendário sorteado por capítulo, igual para todos, sem escolha de dificuldade. IV exclusivo do chefe: 100, 500, 1000, 2000, 3000, 4000…; o IV normal continua limitado a 100. Vitória concede um amarelo; derrota não elimina nem causa dano. Chefes não pertencem ao inventário e não são clonáveis.
+- Avatar se move com clique direito; câmera preserva botão central, Espaço+arraste e Shift+direito. Não é combatente nem obstáculo. Coleta física entrega ouro, bolas e Pokémon; espólios restantes são entregues antes da fase seguinte. Com banco cheio, Pokémon já sorteados ficam como recompensas pendentes, sem perda nem ressorteio, e entram assim que houver espaço. A animação de dano não controla HP.
+- Terrenos, pintura, misturas de solo e suas influências foram removidos. Estruturas ficam em `server/game/structures.mjs`, com catálogo, preços, efeitos e combinações exclusivamente entre estruturas preservados, oito pontos no campo, dimensões 1×1/2×2 e sem sobreposição entre estruturas. Compra coloca instância no banco; arraste posiciona/reposiciona/retira e a venda usa a região da loja. Não há inventário ou aba separados.
+- Evoluções, pool finita, IV normal, Babys, equipamentos existentes e os três golpes universais permanecem. Regras ficam em `server/game/`; HUD, avatar desenhado, sprites e efeitos ficam em `src/ui/`.
 
 ## 9. Regras ABSOLUTAS ao Codex: sem testes e sem lixo
 

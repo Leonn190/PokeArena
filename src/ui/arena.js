@@ -1,15 +1,15 @@
 // UI exclusiva da partida local. Toda regra competitiva é aplicada em server/game/.
-import { createLocalMatchState, purchaseLocalOffer, refreshLocalShop, sellLocalUnit, toggleLocalShopLock, changeLocalMove, saleValueLocal, canManageLocalInventory } from '../../server/game/roster.mjs';
+import { createLocalMatchState, purchaseLocalOffer, refreshLocalShop, sellLocalUnit, toggleLocalShopLock, changeLocalMove, saleValueLocal, canManageLocalInventory, confirmLocalBet, selectPveDifficulty, cloneLocalPokemon, BALLS, moveLocalAvatar, moveLocalUnit } from '../../server/game/roster.mjs';
 import { createCamera } from './camera.mjs';
 import { createSpriteCache } from './sprites.mjs';
 import { createSpriteRenderer } from './renderer.mjs';
-import { BY_ID } from '../../server/game/pokemon.mjs';
+import { BY_ID, getDirection } from '../../server/game/pokemon.mjs';
 import { MOVES_BY_ID } from '../../server/game/moves.mjs';
-import { fieldLimitForBattle, shopOddsForBattle, RULES } from '../../server/game/rules.mjs';
+import { fieldLimitForBattle, shopOddsForBattle, RULES, STAGES, STAGE_NAMES, chapterForBattle, stageForBattle, battleKind, interestForGold, streakBonus, PVE_DIFFICULTIES } from '../../server/game/rules.mjs';
 import { aliveCount, combatForPlayer, phaseRemainingSeconds, startLocalMatchCycle, updateLocalMatchCycle } from '../../server/game/match-cycle.mjs';
 import { BOARD, TAU, cellAtWorld, tilePosition, validCellForTeam, effectiveUnitStats } from '../../server/game/battle.mjs';
 import {calculateCompass,ALL_TYPES} from '../../server/game/compass.mjs';
-import {TERRAIN,STRUCTURE_BY_ID,STRUCTURE_CAPACITY,terrainModifiers,paintTerrain,buyStructure,placeStructure,movePlacedStructure,removeStructure,discardStructure,structurePoints,fieldEffects} from '../../server/game/terrain.mjs';
+import {STRUCTURE_BY_ID,STRUCTURE_CAPACITY,buyStructure,movePlacedStructure,bankStructure,sellStructure,structurePoints,fieldEffects} from '../../server/game/structures.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('arena');
@@ -36,12 +36,7 @@ let pan=null;
 let spaceDown=false;
 let toastTimer=0;
 let shopSignature='';
-let terrainSignature='';
-let activeTab='pokemon';
-let terrainTool='grama';
-let selectedStructure=null;
-let terrainPainting=null;
-let structurePointer=null;
+let ballPointer=null;
 let compassSignature='';
 let dpr=1;
 let screen={w:1000,h:760};
@@ -59,7 +54,7 @@ function canEdit() { return !!localMatch && localMatch.phase==='preparation' &&
 function canManage() { return observedId===localMatch?.ownerId&&canManageLocalInventory(localMatch,humanParticipant()); }
 function ownsUnit(mon) { const p=humanParticipant();return !!p&&(p.board.includes(mon)||p.bench.includes(mon)); }
 function observedCombat() { return combatForPlayer(localMatch,observedId); }
-function displayedBattle() { return ['intro','combat'].includes(localMatch?.phase) ? observedCombat()?.battle||null : null; }
+function displayedBattle() { return ['intro','combat','result'].includes(localMatch?.phase) ? observedCombat()?.battle||null : null; }
 function currentShop() { return humanParticipant()?.shop||[]; }
 function allUnits() {
   const p=observedParticipant();
@@ -99,7 +94,7 @@ function startMatch() {
   hovered=null;
   drag=null;
   shopPointer=null;
-  structurePointer=null;
+  ballPointer=null;
   compassSignature='';
   announced=false;
   evolutionEffects.length=0;
@@ -114,10 +109,6 @@ function startMatch() {
   $('outcome').hidden=true;
   document.querySelector('.game-shell').dataset.mode='local';
   shopSignature='';
-  terrainSignature='';
-  activeTab='pokemon';
-  terrainTool='grama';
-  selectedStructure=null;
   sizeCanvas();
   renderHud();
 }
@@ -129,17 +120,14 @@ function openMenu() {
   hovered=null;
   drag=null;
   shopPointer=null;
-  structurePointer=null;
+  ballPointer=null;
   pan=null;
   $('entry-screen').hidden=false;
   $('outcome').hidden=true;
   $('toast').hidden=true;
   document.querySelector('.game-shell').dataset.mode='menu';
   setShopSellMode(false);
-  terrainPainting=null;
-  activeTab='pokemon';
   shopSignature='';
-  terrainSignature='';
   renderHud();
 }
 function observePlayer(id) {
@@ -150,7 +138,7 @@ function observePlayer(id) {
   drag=null;
   hovered=null;
   shopPointer=null;
-  structurePointer=null;
+  ballPointer=null;
   compassSignature='';
   fitCamera();
   renderHud();
@@ -173,9 +161,9 @@ function purchase(index,dropCell=null) {
   if(!id)return false;
   if(player.shopKinds[index]==='estrutura') {
     const def=STRUCTURE_BY_ID[id];
-    if(dropCell){
-      if(!canEdit())return false;
-      if(!validCellForTeam(0,dropCell))return false;
+    if(dropCell?.row===BOARD.playerBenchRow&&player.bench[dropCell.col])return false;
+    if(dropCell&&dropCell.row!==BOARD.playerBenchRow){
+      if(!canEdit()||!validCellForTeam(0,dropCell))return false;
       const col=dropCell.col,row=dropCell.row-BOARD.playerFieldStart;
       if(col+def.size>10||row+def.size>5||
         player.structures.some(s=>{
@@ -183,10 +171,11 @@ function purchase(index,dropCell=null) {
           return col<s.col+size&&col+def.size>s.col&&row<s.row+size&&row+def.size>s.row;
         })||structurePoints(player)+(def.size===2?2:1)>STRUCTURE_CAPACITY)return false;
     }
-    if(!buyStructure(localMatch,player,index)) {showToast('Sem ouro ou inventário de estruturas cheio.');return false;}
-    if(dropCell)placeStructure(localMatch,player,id,dropCell.col,dropCell.row-BOARD.playerFieldStart);
-    shopSignature='';terrainSignature='';renderHud();
-    if(!dropCell)showToast('Estrutura no inventário.');
+    const instance=buyStructure(localMatch,player,index);
+    if(!instance) {showToast('Sem ouro ou banco cheio.');return false;}
+    if(dropCell&&instance)moveUnit(instance,dropCell,false);
+    shopSignature='';renderHud();
+    if(!dropCell)showToast('Estrutura no banco.');
     return true;
   }
   if(!BY_ID[id])return false;
@@ -215,6 +204,9 @@ function purchase(index,dropCell=null) {
   return true;
 }
 function sell(mon) {
+  if(mon?.kind==='structure'){
+    if(sellStructure(localMatch,humanParticipant(),mon)){selectedId=null;renderHud();showToast('Estrutura vendida.');}return;
+  }
   if(mon?.combatUnit)mon=humanParticipant()?.board.find(u=>u.instanceId===mon.instanceId&&u.speciesId===mon.speciesId)||null;
   if(!canManage()||!mon||!ownsUnit(mon))return;
   if(sellLocalUnit(localMatch,humanParticipant(),mon)) {
@@ -225,45 +217,13 @@ function sell(mon) {
 }
 function moveUnit(mon,target,swap=true) {
   if(!canManage()||!mon||!target)return false;
-  const player=humanParticipant();
-  const benchTarget=target.row===BOARD.playerBenchRow;
-  if(!benchTarget&&!validCellForTeam(0,target))return false;
-  const fromBench=player.bench.indexOf(mon);
-  const fromBoard=player.board.indexOf(mon);
-  if(!canEdit()&&(!benchTarget||fromBench<0))return false;
-  if(fromBench<0&&fromBoard<0)return false;
-  const other=benchTarget?player.bench[target.col]:player.board.find(u=>u.col===target.col&&u.row===target.row);
-  if(other===mon)return true;
-  if(other&&!swap)return false;
-  if(!benchTarget&&fromBench>=0&&!other&&player.board.length>=fieldLimitForBattle(localMatch.round)) {
-    showToast('Limite de Pokémon no campo atingido.');
-    return false;
-  }
-  if(fromBench>=0)player.bench[fromBench]=null;
-  else player.board.splice(fromBoard,1);
-  if(other) {
-    const otherBench=player.bench.indexOf(other);
-    if(otherBench>=0)player.bench[otherBench]=null;
-    else player.board.splice(player.board.indexOf(other),1);
-    if(fromBench>=0)player.bench[fromBench]=other;
-    else {other.col=mon.col;other.row=mon.row;player.board.push(other);}
-  }
-  if(benchTarget) {
-    player.bench[target.col]=mon;
-    mon.row=BOARD.playerBenchRow;
-    mon.col=target.col;
-  } else {
-    mon.col=target.col;
-    mon.row=target.row;
-    player.board.push(mon);
-  }
-  localMatch.revision++;
-  player.compass=calculateCompass(player);
+  const ok=moveLocalUnit(localMatch,humanParticipant(),mon,target,swap);
+  if(!ok)showToast('Posição indisponível ou limite do campo atingido.');
   renderHud();
-  return true;
+  return ok;
 }
 const {camera,screenPoint,screenToWorld,clientToWorld,fitCamera,zoomAt,updateCamera}=createCamera(
-  canvas,BOARD,()=>screen,()=>({
+  canvas,{...BOARD,get columns(){return displayedBattle()?.columns||10;}},()=>screen,()=>({
     top:Math.max(82,$('phase-label').closest('.top-hud').getBoundingClientRect().height+22),
     bottom:Math.max(155,$('shop-slots').closest('.bottom-hud').getBoundingClientRect().height+24)
   }),()=>!!pan
@@ -306,26 +266,14 @@ function updateSellHover(x,y) {
   slots.querySelectorAll('.sell-hover').forEach(card=>card.classList.remove('sell-hover'));
   if(target&&slots.contains(target))target.classList.add('sell-hover');
 }
-function applyTerrainBrush(cell,large=false) {
-  if(!canEdit()||!cell||!validCellForTeam(0,cell))return false;
-  const player=humanParticipant(),col=cell.col,row=cell.row-BOARD.playerFieldStart;
-  if(terrainTool==='remove')return removeStructure(localMatch,player,col,row);
-  if(terrainTool==='structure')return selectedStructure ? placeStructure(localMatch,player,selectedStructure,col,row) : false;
-  let changed=false;
-  const spread=large?1:0;
-  for(let dr=-spread;dr<=spread;dr++)for(let dc=-spread;dc<=spread;dc++)
-    changed=paintTerrain(localMatch,player,col+dc,row+dr,terrainTool)||changed;
-  return changed;
-}
-function terrainActionAt(e) {
-  const cell=cellAtClient(e.clientX,e.clientY);
-  const changed=applyTerrainBrush(cell,e.shiftKey);
-  if(changed) {terrainSignature='';renderHud();}
-  return changed;
-}
 canvas.addEventListener('pointerdown',e=>{
   if(!localMatch)return;
   const p=screenPoint(e.clientX,e.clientY);
+  if(e.button===2&&!spaceDown&&!e.shiftKey){
+    const world=screenToWorld(p);
+    if(observedId===localMatch.ownerId&&!drag)moveLocalAvatar(localMatch,humanParticipant(),world.x,world.y);
+    e.preventDefault();return;
+  }
   if(e.button===1||e.button===2||(spaceDown&&e.button===0)) {
     pan={pointer:e.pointerId,start:p,x:camera.x,y:camera.y};
     canvas.setPointerCapture(e.pointerId);
@@ -340,7 +288,7 @@ canvas.addEventListener('pointerdown',e=>{
     if(!canManage()||clickedMon.combatUnit||(!canEdit()&&benchIndex(clickedMon)===null))return;
   } else if(!canEdit()) {selectedId=null;renderDetails();return;}
   const placed=clickedMon?null:hitPlacedStructure(worldCell);
-  if(placed&&terrainTool!=='remove') {
+  if(placed) {
     const item=STRUCTURE_BY_ID[placed.id],world=screenToWorld(p);
     const center={x:BOARD.x+(placed.col+item.size/2)*BOARD.tile,
       y:BOARD.y+(BOARD.playerFieldStart+placed.row+item.size/2)*BOARD.tile};
@@ -348,13 +296,7 @@ canvas.addEventListener('pointerdown',e=>{
       grab:{col:worldCell.col-placed.col,row:worldCell.row-BOARD.playerFieldStart-placed.row},
       offset:{x:world.x-center.x,y:world.y-center.y},world:center};
     canvas.setPointerCapture(e.pointerId);
-    return;
-  }
-  if(activeTab==='terrain'&&!clickedMon){
-    terrainActionAt(e);
-    if(terrainTool!=='structure'&&terrainTool!=='remove'){
-      terrainPainting=e.pointerId;canvas.setPointerCapture(e.pointerId);
-    }
+    setShopSellMode(true);
     return;
   }
   const world=screenToWorld(p);
@@ -369,7 +311,6 @@ canvas.addEventListener('pointerdown',e=>{
   }
 });
 canvas.addEventListener('pointermove',e=>{
-  if(terrainPainting===e.pointerId&&activeTab==='terrain'){terrainActionAt(e);return;}
   const pt=screenPoint(e.clientX,e.clientY);
   const world=screenToWorld(pt);
   hovered=canEdit()?cellAtWorld(world.x,world.y):null;
@@ -390,19 +331,19 @@ canvas.addEventListener('pointermove',e=>{
   }
 });
 canvas.addEventListener('pointerup',e=>{
-  if(terrainPainting===e.pointerId){terrainPainting=null;return;}
   if(pan?.pointer===e.pointerId) {pan=null;return;}
   if(drag?.kind==='placed-structure'&&drag.pointer===e.pointerId){
     const active=drag;drag=null;
     const target=document.elementFromPoint(e.clientX,e.clientY);
-    if(target?.closest?.('#terrain-pane')){
-      if(!removeStructure(localMatch,humanParticipant(),active.structure.col,active.structure.row))showToast('Inventário de estruturas cheio.');
+    if(target?.closest?.('.shop-card')){
+      sell(active.structure);
     }else{
       const cell=cellAtClient(e.clientX,e.clientY);
       const col=cell?.col-active.grab.col,row=cell?.row-BOARD.playerFieldStart-active.grab.row;
-      if(!movePlacedStructure(localMatch,humanParticipant(),active.structure,col,row))showToast('Posição indisponível.');
+      const ok=cell?.row===BOARD.playerBenchRow?bankStructure(localMatch,humanParticipant(),active.structure,cell.col):movePlacedStructure(localMatch,humanParticipant(),active.structure,col,row);
+      if(!ok)showToast('Posição indisponível.');
     }
-    terrainSignature='';renderHud();return;
+    setShopSellMode(false);renderHud();return;
   }
   if(drag?.kind!=='unit'||drag.pointer!==e.pointerId)return;
   const active=drag;
@@ -412,7 +353,7 @@ canvas.addEventListener('pointerup',e=>{
   if(overShop)sell(active.mon);
   else moveUnit(active.mon,cellAtClient(e.clientX,e.clientY));
 });
-canvas.addEventListener('pointercancel',()=>{drag=null;pan=null;terrainPainting=null;setShopSellMode(false);});
+canvas.addEventListener('pointercancel',()=>{drag=null;pan=null;setShopSellMode(false);});
 document.addEventListener('pointermove',e=>{
   if(!shopPointer||shopPointer.pointer!==e.pointerId)return;
   if(!shopPointer.dragging&&Math.hypot(e.clientX-shopPointer.start.x,e.clientY-shopPointer.start.y)>5){
@@ -432,42 +373,34 @@ document.addEventListener('pointerup',e=>{
   if(!prior.dragging)return;
   drag=null;
   if(!document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.bottom-hud')) {
-    if(!purchase(prior.index,cellAtClient(e.clientX,e.clientY)))showToast('Solte em um campo ou banco livre.');
+    const cell=cellAtClient(e.clientX,e.clientY);
+    if(!cell||!purchase(prior.index,cell))showToast('Solte em um campo ou banco livre.');
   }
   setTimeout(()=>{suppressShopClick=false;},0);
 });
 document.addEventListener('pointercancel',()=>{
-  shopPointer=null;structurePointer=null;
-  if(drag?.kind==='shop'||drag?.kind==='inventory-structure')drag=null;
+  shopPointer=null;ballPointer=null;
+  if(drag?.kind==='shop'||drag?.kind==='ball')drag=null;
   suppressShopClick=false;
 });
-// Mesmo ciclo de arraste dos Pokémon: clique seleciona, arraste instala estrutura.
 document.addEventListener('pointermove',e=>{
-  if(!structurePointer||structurePointer.pointer!==e.pointerId)return;
-  if(!structurePointer.dragging&&Math.hypot(e.clientX-structurePointer.start.x,e.clientY-structurePointer.start.y)>5){
-    structurePointer.dragging=true;suppressShopClick=true;
-    drag={kind:'inventory-structure',id:structurePointer.id,world:clientToWorld(e.clientX,e.clientY)};
-  }
-  if(structurePointer.dragging&&drag?.kind==='inventory-structure'){
-    drag.world=clientToWorld(e.clientX,e.clientY);
-    hovered=cellAtClient(e.clientX,e.clientY);
-  }
+  if(!ballPointer||ballPointer.pointer!==e.pointerId)return;
+  drag={kind:'ball',id:ballPointer.id,world:clientToWorld(e.clientX,e.clientY)};
 });
 document.addEventListener('pointerup',e=>{
-  if(!structurePointer||structurePointer.pointer!==e.pointerId)return;
-  const prior=structurePointer;structurePointer=null;
-  if(!prior.dragging)return;
+  if(!ballPointer||ballPointer.pointer!==e.pointerId)return;
+  const prior=ballPointer;ballPointer=null;
   drag=null;
-  const cell=cellAtClient(e.clientX,e.clientY);
-  if(!cell||!validCellForTeam(0,cell)||!placeStructure(localMatch,humanParticipant(),prior.id,cell.col,cell.row-BOARD.playerFieldStart)){
-    showToast('Solte a estrutura em uma área livre do campo.');
-  }
-  terrainSignature='';renderHud();
-  setTimeout(()=>{suppressShopClick=false;},0);
+  const unit=hitUnit(clientToWorld(e.clientX,e.clientY));
+  const result=cloneLocalPokemon(localMatch,humanParticipant(),prior.id,unit);
+  showToast(result?result.success?'Clonagem bem-sucedida!':'A clonagem falhou.':'Alvo inelegível ou banco cheio. Item preservado.');
+  if(result&&unit){const p=monWorld(unit);cloneVisual={...p,success:result.success,until:visualTime+1.2};}
+  renderHud();
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('wheel',e=>{e.preventDefault();zoomAt(screenPoint(e.clientX,e.clientY),e.deltaY<0?1.12:.89);},{passive:false});
 window.addEventListener('keydown',e=>{
+  if(e.target.closest?.('input,select,textarea'))return;
   if(e.code==='Space')spaceDown=true;
   if(canEdit()&&(e.key==='Delete'||e.key==='Backspace'))sell(selectedMon());
 });
@@ -476,39 +409,23 @@ window.addEventListener('keyup',e=>{if(e.code==='Space')spaceDown=false;});
 function renderHud() {
   const player=humanParticipant();
   const observed=observedParticipant();
-  const editing=canEdit();
   const managing=canManage();
   $('match-panel').hidden=!localMatch;
   $('environment-panel').hidden=!localMatch;
-  const terrainMode=activeTab==='terrain';
-  const footer=$('shop-slots').closest('.bottom-hud');
-  footer.classList.toggle('terrain-active',terrainMode);
-  $('terrain-pane').hidden=!terrainMode;
-  $('shop-slots').hidden=terrainMode;
-  $('shop-rarity-odds').hidden=!localMatch||terrainMode;
+  $('shop-rarity-odds').hidden=!localMatch;
   $('compass-widget').hidden=!localMatch;
-  $('tab-pokemon').classList.toggle('selected',!terrainMode);
-  $('tab-pokemon').setAttribute('aria-selected',String(!terrainMode));
-  $('tab-terrain').classList.toggle('selected',terrainMode);
-  $('tab-terrain').setAttribute('aria-selected',String(terrainMode));
-  $('reroll-shop').hidden=terrainMode;
-  $('lock-shop').hidden=terrainMode||!localMatch;
-  $('discard-structure').hidden=!terrainMode;
-  $('remove-placed').hidden=!terrainMode;
-  $('remove-placed').disabled=!editing;
-  $('remove-placed').classList.toggle('selected',terrainTool==='remove');
-  $('discard-structure').disabled=!editing||!selectedStructure||!(player?.structureInventory||[]).some(s=>s.id===selectedStructure);
+  $('lock-shop').hidden=!localMatch;
   $('hp-stat').hidden=!localMatch;
   $('alive-stat').hidden=!localMatch;
   $('timer-stat').hidden=!localMatch;
-  $('round-label').textContent=localMatch?.round??1;
+  $('round-label').textContent=`${localMatch?.chapter||1}-${localMatch?.stage||1}`;
   $('limit-label').textContent=`${observed?.board.length||0}/${fieldLimitForBattle(localMatch?.round||1)}`;
   $('gold-label').textContent=player?.gold??9;
   $('shop-gold-value').textContent=player?.gold??9;
   $('hp-label').textContent=observed?.hp??100;
   $('alive-label').textContent=localMatch?`${aliveCount(localMatch)}/${localMatch.players.length}`:'—';
   $('timer-label').textContent=localMatch?`${phaseRemainingSeconds(localMatch,performance.now()/1000)}s`:'30s';
-  $('phase-label').textContent=localMatch?.phase==='intro'?'Entrada · Local':localMatch?.phase==='combat'?'Combate · Local':localMatch?.phase==='finished'?'Fim de partida':'Preparação · Local';
+  $('phase-label').textContent=localMatch?.phase==='intro'?'Entrada':localMatch?.phase==='combat'?'Combate':localMatch?.phase==='result'?'Resultado':localMatch?.phase==='finished'?'Fim de partida':'Preparação';
   $('reroll-shop').disabled=!managing||player.shopLocked||player.gold<RULES.rerollCostGold;
   $('lock-shop').disabled=!managing;
   $('lock-shop').setAttribute('aria-label',player?.shopLocked?'Destravar loja':'Travar loja');
@@ -516,15 +433,19 @@ function renderHud() {
   $('lock-shop').querySelector('path').setAttribute('d',player?.shopLocked?'M8 10V7a4 4 0 0 1 8 0v3':'M8 10V7a4 4 0 0 1 7-2');
   $('lock-shop').setAttribute('aria-pressed',String(!!player?.shopLocked));
   renderEnvironment();
-  renderTerrainTools();
+  renderChapterControls();
   $('match-players').replaceChildren();
   if(localMatch) {
     $('match-id-label').textContent=`${aliveCount(localMatch)}/${localMatch.players.length} vivos`;
     const combat=observedCombat();
     $('match-panel-note').textContent=localMatch.phase==='intro'?'Entrada dos adversários · 3 segundos.':localMatch.phase==='combat'?
-      combat?.status==='bye'?'Folga temporária nesta rodada.':
       combat?.status==='running'?'Combate local em andamento.':'Confronto encerrado.':
-      localMatch.phase==='finished'?'Partida local encerrada.':'Monte sua equipe durante a preparação.';
+      localMatch.phase==='finished'?'Partida local encerrada.':localMatch.phase==='result'?'Clique direito para mover e recolher espólios.':'Monte sua equipe durante a preparação.';
+    if(combat){
+      const teams=combat.members.map((m,i)=>`E${i+1}: ${m.name||(m.pve?'PvE':'Equipe')}`);
+      const ranking=combat.result?.ranking.map((id,i)=>`${i+1}º ${combat.members.find(m=>m.id===id)?.name||'PvE'}`);
+      $('match-panel-note').textContent+=` ${ranking?ranking.join(' · '):teams.join(' · ')}`;
+    }
     $('back-own-arena').hidden=observedId===localMatch.ownerId;
     $('observed-label').textContent=observed?.isBot?`Visitando ${observed.name}`:'Sua arena';
     for(const participant of localMatch.players.slice().sort((a,b)=>b.hp-a.hp)) {
@@ -554,6 +475,77 @@ function renderHud() {
   renderDamageRanking();
 }
 let synergySignature='';
+let cloneVisual=null;
+let consumableSignature='';
+const stageIcons={normal:'•',gold:'●',triple:'Ⅲ',pve:'◆',double:'×2',quadruple:'Ⅳ',legendary:'★'};
+function renderChapterControls(){
+  const player=humanParticipant();
+  if(!player)return;
+  const chapter=localMatch.chapter;
+  $('chapter-progress').innerHTML=STAGES.map((kind,i)=>{
+    const round=(chapter-1)*10+i+1,result=player.history.find(h=>h.round===round);
+    const state=result?result.result:localMatch.stage===i+1?'current':'future';
+    const label=result?({win:'vitória',loss:'derrota',neutral:'neutro'}[result.result])+(result.place?` · ${result.place}º`:''):'aguardando';
+    return `<span class="stage-mark ${state}" title="${chapter}-${i+1}: ${STAGE_NAMES[kind]} · ${label}" aria-label="${chapter}-${i+1}: ${STAGE_NAMES[kind]} · ${label}">${stageIcons[kind]}</span>`;
+  }).join('');
+  $('economy-bonuses').innerHTML=`<span title="Juros previstos: +${interestForGold(player.gold)}. Um por 10 ouros, máximo 3; saldo antes da renda.">◉ ${interestForGold(player.gold)}</span><span title="Vitória concede +1 ouro, além da renda básica de 5.">⚑ +1</span><span title="Sequência de ${player.streak.result==='win'?'vitórias':player.streak.result==='loss'?'derrotas':'resultados'}: ${player.streak.count}. Bônus a partir do terceiro resultado, máximo 3. Neutros preservam a sequência.">${player.streak.result==='loss'?'↓':'↑'} +${streakBonus(player.streak.count)}</span>`;
+  $('bet-controls').hidden=battleKind(localMatch.round)!=='gold';
+  const bet=player.bet,editable=canEdit()&&!bet;
+  $('bet-prediction').disabled=!editable;$('bet-amount').disabled=!editable;
+  $('bet-amount').max=String(Math.min(5,player.gold));
+  $('confirm-bet').disabled=!editable||player.gold<1;
+  $('bet-status').textContent=bet?`${bet.amount} ouro · ${bet.prediction==='win'?'vitória':'derrota'}${bet.settled?' · liquidada':''}`:'Aposta opcional: 1–5 ouros';
+  $('pve-controls').hidden=battleKind(localMatch.round)!=='pve';
+  $('pve-difficulty').disabled=!canEdit();$('pve-difficulty').value=player.pveDifficulty;
+  $('pve-budget').textContent=`${chapter+PVE_DIFFICULTIES[player.pveDifficulty].points} pontos na vitória`;
+  $('pending-rewards').textContent=player.pendingRewards.length?`${player.pendingRewards.length} Pokémon aguardando espaço no banco`:'';
+  const signature=`${canEdit()}:${player.consumables.join(',')}`;
+  if(signature!==consumableSignature){
+    consumableSignature=signature;
+    $('consumables').innerHTML=Object.entries(BALLS).map(([id,ball])=>{
+      const count=player.consumables.filter(b=>b===id).length;
+      return count?`<button class="ball-item ${id}" data-ball="${id}" type="button" ${canEdit()?'':'disabled'} title="${ball.name}: arraste sobre um Pokémon seu. Míticos e lendários são inelegíveis."><span>◒</span><small>${count}</small></button>`:'';
+    }).join('');
+    $('consumables').querySelectorAll('button').forEach(button=>button.addEventListener('pointerdown',e=>{
+      if(e.button===0&&canEdit()){e.preventDefault();ballPointer={id:button.dataset.ball,pointer:e.pointerId};}
+    }));
+  }
+}
+function damageVisualUnit(unit){
+  const combat=observedCombat(),outcome=combat?.result?.outcomes?.[observedId];
+  const ownTeam=combat?.playerIds.indexOf(observedId);
+  if(localMatch?.phase!=='result'||!outcome?.damage||unit.team===ownTeam)return unit;
+  const avatar=observedParticipant().avatar;
+  const t=clamp((performance.now()/1000-localMatch.phaseStartedAt)/1.5,0,1);
+  return {...unit,x:unit.x+(avatar.x-unit.x)*t,y:unit.y+(avatar.y-unit.y)*t,state:t<1?'Walk':'Attack',stateTime:visualTime,facing:getDirection(avatar.x-unit.x,avatar.y-unit.y)};
+}
+function drawAvatarAndLoot(){
+  const player=observedParticipant();if(!player)return;
+  for(const loot of player.loot){
+    const size={gray:10,blue:15,yellow:21}[loot.color],color={gray:'#c4cad1',blue:'#65baff',yellow:'#ffd55c'}[loot.color];
+    ellipse(loot.x,loot.y+size*.6,size,5,'#132e2277');
+    ctx.fillStyle=color;ctx.fillRect(loot.x-size,loot.y-size,size*2,size*1.5);
+    ctx.strokeStyle='#fff5c0';ctx.lineWidth=2;ctx.strokeRect(loot.x-size,loot.y-size,size*2,size*1.5);
+    ctx.fillStyle='#234139';ctx.fillRect(loot.x-2,loot.y-5,4,7);
+    if(loot.reward.kind==='gold'){ellipse(loot.x+size,loot.y-8,7,9,'#ffd763');ellipse(loot.x+size,loot.y-8,3,5,'#c48d2e');}
+  }
+  const a=player.avatar;
+  ellipse(a.x,a.y+5,16,6,'#102d2266');
+  ellipse(a.x,a.y-5,13,17,'#4cb4bc');ellipse(a.x,a.y-24,10,10,'#ffe0aa');
+  ctx.fillStyle='#ed5d60';ctx.fillRect(a.x-12,a.y-34,24,8);ctx.fillRect(a.x-4,a.y-27,20,4);
+  ctx.fillStyle='#152d32';ctx.fillRect(a.x+3,a.y-23,3,3);
+  ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff1bd';ctx.fillText(`${player.hp} HP`,a.x,a.y-44);
+  const damage=observedCombat()?.result?.outcomes?.[observedId]?.damage;
+  if(localMatch.phase==='result'&&damage){
+    ctx.fillStyle='#ff7777';ctx.font='bold 22px system-ui';ctx.fillText(`−${damage}`,a.x,a.y-60);
+  }
+  if(drag?.kind==='ball'){
+    ellipse(drag.world.x,drag.world.y,12,12,'#fff2db');ellipse(drag.world.x,drag.world.y-4,11,7,'#ed6270');
+  }
+  if(cloneVisual&&visualTime<cloneVisual.until){
+    ctx.strokeStyle=cloneVisual.success?'#89f8b1':'#ff8282';ctx.lineWidth=4;ctx.beginPath();ctx.arc(cloneVisual.x,cloneVisual.y-15,20+(1.2-cloneVisual.until+visualTime)*28,0,TAU);ctx.stroke();
+  }
+}
 let damageSignature='';
 function renderDamageRanking() {
   $('damage-panel').hidden=!localMatch;
@@ -561,11 +553,11 @@ function renderDamageRanking() {
   const signature=JSON.stringify(report||null);
   if(signature===damageSignature)return;
   damageSignature=signature;
-  $('damage-round').textContent=report?`Rodada ${report.round}`:'Última rodada';
+  $('damage-round').textContent=report?`Fase ${chapterForBattle(report.round)}-${stageForBattle(report.round)}`:'Última fase';
   const rows=(report?.units||[]).slice().sort((a,b)=>b.damage-a.damage);
   const peak=Math.max(1,...rows.map(row=>row.damage));
   $('damage-ranking').replaceChildren();
-  if(!rows.length){$('damage-ranking').textContent=report?'Sem dano nesta rodada.':'Conclua uma rodada para ver o dano.';return;}
+  if(!rows.length){$('damage-ranking').textContent=report?'Sem dano nesta fase.':'Conclua uma fase para ver o dano.';return;}
   for(const [index,row] of rows.entries()) {
     const species=BY_ID[row.speciesId];if(!species)continue;
     const item=document.createElement('div');item.className='damage-row';
@@ -615,15 +607,10 @@ function renderEnvironment() {
   const player=observedParticipant();
   if(!player||!localMatch)return;
   const compass=calculateCompass(player);
-  player.compass=compass;
   renderCompass(player,compass);
-  $('capacity-label').textContent=`${structurePoints(player)}/${STRUCTURE_CAPACITY}`;
   const battle=displayedBattle();
-  const combat=observedCombat();
-  const sides=battle&&battle.phase!=='finished'?combat.playerIds.map(id=>localMatch.players.find(p=>p.id===id)).filter(Boolean):[player];
-  const effects=fieldEffects({structures:sides.flatMap(p=>p.structures||[])});
-  const terrains=[...new Set(sides.flatMap(p=>p.terrain||[]))];
-  const signature=JSON.stringify([player.id,compass,effects,terrains]);
+  const effects=fieldEffects({structures:battle?battle.environment.flatMap(side=>side.structures||[]):player.structures});
+  const signature=JSON.stringify([player.id,compass,effects]);
   if(signature===synergySignature)return;
   synergySignature=signature;
   hideTypeTooltip();
@@ -633,13 +620,6 @@ function renderEnvironment() {
       const bonus=e.stat==='regen'?`${percentText(e.bonus*100)}% de vida por segundo`:`+${percentText(e.bonus*100)}% de ${STAT_LABELS[e.stat]||e.stat}`;
       return `${e.sources.join(', ')}: ${bonus}. Efeito 1,5× perto da estrutura, respeitando os limites de 12% por atributo e 1,2% de regeneração por segundo.`;
     });
-    for(const id of terrains){
-      const mods=terrainModifiers(id,[type]),baseline=terrainModifiers(id,['Normal']);
-      if(mods.regen>0)extra.push(`${TERRAIN[id].name}: recupera ${percentText(mods.regen*100)}% de vida por segundo sobre esse terreno.`);
-      if(mods.def>0)extra.push(`${TERRAIN[id].name}: +${pointsText(mods.def*100)}% de defesa física sobre esse terreno.`);
-      if(mods.speed>1)extra.push(`${TERRAIN[id].name}: +${pointsText((mods.speed-1)*100)}% de velocidade sobre esse terreno.`);
-      else if(mods.speed>baseline.speed)extra.push(`${TERRAIN[id].name}: ${mods.speed===1?'ignora a redução':'sofre apenas '+pointsText((1-mods.speed)*100)+'% de redução'} de velocidade sobre esse terreno.`);
-    }
     return {type,score,extra};
   }).filter(e=>e.score>0||e.extra.length).sort((a,b)=>b.score-a.score);
   $('environment-effects').replaceChildren();
@@ -657,42 +637,10 @@ function renderEnvironment() {
   }
   if(!entries.length)$('environment-effects').textContent='Nenhum tipo ativo';
 }
-function renderTerrainTools() {
-  if(!localMatch||activeTab!=='terrain')return;
-  const player=humanParticipant();
-  const signature=`${canEdit()}:${terrainTool}:${selectedStructure}:${player?.structureInventory?.map(s=>`${s.id}-${s.count}`).join(',')}:${structurePoints(player)}`;
-  if(signature===terrainSignature)return;
-  terrainSignature=signature;
-  $('terrain-tools').innerHTML=Object.entries(TERRAIN).filter(([id])=>id!=='neutro').map(([id,t])=>
-    `<button class="terrain-tool${terrainTool===id?' selected':''}" type="button" data-id="${id}" title="Pintar terreno: ${t.name}" ${canEdit()?'':'disabled'}><canvas width="116" height="58" aria-hidden="true"></canvas><small>${t.name}</small></button>`).join('');
-  $('terrain-tools').querySelectorAll('button').forEach(button=>{
-    const preview=button.querySelector('canvas');
-    paintTilePreview(preview,button.dataset.id);
-    button.addEventListener('click',()=>{terrainTool=button.dataset.id;selectedStructure=null;terrainSignature='';renderHud();});
-  });
-  const inventory=player?.structureInventory||[];
-  $('structure-inventory').innerHTML=Array.from({length:6},(_,i)=>{
-    const stack=inventory[i],item=STRUCTURE_BY_ID[stack?.id];
-    return `<button type="button" class="structure-slot${item?'':' empty'}${selectedStructure===stack?.id&&terrainTool==='structure'?' selected':''}" data-index="${i}" ${!item||!canEdit()?'disabled':''} title="${item?.name||'Espaço para estrutura'}"><canvas width="116" height="58" aria-hidden="true"></canvas><small>${item?.name||' '}</small>${stack?`<span class="stack-count">×${stack.count}</span>`:''}</button>`;
-  }).join('');
-  $('structure-inventory').querySelectorAll('button').forEach(button=>{
-    const index=Number(button.dataset.index),item=STRUCTURE_BY_ID[inventory[index]?.id];
-    if(item)drawStructurePreview(button.querySelector('canvas'),item);
-    button.addEventListener('click',()=>{
-      if(suppressShopClick)return;
-      selectedStructure=inventory[index]?.id||null;
-      terrainTool='structure';terrainSignature='';renderHud();
-    });
-    button.addEventListener('pointerdown',e=>{
-      if(e.button!==0||!canEdit()||!item)return;
-      structurePointer={pointer:e.pointerId,id:item.id,start:{x:e.clientX,y:e.clientY},dragging:false};
-    });
-  });
-}
 function renderDetails() {
   const mon=selectedMon();
-  $('detail-panel').classList.toggle('collapsed',!mon);
-  if(!mon)return;
+  $('detail-panel').classList.toggle('collapsed',!mon||mon.kind==='structure');
+  if(!mon||mon.kind==='structure')return;
   const p=BY_ID[mon.speciesId];
   if(!p)return;
   const stats=effectiveUnitStats(p,mon);
@@ -702,7 +650,7 @@ function renderDetails() {
   $('selected-type').innerHTML=`${p.types.map(typeIcon).join('')} · ${RARITY_LABELS[p.rarity]} · ${mon.evolutionSteps?`Evolução ${mon.evolutionSteps}`:stageName[p.stage]}`;
   $('selected-type').style.color=p.color;
   $('selected-place').textContent=mon.combatUnit?`Combate · ${Math.ceil(mon.health)}/${mon.maxHealth} HP`:slot!==null?`Banco ${slot+1}`:`Campo ${mon.col+1},${mon.row+1}`;
-  $('selected-iv').textContent=`IV geral ${mon.iv}%${mon.zygardeProgress?` · Zygarde ${mon.zygardeProgress}%`:''}${mon.babyPerfect?' · Baby perfeito':''}`;
+  $('selected-iv').textContent=mon.bossIv?`Chefe · IV ${mon.bossIv}%`:`IV geral ${mon.iv}%${mon.zygardeProgress?` · Zygarde ${mon.zygardeProgress}%`:''}${mon.babyPerfect?' · Baby perfeito':''}`;
   $('sell-value').textContent=`Venda: ${saleValueLocal(mon)} ouro`;
   drawPortrait($('selected-avatar'),p);
   $('stats-list').innerHTML=keys.map(k=>`<div class="stat"><span>${k.toUpperCase()}</span><div><b>${stats[k]}</b><small>base ${p.stats[k]} · IV ${mon.iv}%</small></div></div>`).join('');
@@ -731,19 +679,18 @@ function renderShop() {
     const odds=shopOddsForBattle(localMatch.round);
     $('shop-rarity-odds').innerHTML=Object.keys(RARITY_COLORS).map((rarity,i)=>`<span class="rarity-odd" style="--rarity:${RARITY_COLORS[rarity]}" title="${RARITY_LABELS[rarity]}"><i class="rarity-dot"></i>${RARITY_LABELS[rarity]} <b>${odds[i]}%</b></span>`).join('');
   }
-  const signature=`${editable}:${offers.join(',')}:${kinds.join(',')}:${player?.gold}:${player?.structureInventory?.map(s=>s.id).join(',')}`;
+  const signature=`${editable}:${offers.join(',')}:${kinds.join(',')}:${player?.gold}:${player?.bench.filter(Boolean).length}`;
   if(signature===shopSignature)return;
   shopSignature=signature;
-  $('shop-slots').innerHTML=Array.from({length:6},(_,i)=>{
+  $('shop-slots').innerHTML=Array.from({length:RULES.shopSlots},(_,i)=>{
     const id=offers[i];
     if(kinds[i]==='estrutura' && STRUCTURE_BY_ID[id]) {
       const def=STRUCTURE_BY_ID[id];
-      const inventory=player.structureInventory||[];
-      const fullStacks=inventory.length>=6&&!inventory.some(stack=>stack.id===id);
+      const fullStacks=player.bench.every(Boolean);
       return `<button type="button" class="shop-card structure-offer rarity-${def.rarity}" style="--rarity:${def.rarity==='lendaria'?'#ffda52':def.rarity==='rara'?'#5aa5ff':'#9ca3af'}" data-index="${i}" ${!editable||player.gold<def.price||fullStacks?'disabled':''} title="${def.name}, ${def.size}×${def.size}"><span class="shop-portrait"><canvas class="structure-preview" width="100" height="92" aria-hidden="true"></canvas></span><span class="shop-footer"><b>${def.name}</b><span class="shop-price">${coinSvg}<span>${def.price}</span></span></span></button>`;
     }
     if(!id) {
-      const waiting=kinds[i]==='item'?'Item · etapa 10':kinds[i]==='estrutura'?'Estrutura · etapa 9':'Vazio';
+      const waiting='Vazio';
       return `<button type="button" class="shop-card empty" data-index="${i}" disabled><span class="shop-portrait"><span class="empty-mark">＋</span></span><span class="shop-footer"><b>${waiting}</b></span></button>`;
     }
     const p=BY_ID[id];
@@ -770,16 +717,7 @@ async function prepareSprites() {await loadSprites(()=>renderHud());}
 function ellipse(x,y,rx,ry,color) {ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU);ctx.fill();}
 function line(x,y,toX,toY,color,width=1) {ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(toX,toY);ctx.stroke();}
 // Arte vetorial do cenário compartilhada entre arena, loja e ferramentas.
-const tileDrawings=new Map();
 const structureDrawings=new Map();
-const TILE_PALETTES={
-  neutro:['#d4d9c8','#eff1e2','#a8b7a3'],grama:['#648a55','#b2ca79','#3d6546'],
-  rosa:['#b07a96','#f0bad0','#795b7e'],terra:['#ad8865','#dfbb87','#795d48'],
-  lama:['#746758','#a59472','#4b5146'],areia:['#dcc38b','#fff0bc','#b29361'],
-  neve:['#dae9e8','#ffffff','#a4c9d4'],rochoso:['#8d9a92','#c4cfc0','#5b706d'],
-  metalico:['#8da5a6','#d0e0d8','#536f78'],rasa:['#64aeb7','#b5eddf','#3f889e'],
-  funda:['#386783','#84c8d2','#27465f']
-};
 function artEllipse(c,x,y,rx,ry,fill){
   c.fillStyle=fill;c.beginPath();c.ellipse(x,y,rx,ry,0,0,TAU);c.fill();
 }
@@ -790,50 +728,6 @@ function artPath(c,points,fill,stroke='#263d3b',width=2){
 function artLine(c,points,color,width=2){
   c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));
   c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.lineJoin='round';c.stroke();
-}
-function tileArt(id){
-  id=TERRAIN[id]?id:'neutro';
-  if(tileDrawings.has(id))return tileDrawings.get(id);
-  const tile=document.createElement('canvas');tile.width=58;tile.height=58;
-  const c=tile.getContext('2d'),[ground,light,dark]=TILE_PALETTES[id];
-  const wash=c.createLinearGradient(0,0,58,58);wash.addColorStop(0,light);wash.addColorStop(.18,ground);wash.addColorStop(1,dark);
-  c.fillStyle=wash;c.fillRect(0,0,58,58);
-  c.fillStyle=ground;c.globalAlpha=.6;c.fillRect(2,2,54,54);c.globalAlpha=1;
-  for(const [x,y] of [[11,12],[38,9],[23,31],[46,42],[8,47]]){
-    if(id==='grama'||id==='rosa'){
-      artLine(c,[[x-3,y+4],[x,y-3],[x+1,y+4],[x+5,y]],light,1.5);
-      if(id==='rosa'){artEllipse(c,x+3,y-3,3,3,'#f3d0db');artEllipse(c,x+3,y-3,1,1,'#fce6a6');}
-    }else if(id==='rasa'||id==='funda'){
-      c.strokeStyle=light;c.lineWidth=1.4;c.beginPath();c.moveTo(x-4,y);c.quadraticCurveTo(x,y-3,x+5,y);c.stroke();
-      artEllipse(c,x+7,y+5,1,1,light);
-    }else if(id==='rochoso'){
-      artPath(c,[[x-5,y+3],[x-3,y-3],[x+3,y-5],[x+6,y+2],[x+1,y+5]],dark,null);
-      artLine(c,[[x-3,y-3],[x+2,y-4],[x+4,y]],light,1.5);
-    }else if(id==='neve'){
-      artLine(c,[[x-3,y],[x+3,y]],light,1.5);artLine(c,[[x,y-3],[x,y+3]],light,1.5);
-    }else if(id==='lama'){
-      artEllipse(c,x,y,6,3,dark);artLine(c,[[x-3,y-1],[x+2,y-1]],light,1);
-    }else if(id==='areia'){
-      c.strokeStyle=light;c.lineWidth=1;c.beginPath();c.moveTo(x-5,y+2);c.quadraticCurveTo(x,y-4,x+6,y);c.stroke();
-    }else if(id==='terra'){
-      artEllipse(c,x,y,2,1.3,dark);artEllipse(c,x+3,y+2,1,1,light);
-    }
-  }
-  if(id==='metalico'){
-    artLine(c,[[29,1],[29,57]],dark,1.5);artLine(c,[[1,29],[57,29]],dark,1.5);
-    for(const x of [7,51])for(const y of [7,51]){artEllipse(c,x,y,2,2,dark);artEllipse(c,x-.5,y-.5,1,1,light);}
-  }else if(id==='neutro'){
-    artLine(c,[[1,29],[57,29]],dark,1);artLine(c,[[29,1],[29,29]],dark,1);artLine(c,[[15,29],[15,57]],dark,1);
-  }
-  artLine(c,[[1,57],[1,1],[57,1]],'#ffffff35',1);artLine(c,[[57,1],[57,57],[1,57]],'#102a2926',1);
-  tileDrawings.set(id,tile);return tile;
-}
-function drawTile(c,id,x,y,w=BOARD.tile,h=BOARD.tile){c.drawImage(tileArt(id),x,y,w,h);}
-function paintTilePreview(canvas,id){
-  if(!canvas)return;
-  const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);
-  drawTile(c,id,0,0,canvas.width/2,canvas.height);
-  drawTile(c,id,canvas.width/2,0,canvas.width/2,canvas.height);
 }
 function structureArt(item){
   if(structureDrawings.has(item.id))return structureDrawings.get(item.id);
@@ -930,11 +824,12 @@ function drawStructurePreview(canvas,item){
   drawStructureArt(c,item,(canvas.width-size)/2,(canvas.height-size)/2,size,size);
 }
 function drawArenaFloor(){
-  ctx.fillStyle='#182e22';ctx.fillRect(0,0,BOARD.width,BOARD.height);
+  const columns=displayedBattle()?.columns||10;
+  ctx.fillStyle='#182e22';ctx.fillRect(0,0,BOARD.x+columns*BOARD.tile+100,BOARD.height);
   ctx.fillStyle='#566b5b';
-  ctx.fillRect(BOARD.x-12,BOARD.y-12,BOARD.columns*BOARD.tile+24,BOARD.rows*BOARD.tile+24);
-  for(let row=0;row<BOARD.rows;row++)for(let col=0;col<BOARD.columns;col++){
-    drawTile(ctx,'neutro',BOARD.x+col*BOARD.tile,BOARD.y+row*BOARD.tile);
+  ctx.fillRect(BOARD.x-12,BOARD.y-12,columns*BOARD.tile+24,BOARD.rows*BOARD.tile+24);
+  for(let row=0;row<BOARD.rows;row++)for(let col=0;col<columns;col++){
+    ctx.fillStyle=(col+row)%2?'#789574':'#809c7b';ctx.fillRect(BOARD.x+col*BOARD.tile,BOARD.y+row*BOARD.tile,BOARD.tile,BOARD.tile);
   }
 }
 function drawBoard(t) {
@@ -943,19 +838,12 @@ function drawBoard(t) {
     const watched=observedParticipant();
     const combat=observedCombat();
     const shown=displayedBattle();
-    const running=shown?.phase==='finished'?null:shown;
+    const running=shown;
     const bottomPlayer=running ? localMatch.players.find(p=>p.id===combat.playerIds[0]) : watched;
     const topPlayer=running ? localMatch.players.find(p=>p.id===combat.playerIds[1]) : null;
     for(const [player,isTop] of [[bottomPlayer,false],[topPlayer,true]]){
       if(!player)continue;
-      const field=player.terrain||[];
-      for(let r=0;r<5;r++)for(let col=0;col<10;col++){
-        const tile=TERRAIN[field[r*10+col]];
-        if(!tile||field[r*10+col]==='neutro')continue;
-        const row=isTop?5-r:BOARD.playerFieldStart+r;
-        const x=BOARD.x+col*BOARD.tile,y=BOARD.y+row*BOARD.tile;
-        drawTile(ctx,field[r*10+col],x,y);
-      }
+      if(running)continue;
       for(const structure of player.structures||[]){
         if(drag?.kind==='placed-structure'&&drag.structure===structure)continue;
         const item=STRUCTURE_BY_ID[structure.id];if(!item)continue;
@@ -964,17 +852,22 @@ function drawBoard(t) {
         drawStructureArt(ctx,item,x+1,y+1,BOARD.tile*item.size-2,BOARD.tile*item.size-2);
       }
     }
+    if(running)for(const side of running.environment)for(const s of side.structures){
+      const def=STRUCTURE_BY_ID[s.id],size=def.size*BOARD.tile;
+      drawStructureArt(ctx,def,s.combatX-size/2,s.combatY-size/2,size,size);
+    }
   }
   ctx.save();
   ctx.fillStyle = 'rgba(43,112,174,.10)';
   ctx.fillRect(BOARD.x, BOARD.y + BOARD.playerFieldStart * BOARD.tile, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
   ctx.fillStyle = 'rgba(185,75,94,.10)';
   ctx.fillRect(BOARD.x, BOARD.y + BOARD.enemyFieldStart * BOARD.tile, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
-  const showGrid = canEdit() && (drag || hovered || activeTab==='terrain');
+  const showGrid = canEdit() && (drag || hovered);
   ctx.strokeStyle = showGrid ? 'rgba(238,255,214,.45)' : 'rgba(238,255,214,.18)';
   ctx.lineWidth = 1;
-  for (let col = 0; col <= BOARD.columns; col++) line(BOARD.x + col * BOARD.tile, BOARD.y, BOARD.x + col * BOARD.tile, BOARD.y + BOARD.rows * BOARD.tile, ctx.strokeStyle);
-  for (let row = 0; row <= BOARD.rows; row++) line(BOARD.x, BOARD.y + row * BOARD.tile, BOARD.x + BOARD.columns * BOARD.tile, BOARD.y + row * BOARD.tile, ctx.strokeStyle);
+  const columns=displayedBattle()?.columns||10;
+  for (let col = 0; col <= columns; col++) line(BOARD.x + col * BOARD.tile, BOARD.y, BOARD.x + col * BOARD.tile, BOARD.y + BOARD.rows * BOARD.tile, ctx.strokeStyle);
+  for (let row = 0; row <= BOARD.rows; row++) line(BOARD.x, BOARD.y + row * BOARD.tile, BOARD.x + columns * BOARD.tile, BOARD.y + row * BOARD.tile, ctx.strokeStyle);
   if (hovered && canEdit()) {
     const isValid = hovered.row === BOARD.playerBenchRow || validCellForTeam(0, hovered);
     ctx.fillStyle = isValid ? 'rgba(255,245,171,.24)' : 'rgba(255,90,105,.24)';
@@ -1009,6 +902,9 @@ function drawSummon(x,y,progress,team=0) {
 }
 
 function drawSetupUnit(mon) {
+  if(mon.kind==='structure'){
+    const pos=monWorld(mon);drawStructureArt(ctx,STRUCTURE_BY_ID[mon.id],pos.x-27,pos.y-29,54,54);return;
+  }
   const p = BY_ID[mon.speciesId];
   const pos = {...monWorld(mon)};
   const returning=returnAnimation?.playerId===observedId ? returnAnimation : null;
@@ -1063,6 +959,8 @@ function drawBattleUnit(u) {
   ctx.fillRect(u.x - bw / 2, py, bw, bh);
   ctx.fillStyle = health > .35 ? '#87e26f' : '#ffbd66';
   ctx.fillRect(u.x - bw / 2 + 1, py + 1, (bw - 2) * health, bh - 2);
+  ctx.strokeStyle=['#6dcfff','#ff8f91','#d2a0ff','#ffd776'][u.team];ctx.lineWidth=2;ctx.strokeRect(u.x-bw/2,py,bw,bh);
+  ctx.fillStyle=ctx.strokeStyle;ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.fillText(`E${u.team+1}`,u.x,py-4);
   ctx.restore();
 }
 
@@ -1144,16 +1042,17 @@ function draw() {
   ctx.fillRect(0, 0, screen.w, screen.h);
   ctx.setTransform(dpr * camera.scale, 0, 0, dpr * camera.scale, dpr * camera.x, dpr * camera.y);
   drawBoard(visualTime);
-  if (!activeBattle || activeBattle.phase === 'finished') {
+  if (!activeBattle) {
     allUnits().slice().sort((a, b) => monWorld(a).y - monWorld(b).y).forEach(drawSetupUnit);
-    if (drag?.kind === 'shop'||drag?.kind === 'inventory-structure'||drag?.kind === 'placed-structure') drawShopGhost(drag);
+    if (drag?.kind === 'shop'||drag?.kind === 'placed-structure') drawShopGhost(drag);
     drawEvolutionEffects();
   } else {
-    activeBattle.units.filter(u => !u.dead).slice().sort((a, b) => a.y - b.y).forEach(drawBattleUnit);
-    drawEffects(activeBattle);
+    activeBattle.units.filter(u => !u.dead).slice().sort((a, b) => a.y - b.y).forEach(u=>drawBattleUnit(damageVisualUnit(u)));
+    if(activeBattle.phase==='fighting')drawEffects(activeBattle);
     observedParticipant()?.bench.filter(Boolean).forEach(drawSetupUnit);
     if(drag?.kind==='shop')drawShopGhost(drag);
   }
+  drawAvatarAndLoot();
 }
 function frame(timestamp) {
   if(!lastFrame)lastFrame=timestamp;
@@ -1169,7 +1068,7 @@ function frame(timestamp) {
     const previousPhase=localMatch.phase;
     const previousRound=localMatch.round;
     updateLocalMatchCycle(localMatch,dt,timestamp/1000);
-    if(previousBattle?.phase==='finished'&&lastReturnedBattle!==previousBattle){
+    if(previousBattle?.phase==='finished'&&localMatch.phase==='preparation'&&lastReturnedBattle!==previousBattle){
       lastReturnedBattle=previousBattle;
       const team=previousCombat.playerIds.indexOf(observedId);
       returnAnimation={playerId:observedId,time:visualTime,units:previousBattle.units.filter(u=>u.team===team).map(u=>({...u}))};
@@ -1178,10 +1077,10 @@ function frame(timestamp) {
       selectedId=null;
       drag=null;
       shopPointer=null;
-      structurePointer=null;
-      terrainPainting=null;
+      ballPointer=null;
       setShopSellMode(false);
       shopSignature='';
+      if((previousBattle?.columns||10)!==(displayedBattle()?.columns||10))fitCamera();
       renderHud();
     }
     if(localMatch.phase==='finished'&&!announced) {
@@ -1212,18 +1111,13 @@ function sizeCanvas() {
   canvas.height=Math.round(screen.h*dpr);
   fitCamera();
 }
-$('remove-placed').addEventListener('click',()=>{terrainTool='remove';selectedStructure=null;terrainSignature='';renderHud();});
-$('tab-pokemon').addEventListener('click',()=>{activeTab='pokemon';terrainPainting=null;renderHud();});
-$('tab-terrain').addEventListener('click',()=>{activeTab='terrain';drag=null;shopPointer=null;terrainSignature='';renderHud();});
-$('discard-structure').addEventListener('click',()=>{
-  if(canEdit()&&selectedStructure&&window.confirm('Descartar uma estrutura sem reembolso?')){
-    if(discardStructure(localMatch,humanParticipant(),selectedStructure)){
-      if(!humanParticipant().structureInventory.some(s=>s.id===selectedStructure)){selectedStructure=null;terrainTool='grama';}
-      terrainSignature='';renderHud();showToast('Uma estrutura descartada.');
-    }
-  }
-});
 $('confirm-match').addEventListener('click',startMatch);
+$('confirm-bet').addEventListener('click',()=>{
+  if(!localMatch)return;
+  const ok=confirmLocalBet(localMatch,humanParticipant(),$('bet-prediction').value,Number($('bet-amount').value));
+  showToast(ok?'Aposta confirmada.':'Aposta indisponível.');renderHud();
+});
+$('pve-difficulty').addEventListener('change',()=>{if(localMatch)selectPveDifficulty(localMatch,humanParticipant(),$('pve-difficulty').value);renderHud();});
 $('return-menu').addEventListener('click',openMenu);
 $('again').addEventListener('click',openMenu);
 $('back-own-arena').addEventListener('click',()=>observePlayer(localMatch?.ownerId));
