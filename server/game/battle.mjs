@@ -1,7 +1,7 @@
 import { BY_ID, getDirection } from './pokemon.mjs';
 import { RULES } from './rules.mjs';
-import { MOVES_BY_ID, initialLoadout, chooseMoveAnimation, ENERGY_PER_SECOND, BASE_REGENERATION_PER_SECOND } from './moves.mjs';
-import { chooseCombatTarget, chooseCombatAttack } from './ai.mjs';
+import { MOVES_BY_ID, initialLoadout, validLoadout, abilityForPokemon, chooseMoveAnimation, ENERGY_PER_SECOND, BASE_REGENERATION_PER_SECOND } from './moves.mjs';
+import { chooseCombatTarget } from './ai.mjs';
 import {structureModifiers} from './structures.mjs';
 
 export const BOARD = Object.freeze({
@@ -121,7 +121,8 @@ export function normalizeEntry(entry, team) {
     provenance: entry.provenance?.map(part=>({...part})),
     evolutionSteps: entry.evolutionSteps ?? 0,
     babyPerfect: entry.babyPerfect ?? false,
-    activeMoves: (()=>{const moves=entry.activeMoves?.length===2?entry.activeMoves:initialLoadout(speciesId);return MOVES_BY_ID[moves[0]]?.kind==='regular'&&MOVES_BY_ID[moves[1]]?.kind==='charged'?[...moves]:initialLoadout(speciesId);})(),
+    activeMoves: validLoadout(speciesId,entry.activeMoves||initialLoadout(speciesId)),
+    abilityId:abilityForPokemon(speciesId),
     slots: 2
   };
 }
@@ -148,7 +149,8 @@ function makeUnits(lineups,environment=[{},{}]) {
       hpScale,
       iv: entry.iv,
       slots: entry.slots,
-      activeMoves: entry.activeMoves.slice(0, entry.slots),
+      activeMoves: validLoadout(entry.speciesId,entry.activeMoves),
+      abilityId:abilityForPokemon(entry.speciesId),
       energy:0,energyRegen:ENERGY_PER_SECOND,regeneration:BASE_REGENERATION_PER_SECOND,
       maxEnergy:MOVES_BY_ID[entry.activeMoves[1]]?.energyCost||4,
       x: entry.x,
@@ -205,7 +207,7 @@ export function effectiveAttackRange(_unit, move) {
   return attackRangePixels(move);
 }
 const setState = (u, state) => { if (u.state !== state) { u.state = state; u.stateTime = 0; } };
-function getTarget(b, u) { return chooseCombatTarget(u,b.units.filter(other=>!other.dead&&other.team!==u.team),getMoves(u),BOARD.tile); }
+function getTarget(b, u, moves = getMoves(u)) { return chooseCombatTarget(u,b.units.filter(other=>!other.dead&&other.team!==u.team),moves,BOARD.tile); }
 function getMoves(u) { return u.activeMoves.map(m => MOVES_BY_ID[m]).filter(Boolean); }
 function beginAttack(b, u, target, move) {
   const animation = chooseMoveAnimation(move, u.type.sprites);
@@ -389,22 +391,21 @@ export function updateBattle(b, seconds, random = Math.random) {
       setState(u, 'Hurt');
       continue;
     }
-    const target = getTarget(b, u);
-    u.targetId=target?.uid||null;
-    if (!target) {u.vx=0;u.vy=0;setState(u,'Idle');continue;}
-    const moves = getMoves(u);
-    const [regular,charged]=moves;
-    const gap=edgeDistance(u,target);
+    const [regular,charged]=getMoves(u);
     const chargedReady=!!charged&&u.energy+1e-6>=charged.energyCost;
-    const chargedInRange=chargedReady&&gap<=effectiveAttackRange(u,charged);
-    const regularInRange=!!regular&&gap<=effectiveAttackRange(u,regular);
+    // Com energia cheia o carregado é obrigatório: inclusive quando ele
+    // exige caminhar até ficar ao alcance. Não usa regulares nesse intervalo.
+    const selectedMove=chargedReady?charged:regular;
+    const target=getTarget(b,u,[selectedMove]);
+    u.targetId=target?.uid||null;
+    if(!target||!selectedMove){u.vx=0;u.vy=0;setState(u,'Idle');continue;}
+    const inRange=edgeDistance(u,target)<=effectiveAttackRange(u,selectedMove);
     u.cooldown-=dt;
-    // Energia cheia prioriza o carregado; o regular continua enquanto recarrega.
-    // O alcance nunca autoriza usar o especial sem a energia suficiente.
-    if(chargedInRange){beginAttack(b,u,target,charged);continue;}
-    if(u.cooldown<=0&&regularInRange){beginAttack(b,u,target,regular);continue;}
-    if(regularInRange){u.vx=0;u.vy=0;setState(u,'Idle');continue;}
-    moveToTarget(b,u,target,dt,effectiveAttackRange(u,regular));
+    if(inRange&&(chargedReady||u.cooldown<=0)){
+      beginAttack(b,u,target,selectedMove);continue;
+    }
+    if(inRange){u.vx=0;u.vy=0;setState(u,'Idle');continue;}
+    moveToTarget(b,u,target,dt,effectiveAttackRange(u,selectedMove));
   }
   for (let i = b.projectiles.length - 1; i >= 0; i--) {
     const p = b.projectiles[i];

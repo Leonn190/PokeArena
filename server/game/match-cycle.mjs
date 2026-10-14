@@ -32,7 +32,7 @@ function environmentFor(member,team,count) {
 }
 function pveTeam(match,player,random) {
   if(battleKind(match.round)==='legendary')return {id:`boss-${player.id}`,pve:true,structures:[],board:[{
-    speciesId:match.legendaryId,col:4,row:8,iv:100,bossIv:bossIv(match.chapter),activeMoves:initialLoadout(match.legendaryId)
+    speciesId:match.legendaryId,col:4,row:8,iv:100,bossIv:bossIv(match.chapter),activeMoves:initialLoadout(match.legendaryId,random)
   }]};
   const difficulty=PVE_DIFFICULTIES[player.pveDifficulty];
   const count=Math.max(1,Math.min(6,fieldLimitForBattle(match.round)+difficulty.countOffset));
@@ -41,7 +41,7 @@ function pveTeam(match,player,random) {
   const board=Array.from({length:count},(_,i)=>{
     let roll=random()*catalog.reduce((sum,p)=>sum+odds[rarities.indexOf(p.rarity)]/catalog.filter(c=>c.rarity===p.rarity).length,0);
     const species=catalog.find(p=>(roll-=odds[rarities.indexOf(p.rarity)]/catalog.filter(c=>c.rarity===p.rarity).length)<0)||catalog[0];
-    return {speciesId:species.id,col:[4,5,3,6,2,7][i],row:8,iv:Math.min(100,40+(match.chapter-1)*20),pveModifiers:difficulty,activeMoves:initialLoadout(species.id)};
+    return {speciesId:species.id,col:[4,5,3,6,2,7][i],row:8,iv:Math.min(100,40+(match.chapter-1)*20),pveModifiers:difficulty,activeMoves:initialLoadout(species.id,random)};
   });
   return {id:`pve-${player.id}`,pve:true,structures:[],board};
 }

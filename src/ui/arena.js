@@ -3,8 +3,8 @@ import { createLocalMatchState, purchaseLocalOffer, refreshLocalShop, sellLocalU
 import { createCamera } from './camera.mjs';
 import { createSpriteCache } from './sprites.mjs';
 import { createSpriteRenderer } from './renderer.mjs';
-import { BY_ID, POKEMON, getDirection } from '../../server/game/pokemon.mjs';
-import { MOVES_BY_ID } from '../../server/game/moves.mjs';
+import { BY_ID, POKEMON, EVOLUTION_OPTIONS, getDirection } from '../../server/game/pokemon.mjs';
+import { MOVES_BY_ID, chargedPoolForPokemon, chooseMoveAnimation } from '../../server/game/moves.mjs';
 import { fieldLimitForBattle, shopOddsForBattle, RULES, STAGES, STAGE_NAMES, chapterForBattle, stageForBattle, battleKind, interestForGold, streakBonus, PVE_DIFFICULTIES } from '../../server/game/rules.mjs';
 import { aliveCount, combatForPlayer, phaseRemainingSeconds, startLocalMatchCycle, updateLocalMatchCycle } from '../../server/game/match-cycle.mjs';
 import { BOARD, TAU, cellAtWorld, tilePosition, validCellForTeam, effectiveUnitStats } from '../../server/game/battle.mjs';
@@ -580,7 +580,7 @@ function renderTrainers() {
     const damaged=(combat?.result?.outcomes?.[member.id]?.damage||0)>0;
     const summoning=own&&(summonEffects.some(effect=>visualTime-effect.time<.95)||
       (returnAnimation?.playerId===observedId&&visualTime-returnAnimation.time<.9&&returnAnimation.units.some(unit=>unit.dead)));
-    const action=localMatch.phase==='result'&&damaged&&elapsed>=1.1?'hit':
+    const action=localMatch.phase==='result'&&damaged&&elapsed>=1.52?'hit':
       (localMatch.phase==='intro'&&elapsed<1.5)||summoning?'throw':
       `${walking?'walk':'idle'}_${direction}`;
     const asset=`${trainer}/${action}`;
@@ -595,26 +595,49 @@ function renderTrainers() {
     image.remove();trainerImages.delete(key);trainerDirections.delete(key);
   }
 }
+function trainerAttackTarget(){
+  const combat=observedCombat(),battle=combat?.battle;
+  if(!combat?.result||!battle)return null;
+  const outcome=combat.result.outcomes?.[observedId];
+  const hasDamage=Object.values(combat.result.outcomes||{}).some(o=>o.damage>0);
+  if(!hasDamage)return null;
+  return (outcome?.damage||0)>0 ? observedParticipant()?.avatar
+    : {x:BOARD.x+(battle.columns||10)*BOARD.tile*.5,y:BOARD.y+BOARD.tile*.5};
+}
 function drawTrainerEnergy(){
   if(localMatch?.phase!=='result')return;
-  const combat=observedCombat(),battle=combat?.battle;
-  if(!battle||!combat?.result)return;
-  const mine=combat.playerIds.indexOf(observedId),result=combat.result.outcomes?.[observedId];
-  const damaging=combat.result.outcomes&&Object.values(combat.result.outcomes).some(o=>o.damage>0);
-  if(!damaging)return;
-  const losingMine=(result?.damage||0)>0;
-  const target=losingMine?observedParticipant()?.avatar:{x:BOARD.x+BOARD.tile*5,y:BOARD.y+BOARD.tile*.5};
-  if(!target)return;
+  const battle=observedCombat()?.battle,target=trainerAttackTarget();
+  if(!battle||!target||battle.winner===null)return;
   const winners=battle.units.filter(u=>!u.dead&&u.team===battle.winner);
-  const t=clamp((performance.now()/1000-localMatch.phaseStartedAt)/1.45,0,1);
+  const elapsed=performance.now()/1000-localMatch.phaseStartedAt;
+  // Ataque real contra o treinador: os Pokémon executam a animação de tiro
+  // e, em seguida, projéteis individuais percorrem um arco até o alvo.
   winners.forEach((unit,i)=>{
-    const delay=i*.08,step=clamp((t-delay)/(1-delay),0,1);
-    if(step>=1)return;
-    const x=unit.x+(target.x-unit.x)*step;
-    const y=unit.y-25+(target.y-23-(unit.y-25))*step-Math.sin(step*Math.PI)*28;
-    ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle='#60d3ff88';ctx.lineWidth=4;
-    ctx.beginPath();ctx.moveTo(unit.x,unit.y-25);ctx.quadraticCurveTo((unit.x+target.x)/2,(unit.y+target.y)/2-55,x,y);ctx.stroke();
-    ellipse(x,y,8,8,'#a5f3ff');ellipse(x,y,3,3,'#fff');ctx.restore();
+    const start=.52+i*.075,duration=.94;
+    const step=clamp((elapsed-start)/duration,0,1);
+    if(elapsed<start||elapsed>start+duration+.32)return;
+    const attack=MOVES_BY_ID[unit.activeMoves[0]],color=attack?.color||'#e4f9ff';
+    const sx=unit.x,sy=unit.y-25,tx=target.x,ty=target.y-25;
+    const position=t=>({
+      x:sx+(tx-sx)*t,
+      y:sy+(ty-sy)*t-Math.sin(t*Math.PI)*52
+    });
+    if(step<1){
+      const head=position(step),tail=position(Math.max(0,step-.085));
+      ctx.save();ctx.globalCompositeOperation='lighter';
+      const glow=ctx.createRadialGradient(head.x,head.y,1,head.x,head.y,21);
+      glow.addColorStop(0,'#ffffffbb');glow.addColorStop(.36,color+'bb');glow.addColorStop(1,'#ffffff00');
+      ctx.fillStyle=glow;ctx.beginPath();ctx.arc(head.x,head.y,21,0,TAU);ctx.fill();
+      ctx.strokeStyle=color;ctx.lineWidth=5;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(tail.x,tail.y);ctx.lineTo(head.x,head.y);ctx.stroke();
+      ellipse(head.x,head.y,7,7,'#ecfcff');ctx.restore();
+    }else{
+      const fade=clamp((elapsed-start-duration)/.32,0,1);
+      ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=1-fade;
+      ctx.strokeStyle=color;ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(tx,ty,9+28*fade,0,TAU);ctx.stroke();
+      ellipse(tx,ty,12*(1-fade)+2,12*(1-fade)+2,'#c4f8ff');ctx.restore();
+    }
   });
 }
 function drawAvatarAndLoot(){
@@ -757,13 +780,15 @@ function renderDetails() {
   $('stats-list').innerHTML=keys.map(k=>`<div class="stat"><span>${k.toUpperCase()}</span><div><b>${stats[k]}</b><small>base ${p.stats[k]} · IV ${mon.iv}%</small></div></div>`).join('')+`<div class="stat"><span>ENERGIA</span><div><b>+1/s</b><small>carrega o golpe especial</small></div></div><div class="stat"><span>REGEN</span><div><b>0/s</b><small>base, sem estruturas</small></div></div>`;
   $('moves-active').innerHTML=mon.activeMoves.slice(0,2).map((id,i)=>{
     const move=MOVES_BY_ID[id];
-    return `<div class="move-row"><button type="button" class="move-card" tabindex="-1"><b>${move.name} <em>${move.kind==='charged'?'CARREGADO':'REGULAR'}</em></b><small>${move.category==='atk'?'Físico':'Especial'} · ${move.damage} · ${move.kind==='charged'?`Custo ${move.energyCost} de energia`:'uso contínuo'}</small></button><button type="button" class="move-reroll" data-slot="${i}" title="Trocar golpe por 2 de ouro" aria-label="Trocar golpe por 2 de ouro">↻ 2</button></div>`;
+    const pool=move.kind==='charged'?chargedPoolForPokemon(p.id).map(id=>MOVES_BY_ID[id].name).join(' / '):'';
+    return `<div class="move-row ${i===0?'move-row--locked':''}"><div class="move-card"><b>${move.name} <em>${i===0?'REGULAR · FIXO':'CARREGADO'}</em></b><small>${move.category==='atk'?'Físico':'Especial'} · Tipo ${move.type} · Dano ${move.damage} · Alcance ${move.range} · ${move.projectile?'Projétil':'Contato'} · ${i?`${move.energyCost} de energia`:'automático conforme VEL'}</small>${i?`<small class="charged-pool">Pool (3): ${pool}</small>`:''}</div>${i===1?`<button type="button" class="move-reroll" data-slot="1" title="Roletar outro golpe carregado da pool por 2 de ouro" aria-label="Roletar golpe carregado por 2 de ouro">↻ 2</button>`:''}</div>`;
   }).join('');
+  $('ability-status').textContent='Habilidade única: nenhuma ativa nesta versão.';
   $('moves-active').querySelectorAll('.move-reroll').forEach(btn=>{
     btn.disabled=!canEdit()||!ownsUnit(mon)||humanParticipant().gold<RULES.moveChangeCostGold;
     btn.addEventListener('click',()=>{
-      if(changeLocalMove(localMatch,humanParticipant(),mon,Number(btn.dataset.slot))) {
-        renderHud();showToast('Golpe trocado por 2 de ouro.');
+      if(changeLocalMove(localMatch,humanParticipant(),mon,Number(btn.dataset.slot),Math.random)) {
+        renderHud();showToast('Novo ataque carregado sorteado na pool por 2 de ouro.');
       }
     });
   });
@@ -926,35 +951,52 @@ function drawStructurePreview(canvas,item){
 }
 function drawArenaFloor(){
   const columns=displayedBattle()?.columns||10,tile=BOARD.tile;
-  // Padrão de grama sombreado e floreios desenhados no Canvas: não depende de imagens externas.
-  ctx.fillStyle='#0a211c';ctx.fillRect(0,0,BOARD.x+columns*tile+110,BOARD.height);
-  ctx.fillStyle='#293e35';ctx.fillRect(BOARD.x-16,BOARD.y-16,columns*tile+32,BOARD.rows*tile+32);
-  ctx.fillStyle='#152b25';ctx.fillRect(BOARD.x-9,BOARD.y-9,columns*tile+18,BOARD.rows*tile+18);
-  for(let row=0;row<BOARD.rows;row++)for(let col=0;col<columns;col++){
-    const x=BOARD.x+col*tile,y=BOARD.y+row*tile,bench=row===BOARD.enemyBenchRow||row===BOARD.playerBenchRow;
-    const seed=(col*71+row*43)%17;
-    if(bench){
-      ctx.fillStyle=(col+row)%2?'#475c5b':'#506661';ctx.fillRect(x,y,tile,tile);
-      ctx.fillStyle='#283f3b';ctx.fillRect(x+3,y+4,tile-6,tile-8);
-      ctx.fillStyle='#697d72';ctx.fillRect(x+5,y+6,tile-10,2);
-      ctx.strokeStyle='#7d968a55';ctx.lineWidth=1;ctx.strokeRect(x+5,y+5,tile-10,tile-10);
-      ctx.fillStyle='#9eae9560';ctx.fillRect(x+8,y+tile-8,tile-16,1);
-    }else{
-      ctx.fillStyle=(col+row)%2?'#4a9362':'#4d9967';ctx.fillRect(x,y,tile,tile);
-      ctx.fillStyle='#94c58b18';ctx.fillRect(x+2,y+2,tile-4,tile/2-2);
-      ctx.fillStyle='#2e794e4f';ctx.fillRect(x+2,y+tile/2,tile-4,tile/2-2);
-      ctx.strokeStyle='#b6e3ad17';ctx.strokeRect(x+.5,y+.5,tile-1,tile-1);
-      for(let blade=0;blade<5;blade++){
-        const gx=x+7+(blade*13+seed*3)%(tile-13),gy=y+10+(blade*17+seed)%(tile-16);
-        ctx.strokeStyle=blade%2?'#a1d68d4d':'#20694549';ctx.lineWidth=1.5;
-        ctx.beginPath();ctx.moveTo(gx,gy+3);ctx.lineTo(gx-3,gy-2);ctx.moveTo(gx,gy+3);ctx.lineTo(gx+3,gy-4);ctx.stroke();
-      }
+  const left=BOARD.x,top=BOARD.y,width=columns*tile,height=BOARD.rows*tile;
+  ctx.fillStyle='#0b2019';ctx.fillRect(0,0,left+width+110,BOARD.height);
+  // Cenário contínuo: não há quadrados visíveis nem desenho por célula.
+  ctx.fillStyle='#243c30';ctx.fillRect(left-18,top-18,width+36,height+36);
+  ctx.fillStyle='#7d976d';ctx.fillRect(left-10,top-10,width+20,height+20);
+  const grass=ctx.createLinearGradient(left,top,left+width,top+height);
+  grass.addColorStop(0,'#477d54');grass.addColorStop(.45,'#558f5e');grass.addColorStop(1,'#326d4e');
+  ctx.fillStyle=grass;ctx.fillRect(left,top,width,height);
+  // Manchas de luz e vegetação com distribuição independente dos tiles.
+  for(let i=0;i<55;i++){
+    const fx=(Math.sin(i*129.7)*43758.5453)%1;
+    const fy=(Math.sin((i+13)*78.23)*17349.31)%1;
+    const x=left+Math.abs(fx)*width,y=top+Math.abs(fy)*height;
+    const radius=25+(i*37)%78;
+    ctx.fillStyle=i%3?'#b7db8510':'#103b3220';
+    ctx.beginPath();ctx.ellipse(x,y,radius,radius*.55,i*.23,0,TAU);ctx.fill();
+  }
+  for(let i=0;i<510;i++){
+    const vx=Math.abs(Math.sin(i*42.819)*47443.63)%1;
+    const vy=Math.abs(Math.sin(i*17.141)*39713.71)%1;
+    const x=left+vx*width,y=top+vy*height;
+    const bench=vy<1/12||vy>11/12;
+    if(bench)continue;
+    ctx.strokeStyle=i%3===0?'#c7e4a125':'#183f3229';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,y+2);ctx.lineTo(x-2.5,y-2);ctx.moveTo(x,y+2);ctx.lineTo(x+2,y-3);ctx.stroke();
+  }
+  // Banco integrado ao cenário, com uma única faixa de pedra/ardósia.
+  for(const row of [BOARD.enemyBenchRow,BOARD.playerBenchRow]){
+    const y=top+row*tile;
+    const stone=ctx.createLinearGradient(left,y,left,y+tile);
+    stone.addColorStop(0,'#55675c');stone.addColorStop(.5,'#364e48');stone.addColorStop(1,'#233e3a');
+    ctx.fillStyle=stone;ctx.fillRect(left,y,width,tile);
+    ctx.fillStyle='#acc3ac38';ctx.fillRect(left,y,width,2);
+    ctx.fillStyle='#0c2a2555';ctx.fillRect(left,y+tile-4,width,4);
+    ctx.strokeStyle='#ffffff0b';ctx.lineWidth=1;
+    for(let i=0;i<columns*2;i++){
+      const x=left+i*tile/2;
+      ctx.beginPath();ctx.moveTo(x+5,y+19+(i%3)*3);ctx.lineTo(x+tile*.4,y+21+(i%3)*3);ctx.stroke();
     }
   }
-  ctx.fillStyle='#e9dcb92b';ctx.fillRect(BOARD.x,BOARD.y+BOARD.playerFieldStart*tile-2,columns*tile,4);
-  ctx.fillStyle='#d4e5a877';ctx.font='bold 9px system-ui';ctx.textAlign='left';
-  ctx.fillText('RESERVA ADVERSÁRIA',BOARD.x+7,BOARD.y+12);
-  ctx.fillText('SEU BANCO',BOARD.x+7,BOARD.y+(BOARD.playerBenchRow+1)*tile-9);
+  // Divisão sutil de território, sem separadores de células.
+  const center=top+BOARD.playerFieldStart*tile;
+  ctx.fillStyle='#e6e9be38';ctx.fillRect(left,center-1,width,2);
+  ctx.fillStyle='#e5edcf80';ctx.font='bold 9px system-ui';ctx.textAlign='left';
+  ctx.fillText('RESERVA ADVERSÁRIA',left+9,top+15);
+  ctx.fillText('SEU BANCO',left+9,top+height-10);
 }
 function drawBoard(t) {
   drawArenaFloor();
@@ -982,17 +1024,14 @@ function drawBoard(t) {
     }
   }
   ctx.save();
-  ctx.fillStyle = 'rgba(43,112,174,.10)';
-  ctx.fillRect(BOARD.x, BOARD.y + BOARD.playerFieldStart * BOARD.tile, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
-  ctx.fillStyle = 'rgba(185,75,94,.10)';
-  ctx.fillRect(BOARD.x, BOARD.y + BOARD.enemyFieldStart * BOARD.tile, BOARD.columns * BOARD.tile, BOARD.enemyRows * BOARD.tile);
-  const showGrid = canEdit() && (drag || hovered);
-  ctx.strokeStyle = showGrid ? 'rgba(238,255,214,.45)' : 'rgba(238,255,214,.18)';
-  ctx.lineWidth = 1;
-  const columns=displayedBattle()?.columns||10;
-  for (let col = 0; col <= columns; col++) line(BOARD.x + col * BOARD.tile, BOARD.y, BOARD.x + col * BOARD.tile, BOARD.y + BOARD.rows * BOARD.tile, ctx.strokeStyle);
-  for (let row = 0; row <= BOARD.rows; row++) line(BOARD.x, BOARD.y + row * BOARD.tile, BOARD.x + columns * BOARD.tile, BOARD.y + row * BOARD.tile, ctx.strokeStyle);
-  if (hovered && canEdit()) {
+  const showGrid=canManage()&&!!drag;
+  if(showGrid){
+    ctx.strokeStyle='rgba(238,255,214,.43)';ctx.lineWidth=1;
+    const columns=displayedBattle()?.columns||10;
+    for(let col=0;col<=columns;col++)line(BOARD.x+col*BOARD.tile,BOARD.y,BOARD.x+col*BOARD.tile,BOARD.y+BOARD.rows*BOARD.tile,ctx.strokeStyle);
+    for(let row=0;row<=BOARD.rows;row++)line(BOARD.x,BOARD.y+row*BOARD.tile,BOARD.x+columns*BOARD.tile,BOARD.y+row*BOARD.tile,ctx.strokeStyle);
+  }
+  if (hovered && showGrid) {
     const isValid = hovered.row === BOARD.playerBenchRow || validCellForTeam(0, hovered);
     ctx.fillStyle = isValid ? 'rgba(255,245,171,.24)' : 'rgba(255,90,105,.24)';
     ctx.fillRect(BOARD.x + hovered.col * BOARD.tile, BOARD.y + hovered.row * BOARD.tile, BOARD.tile, BOARD.tile);
@@ -1043,7 +1082,16 @@ function drawSetupUnit(mon) {
   if(prior?.dead&&progress<1)ctx.globalAlpha=drawSummon(pos.x,pos.y,progress);
   else if(arrivalProgress<1)ctx.globalAlpha=drawSummon(pos.x,pos.y,arrivalProgress);
   groundShadow(p, pos.x, pos.y, selectedId === mon.instanceId ? '#ffe177' : null);
-  drawUnitSprite(p, pos.x, pos.y, 'Idle', facing, visualTime);
+  const resting=benchIndex(mon)!==null && !(drag?.kind==='unit'&&drag.mon===mon);
+  drawUnitSprite(p,pos.x,pos.y,resting?'Sleep':'Idle',facing,visualTime);
+  // O sprite Sleep real é usado quando disponível; as notas são um detalhe
+  // visual do banco, sem mexer em colisões nem na animação de combate.
+  if(resting){
+    const phase=visualTime*1.15+pos.x*.02;
+    ctx.save();ctx.font='bold 11px system-ui';ctx.textAlign='center';
+    ctx.fillStyle=`rgba(215,246,229,${.36+.20*Math.sin(phase)})`;
+    ctx.fillText('z',pos.x+19,pos.y-39-Math.sin(phase)*5);ctx.restore();
+  }
   ctx.restore();
 }
 function drawShopGhost(activeDrag) {
@@ -1071,7 +1119,21 @@ function drawBattleUnit(u) {
   if(intro&&u.team!==0&&progress<1)ctx.globalAlpha=drawSummon(u.x,u.y,progress,u.team);
   groundShadow(u.type, u.x, u.y, selectedId === u.uid ? (u.team === 0 ? '#70cfff' : '#ffaaa0') : null);
   if (u.hitFlash > 0) ellipse(u.x, u.y - 16, 32, 28, `rgba(255,250,210,${u.hitFlash * 1.9})`);
-  drawUnitSprite(u.type, u.x, u.y, intro?'Idle':u.state, intro?(u.team===0?Math.round(progress*4):0):u.facing, u.stateTime, u.cast?.elapsed ?? 0, u.cast);
+  const result=localMatch.phase==='result';
+  const resultTime=result?performance.now()/1000-localMatch.phaseStartedAt:0;
+  const target=result?trainerAttackTarget():null;
+  const celebratoryCast=!!target&&u.team===observedCombat()?.battle?.winner&&resultTime<1.03;
+  const resultAnimation=celebratoryCast
+    ? chooseMoveAnimation(MOVES_BY_ID[u.activeMoves[0]],u.type.sprites) : 'Idle';
+  const gotHit=u.hurtTime>0&&!intro&&!result;
+  const state=intro?'Idle':result?resultAnimation:gotHit?'Hurt':u.state;
+  const facing=intro?(u.team===0?Math.round(progress*4):0)
+    :result?(celebratoryCast?getDirection(target.x-u.x,target.y-u.y):0):u.facing;
+  const frameTime=gotHit?Math.max(0,.16-u.hurtTime):resultTime;
+  drawUnitSprite(u.type,u.x,u.y,state,facing,
+    gotHit?frameTime:result?frameTime:u.stateTime,
+    gotHit?frameTime:result?Math.max(0,resultTime-.2):u.cast?.elapsed??0,
+    gotHit?{hit:true}:result&&celebratoryCast?{result:true}:u.cast);
   const bw = clamp(39 + unitScale(u.type) * 4, 44, 58);
   const hpHeight=9,energyHeight=4;
   const py=u.y-([0,48,64,79][u.type.stage]);
@@ -1244,7 +1306,15 @@ function sizeCanvas() {
 function renderRoster(){
   const term=$('roster-search').value.trim().toLocaleLowerCase('pt-BR');
   const rarity=$('roster-rarity').value;
-  const filtered=POKEMON.filter(p=>(!rarity||p.rarity===rarity)&&(!term||p.name.toLocaleLowerCase('pt-BR').includes(term)||String(p.number).includes(term)));
+  const parent=new Map();
+  for(const [id,evolutions] of Object.entries(EVOLUTION_OPTIONS))for(const evolved of evolutions)if(!parent.has(evolved))parent.set(evolved,id);
+  const origin=id=>{const visited=new Set();while(parent.has(id)&&!visited.has(id)){visited.add(id);id=parent.get(id);}return id;};
+  const order=new Map(POKEMON.map((p,i)=>[p.id,i]));
+  const rootOrder=new Map();
+  for(const p of POKEMON){const root=origin(p.id);rootOrder.set(root,Math.min(rootOrder.get(root)??Infinity,order.get(p.id)));}
+  const depth=id=>{let n=0;const seen=new Set();while(parent.has(id)&&!seen.has(id)){seen.add(id);id=parent.get(id);n++;}return n;};
+  const filtered=POKEMON.filter(p=>(!rarity||p.rarity===rarity)&&(!term||p.name.toLocaleLowerCase('pt-BR').includes(term)||String(p.number).includes(term)))
+    .sort((a,b)=>rootOrder.get(origin(a.id))-rootOrder.get(origin(b.id))||depth(a.id)-depth(b.id)||order.get(a.id)-order.get(b.id));
   $('roster-count').textContent=`${filtered.length} Pokémon`;
   $('roster-grid').innerHTML=filtered.map(p=>`<article class="roster-card rarity-${p.rarity}" style="--rarity:${RARITY_COLORS[p.rarity]}"><div class="roster-portrait"><span class="roster-placeholder" aria-hidden="true">◉</span><img src="${base}portraits/${p.id}.png" alt="" loading="lazy" onerror="this.style.display='none'" /><small>#${String(p.number).padStart(3,'0')}</small></div><div class="roster-body"><b>${p.name}</b><span>${p.types.map(type=>typeIcon(type)).join('')}<small>${RARITY_LABELS[p.rarity]}</small></span></div></article>`).join('');
 }

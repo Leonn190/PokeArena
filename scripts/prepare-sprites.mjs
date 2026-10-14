@@ -8,7 +8,7 @@ import {animationCandidates} from '../server/game/moves.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const output=path.join(root,'public','sprites');
-const wanted=[...new Set(['Idle','Walk','Attack','Hurt',...animationCandidates()])];
+const wanted=[...new Set(['Idle','Walk','Attack','Hurt','Sleep',...animationCandidates()])];
 const manifest={version:3,pokemon:{}};
 const tag=(block,name)=>block.match(new RegExp(`<${name}>([\\s\\S]*?)<\\/${name}>`))?.[1]?.trim();
 const readText=async file=>fs.readFile(file,'utf8').catch(()=>null);

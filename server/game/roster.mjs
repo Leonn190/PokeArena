@@ -1,5 +1,5 @@
 import {LOOT_TIERS,BALL_CONFIG} from '../../config/espolios.mjs';
-import {initialLoadout, MOVES_BY_ID} from './moves.mjs';
+import {initialLoadout, validLoadout, chargedPoolForPokemon, abilityForPokemon} from './moves.mjs';
 import { RULES, fieldLimitForBattle, interestForGold, shopOddsForBattle, roomModifier, battleKind, streakBonus, PVE_DIFFICULTIES } from './rules.mjs';
 import { BY_ID, SHOP_POKEMON, FUSION_COSTS, EVOLUTION_OPTIONS } from './pokemon.mjs';
 import {calculateCompass, speciesCompassWeight, weightedSpeciesPick,ALL_TYPES} from './compass.mjs';
@@ -29,7 +29,7 @@ export function createParticipant({id,name,isBot}) {
 export function createMatchPokemon(speciesId,team,instanceId,random=Math.random) {
   return {
     instanceId,speciesId,team,iv:Math.min(100,Math.floor(random()*101)),
-    activeMoves:initialLoadout(speciesId),slots:2,
+    activeMoves:initialLoadout(speciesId,random),abilityId:abilityForPokemon(speciesId),slots:2,
     col:team?5:4,row:team?2:7
   };
 }
@@ -176,7 +176,11 @@ export function fuseLocalUnits(match,participant,random=Math.random) {
     }
     keeper.evolutionSteps=Math.max(...copies.map(unit=>unit.evolutionSteps||0))+1;
     keeper.speciesId=targetId;
-    keeper.activeMoves=keeper.activeMoves?.length===2 && MOVES_BY_ID[keeper.activeMoves[0]]?.kind==='regular' && MOVES_BY_ID[keeper.activeMoves[1]]?.kind==='charged' ? [...keeper.activeMoves]:initialLoadout(targetId);
+    // A evolução determina seu próprio regular. Conserva o carregado apenas
+    // quando a nova espécie também o possui na respectiva pool de três.
+    keeper.activeMoves=chargedPoolForPokemon(targetId).includes(keeper.activeMoves?.[1])
+      ? validLoadout(targetId,keeper.activeMoves) : initialLoadout(targetId,random);
+    keeper.abilityId=abilityForPokemon(targetId);
     keeper.slots=2;
     // Os itens não são comercializados nesta etapa, mas as fusões preservam até dois.
     const collected=copies.flatMap(unit=>unit.items||[]);
@@ -271,18 +275,19 @@ export function prepareLocalRound(match,random=Math.random) {
   }
   // Preparação tática de bots ocorre em ai.mjs, chamada pelo ciclo da partida.
 }
-export function changeLocalMove(match,participant,unit,slot) {
+export function changeLocalMove(match,participant,unit,slot,random=Math.random) {
+  // Só é permitido roletar o ataque CARREGADO dentro da pool da espécie.
+  // O regular e a habilidade nunca podem ser trocados.
   if(match.phase!=='preparation'||participant.eliminated||
-    !ownedUnits(participant).includes(unit)||!Number.isInteger(slot)||slot<0||slot>1||
+    !ownedUnits(participant).includes(unit)||slot!==1||
     participant.gold<RULES.moveChangeCostGold)return false;
-  const equipped=(unit.activeMoves||[]).slice(0,2);
-  const kind=slot===0?'regular':'charged';
-  if(equipped.length!==2||MOVES_BY_ID[equipped[slot]]?.kind!==kind)return false;
-  const replacement=Object.values(MOVES_BY_ID).find(move=>move.kind===kind && move.id!==equipped[slot])?.id;
-  if(!replacement)return false;
+  const pool=chargedPoolForPokemon(unit.speciesId);
+  const alternatives=pool.filter(id=>id!==unit.activeMoves?.[1]);
+  if(!alternatives.length)return false;
   participant.gold-=RULES.moveChangeCostGold;
-  equipped[slot]=replacement;
-  unit.activeMoves=equipped;
+  const index=Math.min(alternatives.length-1,Math.floor(Math.max(0,random())*alternatives.length));
+  unit.activeMoves=validLoadout(unit.speciesId,[null,alternatives[index]]);
+  unit.abilityId=abilityForPokemon(unit.speciesId);
   unit.slots=2;
   match.revision++;
   return true;

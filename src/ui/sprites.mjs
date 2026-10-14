@@ -43,7 +43,7 @@ export function createSpriteCache(base, onImageReady = () => {}) {
   function getImageMeta(p, stateName) {
     // Certas folhas de golpes incluem efeitos em redor da criatura. O visual
     // desses três Pokémon usa uma folha limpa, sem mudar seu ataque real.
-    const visualAction=cleanOnly.has(p.id)&&!['Idle','Walk','Hurt'].includes(stateName)
+    const visualAction=cleanOnly.has(p.id)&&!['Idle','Walk','Hurt','Sleep'].includes(stateName)
       ? (p.sprites.Walk?'Walk':'Idle') : stateName;
     const desired=p.sprites[visualAction] || p.sprites.Idle;
     const action=desired?.asset || visualAction;

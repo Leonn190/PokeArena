@@ -624,3 +624,9 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .roster-placeholder{position:absolute;font-size:86px;color:#ecf5eb20;line-height:1;transform:rotate(-22deg)}
 .roster-portrait img{position:relative;z-index:1}
 .roster-portrait>small{z-index:2}
+
+/* Ataque regular imutável; apenas o carregado possui roleta. */
+.move-row--locked{grid-template-columns:minmax(0,1fr)}
+.moves-list .move-card{display:block;min-width:0;border:1px solid rgba(234,255,198,.22);background:#203827;color:#eff8e9;border-radius:6px;min-height:47px;padding:8px;text-align:left}
+.moves-list .charged-pool{color:#83c9e8;line-height:1.35}
+.ability-status{font-size:10px;line-height:1.4;margin:0 0 8px;color:#b9d4bf}
