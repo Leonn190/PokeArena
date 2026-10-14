@@ -1,7 +1,8 @@
 # PokeArena — origens dos assets
 
 - **Pokémon PMD (animações e portraits):** https://github.com/PMDCollab/SpriteCollab — **CC BY-NC 4.0**: uso não comercial com atribuição. Preservar `sprites/<id>/credits.txt` e `portraits/creditos/<id>.txt`. Direitos sobre Pokémon pertencem aos titulares respectivos.
-- **Ícones dos 18 tipos:** https://github.com/partywhale/pokemon-type-icons — licença **MIT**, texto integral em `tipos/LICENSE-MIT.txt`.
+- **Ícones PNG dos 18 tipos:** Pokémon Showdown, https://play.pokemonshowdown.com/sprites/typeicons/ — fontes individuais registradas em `treinadores/manifest.json`. Os SVGs antigos de partywhale foram removidos; seu texto MIT permanece em `tipos/LICENSE-MIT.txt`.
+- **Treinadores e Pokébolas:** assets locais provenientes de https://github.com/pret/pokeemerald, com fontes e animações descritas em `treinadores/manifest.json`. Direitos sobre Pokémon pertencem aos respectivos titulares.
 - **Tileset de cenário:** Kenney Roguelike/RPG Pack, https://kenney.nl/assets/roguelike-rpg-pack — **CC0**. Se a URL principal falhar, usa o espelho do OpenGameArt, ou um atlas Tiny Town do Kenney. Fonte exata: `cenario/fonte-kenney/fonte.json`.
 - **Portrait fallback:** arte oficial hospedada em https://github.com/PokeAPI/sprites quando não existe retrato PMD; não confundir hospedagem com permissão comercial.
 

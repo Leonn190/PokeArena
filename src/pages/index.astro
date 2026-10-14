@@ -94,7 +94,10 @@ const base = import.meta.env.BASE_URL;
       <div class="shop-content">
         <div id="shop-rarity-odds" class="shop-rarity-odds" hidden aria-label="Chances de raridade do capítulo"></div>
         <small id="pending-rewards" aria-live="polite"></small>
-        <div id="shop-slots" class="shop-slots" aria-label="Seis ofertas, sendo quatro de Pokémon e duas flexíveis. Arraste para o banco ou campo."></div>
+        <div id="shop-offers" class="shop-offers">
+          <div id="shop-slots" class="shop-slots" aria-label="Seis ofertas, sendo quatro de Pokémon e duas flexíveis. Arraste para o banco ou campo."></div>
+          <div id="shop-sale-area" class="shop-sale-area" hidden aria-live="polite"></div>
+        </div>
       </div>
       <div id="compass-widget" class="compass-widget" hidden role="img" aria-label="Distribuição de pontos dos tipos"><div class="compass-ring" id="compass-ring"><div id="compass-icons" class="compass-icons"></div><div class="compass-ring-inner"><span class="compass-star" aria-hidden="true">✦</span></div></div></div>
     </section>
@@ -106,6 +109,7 @@ const base = import.meta.env.BASE_URL;
       </div>
     </div>
 
+    <div id="trainer-layer" class="trainer-layer" aria-hidden="true"></div>
     <div id="toast" class="toast" hidden></div>
     <div id="type-tooltip" class="type-tooltip" role="tooltip" hidden></div>
 

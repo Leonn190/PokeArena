@@ -388,7 +388,7 @@ export function collectLocalLoot(match,player,all=false,random=Math.random) {
 }
 export function moveLocalAvatar(match,player,x,y) {
   if(!match||player.eliminated||![x,y].every(Number.isFinite))return false;
-  const kind=battleKind(match.round),columns=match.phase==='preparation'?10:kind==='triple'?15:kind==='quadruple'?20:10;
+  const kind=battleKind(match.round),columns=match.phase==='preparation'?10:kind==='quadruple'?20:10;
   player.avatar.targetX=Math.max(220,Math.min(210+columns*58-10,x));player.avatar.targetY=Math.max(126,Math.min(686,y));return true;
 }
 export function updateLocalAvatars(match,dt,random=Math.random) {

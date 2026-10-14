@@ -47,7 +47,14 @@ let lastReturnedBattle=null;
 let specialDismissedRound=-1;
 let rosterRendered=false;
 const TYPE_ASSETS={Normal:'normal',Lutador:'fighting',Voador:'flying',Venenoso:'poison',Terrestre:'ground',Pedra:'rock',Inseto:'bug',Fantasma:'ghost',Aço:'steel',Fogo:'fire',Água:'water',Grama:'grass',Elétrico:'electric',Psíquico:'psychic',Gelo:'ice',Dragão:'dragon',Sombrio:'dark',Fada:'fairy'};
-const typeIcon=type=>`<img class="type-icon" src="${base}assets/tipos/${TYPE_ASSETS[type]}.svg" alt="${type}" />`;
+const typeIcon=type=>`<img class="type-icon" src="${base}assets/tipos/${TYPE_ASSETS[type]}.png" alt="${type}" />`;
+const BALL_ASSETS={pokeball:'poke',greatball:'great',ultraball:'ultra',masterball:'master'};
+const ballImages=new Map(Object.entries(BALL_ASSETS).map(([id,file])=>{
+  const image=new Image();image.src=`${base}assets/pokebolas/${file}.png`;return [id,image];
+}));
+const TRAINERS=['red','leaf','brendan','may','wally','steven','archie','maxie'];
+const trainerImages=new Map();
+const trainerDirections=new Map();
 
 function humanParticipant() { return localMatch?.players.find(p=>p.id===localMatch.ownerId)||null; }
 function observedParticipant() { return localMatch?.players.find(p=>p.id===observedId)||humanParticipant(); }
@@ -146,6 +153,7 @@ function observePlayer(id) {
   hovered=null;
   shopPointer=null;
   ballPointer=null;
+  setShopSellMode(false);
   compassSignature='';
   fitCamera();
   renderHud();
@@ -231,8 +239,8 @@ function moveUnit(mon,target,swap=true) {
 }
 const {camera,screenPoint,screenToWorld,clientToWorld,fitCamera,zoomAt,updateCamera}=createCamera(
   canvas,{...BOARD,get columns(){return displayedBattle()?.columns||10;}},()=>screen,()=>({
-    top:Math.max(82,$('phase-label').closest('.top-hud').getBoundingClientRect().height+22),
-    bottom:Math.max(155,$('shop-slots').closest('.bottom-hud').getBoundingClientRect().height+24)
+    top:$('phase-label').closest('.top-hud').getBoundingClientRect().height+22,
+    bottom:$('shop-slots').closest('.bottom-hud').getBoundingClientRect().height+24
   }),()=>!!pan
 );
 function cellAtClient(x,y) {const p=clientToWorld(x,y);return cellAtWorld(p.x,p.y);}
@@ -265,13 +273,17 @@ function hitPlacedStructure(cell) {
 function setShopSellMode(selling) {
   const hud=$('shop-slots').closest('.bottom-hud');
   hud.classList.toggle('selling',!!selling);
-  if(!selling)hud.querySelectorAll('.sell-hover').forEach(c=>c.classList.remove('sell-hover'));
+  const area=$('shop-sale-area'),unit=drag?.mon||drag?.structure;
+  area.hidden=!selling;
+  area.textContent=selling?`VENDER${unit?` · +${unit.kind==='structure'?unit.purchaseCost:saleValueLocal(unit)} ouro`:''}`:'';
+  if(!selling)$('shop-offers').classList.remove('sell-hover');
+}
+function overShopSale(x,y) {
+  const rect=$('shop-offers').getBoundingClientRect();
+  return x>=rect.left&&x<=rect.right&&y>=rect.top&&y<=rect.bottom;
 }
 function updateSellHover(x,y) {
-  const slots=$('shop-slots');
-  const target=document.elementFromPoint(x,y)?.closest?.('.shop-card');
-  slots.querySelectorAll('.sell-hover').forEach(card=>card.classList.remove('sell-hover'));
-  if(target&&slots.contains(target))target.classList.add('sell-hover');
+  $('shop-offers').classList.toggle('sell-hover',overShopSale(x,y));
 }
 canvas.addEventListener('pointerdown',e=>{
   if(!localMatch)return;
@@ -330,6 +342,7 @@ canvas.addEventListener('pointermove',e=>{
   }
   if(drag?.kind==='placed-structure'&&drag.pointer===e.pointerId){
     drag.world={x:world.x-drag.offset.x,y:world.y-drag.offset.y};
+    updateSellHover(e.clientX,e.clientY);
     return;
   }
   if(drag?.kind==='unit'&&drag.pointer===e.pointerId) {
@@ -341,8 +354,7 @@ canvas.addEventListener('pointerup',e=>{
   if(pan?.pointer===e.pointerId) {pan=null;return;}
   if(drag?.kind==='placed-structure'&&drag.pointer===e.pointerId){
     const active=drag;drag=null;
-    const target=document.elementFromPoint(e.clientX,e.clientY);
-    if(target?.closest?.('.shop-card')){
+    if(overShopSale(e.clientX,e.clientY)){
       sell(active.structure);
     }else{
       const cell=cellAtClient(e.clientX,e.clientY);
@@ -355,12 +367,16 @@ canvas.addEventListener('pointerup',e=>{
   if(drag?.kind!=='unit'||drag.pointer!==e.pointerId)return;
   const active=drag;
   drag=null;
-  const overShop=!!document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.shop-card');
+  const overShop=overShopSale(e.clientX,e.clientY);
   setShopSellMode(false);
   if(overShop)sell(active.mon);
   else moveUnit(active.mon,cellAtClient(e.clientX,e.clientY));
 });
 canvas.addEventListener('pointercancel',()=>{drag=null;pan=null;setShopSellMode(false);});
+canvas.addEventListener('lostpointercapture',e=>{
+  if(drag?.pointer===e.pointerId){drag=null;setShopSellMode(false);}
+  if(pan?.pointer===e.pointerId)pan=null;
+});
 document.addEventListener('pointermove',e=>{
   if(!shopPointer||shopPointer.pointer!==e.pointerId)return;
   if(!shopPointer.dragging&&Math.hypot(e.clientX-shopPointer.start.x,e.clientY-shopPointer.start.y)>5){
@@ -486,7 +502,7 @@ function renderHud() {
 let synergySignature='';
 let cloneVisual=null;
 let consumableSignature='';
-const stageIcons={normal:'⚔',gold:'◉',triple:'⚔',pve:'♙',double:'ϟ',quadruple:'⚔',legendary:'♛'};
+const stageIcons={normal:'⚔',gold:'◉',pve:'♙',double:'ϟ',quadruple:'⚔',legendary:'♛'};
 function renderChapterControls(){
   const player=humanParticipant();
   if(!player)return;
@@ -520,7 +536,7 @@ function renderChapterControls(){
     consumableSignature=signature;
     $('consumables').innerHTML=Object.entries(BALLS).map(([id,ball])=>{
       const count=player.consumables.filter(b=>b===id).length;
-      return count?`<button class="ball-item ${id}" data-ball="${id}" type="button" ${canEdit()?'':'disabled'} title="${ball.name}: arraste sobre um Pokémon seu. Míticos e lendários são inelegíveis."><span>◒</span><small>${count}</small></button>`:'';
+      return count?`<button class="ball-item ${id}" data-ball="${id}" type="button" ${canEdit()?'':'disabled'} title="${ball.name}: arraste sobre um Pokémon seu. Míticos e lendários são inelegíveis."><img src="${base}assets/pokebolas/${BALL_ASSETS[id]}.png" alt="${ball.name}" /><small>${count}</small></button>`:'';
     }).join('');
     $('consumables').querySelectorAll('button').forEach(button=>button.addEventListener('pointerdown',e=>{
       if(e.button===0&&canEdit()){e.preventDefault();ballPointer={id:button.dataset.ball,pointer:e.pointerId};}
@@ -529,6 +545,56 @@ function renderChapterControls(){
 }
 // O dano ao treinador é mostrado como energia, sem deslocar ou atacar fisicamente o treinador.
 function damageVisualUnit(unit){return unit;}
+function drawBall(id,x,y,size) {
+  const image=ballImages.get(id);
+  if(!image?.complete||!image.naturalWidth)return;
+  ctx.save();ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(image,x-size/2,y-size/2,size,size);ctx.restore();
+}
+// GIFs ficam no DOM para manter suas animações nativas, acompanhando a câmera.
+function renderTrainers() {
+  const layer=$('trainer-layer'),player=observedParticipant();
+  layer.hidden=!localMatch||!player||document.querySelector('.game-shell').dataset.mode!=='local';
+  if(layer.hidden)return;
+  const combat=observedCombat(),visible=new Set();
+  const elapsed=performance.now()/1000-localMatch.phaseStartedAt;
+  const trainers=[{member:player,position:player.avatar,own:true}];
+  if(displayedBattle())combat?.members.forEach((member,team)=>{
+    if(member.id===player.id||member.pve)return;
+    const position={x:BOARD.x+BOARD.tile*(team>=2?15:5),
+      y:BOARD.y+BOARD.tile*((team===0||team===2)?11.5:.5)};
+    trainers.push({member,position,own:false});
+  });
+  for(const {member,position,own} of trainers){
+    const key=member.id;visible.add(key);
+    let image=trainerImages.get(key);
+    if(!image){image=document.createElement('img');image.alt='';image.draggable=false;
+      image.className='trainer-sprite';layer.append(image);trainerImages.set(key,image);}
+    const index=localMatch.players.findIndex(p=>p.id===(member.sourceId||member.id));
+    const trainer=TRAINERS[Math.max(0,index)%TRAINERS.length];
+    const dx=own?position.targetX-position.x:0,dy=own?position.targetY-position.y:0;
+    const walking=Math.hypot(dx,dy)>.5;
+    const direction=walking?(Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up')):
+      trainerDirections.get(key)||(own?'up':'down');
+    trainerDirections.set(key,direction);
+    const damaged=(combat?.result?.outcomes?.[member.id]?.damage||0)>0;
+    const summoning=own&&(summonEffects.some(effect=>visualTime-effect.time<.95)||
+      (returnAnimation?.playerId===observedId&&visualTime-returnAnimation.time<.9&&returnAnimation.units.some(unit=>unit.dead)));
+    const action=localMatch.phase==='result'&&damaged&&elapsed>=1.1?'hit':
+      (localMatch.phase==='intro'&&elapsed<1.5)||summoning?'throw':
+      `${walking?'walk':'idle'}_${direction}`;
+    const asset=`${trainer}/${action}`;
+    if(image.dataset.asset!==asset){image.dataset.asset=asset;
+      image.src=`${base}assets/treinadores/${asset}.${action.startsWith('idle')?'png':'gif'}`;}
+    const width=(action==='throw'?64:32)*camera.scale,height=64*camera.scale;
+    image.style.width=`${width}px`;image.style.height=`${height}px`;
+    image.style.left=`${camera.x+position.x*camera.scale-width/2}px`;
+    image.style.top=`${camera.y+position.y*camera.scale-height}px`;
+  }
+  for(const [key,image] of trainerImages)if(!visible.has(key)){
+    image.remove();trainerImages.delete(key);trainerDirections.delete(key);
+  }
+}
 function drawTrainerEnergy(){
   if(localMatch?.phase!=='result')return;
   const combat=observedCombat(),battle=combat?.battle;
@@ -539,10 +605,6 @@ function drawTrainerEnergy(){
   const losingMine=(result?.damage||0)>0;
   const target=losingMine?observedParticipant()?.avatar:{x:BOARD.x+BOARD.tile*5,y:BOARD.y+BOARD.tile*.5};
   if(!target)return;
-  if(!losingMine){
-    ctx.save();ellipse(target.x,target.y+3,14,5,'#09221c99');ellipse(target.x,target.y-8,13,17,'#d86867');ellipse(target.x,target.y-24,11,11,'#f6dcb5');
-    ctx.fillStyle='#222d39';ctx.fillRect(target.x-13,target.y-35,27,9);ctx.restore();
-  }
   const winners=battle.units.filter(u=>!u.dead&&u.team===battle.winner);
   const t=clamp((performance.now()/1000-localMatch.phaseStartedAt)/1.45,0,1);
   winners.forEach((unit,i)=>{
@@ -573,16 +635,13 @@ function drawAvatarAndLoot(){
   }
   const a=player.avatar;
   ellipse(a.x,a.y+5,16,6,'#102d2266');
-  ellipse(a.x,a.y-5,13,17,'#4cb4bc');ellipse(a.x,a.y-24,10,10,'#ffe0aa');
-  ctx.fillStyle='#ed5d60';ctx.fillRect(a.x-12,a.y-34,24,8);ctx.fillRect(a.x-4,a.y-27,20,4);
-  ctx.fillStyle='#152d32';ctx.fillRect(a.x+3,a.y-23,3,3);
-  ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff1bd';ctx.fillText(`${player.hp} HP`,a.x,a.y-44);
+  ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff1bd';ctx.fillText(`${player.hp} HP`,a.x,a.y-70);
   const damage=observedCombat()?.result?.outcomes?.[observedId]?.damage;
   if(localMatch.phase==='result'&&damage){
-    ctx.fillStyle='#ff7777';ctx.font='bold 22px system-ui';ctx.fillText(`−${damage}`,a.x,a.y-60);
+    ctx.fillStyle='#ff7777';ctx.font='bold 22px system-ui';ctx.fillText(`−${damage}`,a.x,a.y-90);
   }
   if(drag?.kind==='ball'){
-    ellipse(drag.world.x,drag.world.y,12,12,'#fff2db');ellipse(drag.world.x,drag.world.y-4,11,7,'#ed6270');
+    drawBall(drag.id,drag.world.x,drag.world.y,32);
   }
   if(cloneVisual&&visualTime<cloneVisual.until){
     ctx.strokeStyle=cloneVisual.success?'#89f8b1':'#ff8282';ctx.lineWidth=4;ctx.beginPath();ctx.arc(cloneVisual.x,cloneVisual.y-15,20+(1.2-cloneVisual.until+visualTime)*28,0,TAU);ctx.stroke();
@@ -637,8 +696,8 @@ function renderCompass(player,compass) {
     angle=i===entries.length-1?360:angle+entry.score/total*360;
     const midpoint=(from+angle)/2*Math.PI/180;
     const x=50+Math.sin(midpoint)*34,y=50-Math.cos(midpoint)*34;
-    const size=Math.max(6,Math.min(17,(angle-from)*.5));
-    icons.push(`<span class="compass-slice-icon" style="left:${x}%;top:${y}%;width:${size}px;height:${size}px">${typeIcon(entry.type)}</span>`);
+    const size=Math.max(12,Math.min(28,(angle-from)*.5));
+    icons.push(`<span class="compass-slice-icon" style="left:${x}%;top:${y}%;width:${size}px;height:${size*.4375}px">${typeIcon(entry.type)}</span>`);
     return `${TYPE_COLORS[entry.type]} ${from}deg ${angle}deg`;
   });
   $('compass-ring').style.background=segments.length?`conic-gradient(${segments.join(',')})`:'#667b72';
@@ -950,10 +1009,7 @@ function drawSummon(x,y,progress,team=0) {
     const travel=p/.48;
     ctx.save();ctx.translate(x+(team===1?100:-100)*(1-travel),y-10-Math.sin(travel*Math.PI)*65);
     ctx.rotate(travel*TAU*2);
-    ctx.beginPath();ctx.arc(0,0,8,Math.PI,TAU);ctx.fillStyle='#ed5a62';ctx.fill();
-    ctx.beginPath();ctx.arc(0,0,8,0,Math.PI);ctx.fillStyle='#fff5dd';ctx.fill();
-    ctx.strokeStyle='#243139';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,8,0,TAU);ctx.stroke();
-    line(-8,0,8,0,'#243139',2);ellipse(0,0,3,3,'#fff');ctx.restore();
+    drawBall('pokeball',0,0,24);ctx.restore();
     return 0;
   }
   const release=(p-.48)/.52;
@@ -1012,7 +1068,7 @@ function drawBattleUnit(u) {
   const intro=localMatch.phase==='intro';
   const progress=intro?clamp((performance.now()/1000-localMatch.phaseStartedAt-u.col*.025)/1.1,0,1):1;
   ctx.save();
-  if(intro&&u.team===1&&progress<1)ctx.globalAlpha=drawSummon(u.x,u.y,progress,u.team);
+  if(intro&&u.team!==0&&progress<1)ctx.globalAlpha=drawSummon(u.x,u.y,progress,u.team);
   groundShadow(u.type, u.x, u.y, selectedId === u.uid ? (u.team === 0 ? '#70cfff' : '#ffaaa0') : null);
   if (u.hitFlash > 0) ellipse(u.x, u.y - 16, 32, 28, `rgba(255,250,210,${u.hitFlash * 1.9})`);
   drawUnitSprite(u.type, u.x, u.y, intro?'Idle':u.state, intro?(u.team===0?Math.round(progress*4):0):u.facing, u.stateTime, u.cast?.elapsed ?? 0, u.cast);
@@ -1126,6 +1182,7 @@ function draw() {
     if(drag?.kind==='shop')drawShopGhost(drag);
   }
   drawAvatarAndLoot();
+  renderTrainers();
 }
 function frame(timestamp) {
   if(!lastFrame)lastFrame=timestamp;

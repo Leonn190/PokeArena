@@ -31,8 +31,8 @@ export const RULES = Object.freeze({
 });
 export const chapterForBattle = round => Math.floor((Math.max(1,round)-1)/10)+1;
 export const stageForBattle = round => (Math.max(1,round)-1)%10+1;
-export const STAGES = Object.freeze(['normal','gold','normal','triple','pve','normal','double','normal','quadruple','legendary']);
-export const STAGE_NAMES = Object.freeze({normal:'Batalha normal',gold:'Batalha do ouro',triple:'Batalha tripla',pve:'PvE',double:'Dano dobrado',quadruple:'Batalha quádrupla',legendary:'Lendário'});
+export const STAGES = Object.freeze(['normal','gold','normal','quadruple','pve','normal','double','normal','quadruple','legendary']);
+export const STAGE_NAMES = Object.freeze({normal:'Batalha normal',gold:'Batalha do ouro',pve:'PvE',double:'Dano dobrado',quadruple:'Batalha quádrupla',legendary:'Lendário'});
 export const battleKind = round => STAGES[stageForBattle(round)-1];
 export const fieldLimitForBattle = round => RULES.fieldLimits[Math.min(19,Math.max(0,round-1))];
 export const basePlayerDamage = chapterForBattle;

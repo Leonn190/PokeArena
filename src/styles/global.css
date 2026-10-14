@@ -144,25 +144,29 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .shop-card.empty .shop-portrait{background:#193324}
 .shop-card.empty .shop-footer{justify-content:center}
 .empty-mark{font-size:30px;font-weight:200;color:rgba(224,241,204,.28)}
-/* Os seis slots viram locais de venda enquanto um Pokémon é arrastado. */
-.bottom-hud.selling .shop-card{opacity:1;border-color:rgba(255,211,100,.73);cursor:crosshair;filter:none}
-.bottom-hud.selling .shop-card::after{
-  content:'VENDER';
+/* Uma área de venda cobre o espaço completo das seis ofertas. */
+.shop-offers{position:relative;min-width:0}
+.bottom-hud.selling .shop-slots{visibility:hidden;pointer-events:none}
+.shop-sale-area{
   position:absolute;
   inset:0;
   display:grid;
   place-items:center;
   background:rgba(43,32,14,.88);
+  border:2px dashed #ffd364;
+  border-radius:8px;
   color:#ffe28f;
   font-weight:1000;
   font-size:clamp(10px,1.2vw,15px);
   letter-spacing:.6px;
   z-index:3;
-  pointer-events:none;
 }
-.bottom-hud.selling .shop-card.sell-hover::after{background:rgba(89,65,17,.82);color:#fff4ba}
-.bottom-hud.selling .shop-card.sell-hover{outline:2px solid #ffe37c;outline-offset:-2px}
+.shop-offers.sell-hover .shop-sale-area{background:rgba(89,65,17,.95);color:#fff4ba;border-style:solid}
+.shop-sale-area[hidden],.trainer-layer[hidden]{display:none}
 .bottom-hud.selling .shop-meta{opacity:.72}
+.trainer-layer{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.trainer-sprite{position:absolute;object-fit:contain;object-position:center bottom;image-rendering:pixelated;pointer-events:none}
+.ball-item img{display:block;width:26px;height:26px;image-rendering:pixelated}
 .toast{
   left:50%;
   bottom:126px;
@@ -312,7 +316,6 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .shop-card.empty{opacity:.5}
 .shop-card .structure-preview{display:block;width:72px;height:72px;image-rendering:auto;max-width:95%;max-height:92%;pointer-events:none}
 .shop-card .structure-preview:empty{display:none}
-.bottom-hud.selling .shop-card{transform:none}
 /* Somente os cinco maiores tipos positivos aparecem no mostrador. */
 .compass-widget{position:absolute;z-index:5;right:-40px;top:8%;transform:translateY(-50%);
   width:94px;height:94px;display:grid;place-items:center;pointer-events:none}
@@ -339,7 +342,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
   border-radius:5px;background:linear-gradient(100deg,color-mix(in srgb,var(--type-color),#10241d 85%),#132b23);
   color:#f3f1d8;cursor:help;text-align:left}
 .synergy-row:hover,.synergy-row:focus-visible{background:#304536;border-color:var(--type-color);outline:none}
-.synergy-row .type-icon{width:26px;height:26px;margin:0}
+.synergy-row .type-icon{width:40px;height:18px;margin:0;flex:none}
 .synergy-row b{font-size:17px;font-variant-numeric:tabular-nums}
 .synergy-bonus{margin-left:auto;font-size:11px;color:#e8d595}
 .game-shell[data-mode="local"] .side-hud{left:150px;right:auto;max-height:calc(100dvh - 268px)}
@@ -375,7 +378,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 }
 
 .shop-card{touch-action:none}
-.type-icon{display:inline-block;width:20px;height:20px;vertical-align:middle;object-fit:contain;margin-right:4px}
+.type-icon{display:inline-block;width:36px;height:16px;vertical-align:middle;object-fit:contain;margin-right:4px;image-rendering:pixelated}
 .shop-slots{grid-template-columns:repeat(8,minmax(0,100px));justify-content:center;align-items:start}
 .shop-card{min-height:0!important;align-self:start}
 .shop-portrait{flex:none;aspect-ratio:1!important;min-height:0!important}
@@ -422,7 +425,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 
 .type-tooltip{position:absolute;z-index:12;width:min(330px,calc(100vw - 16px));padding:14px 16px;border:1px solid color-mix(in srgb,var(--type-color),#efdfad 30%);border-radius:10px;background:linear-gradient(135deg,color-mix(in srgb,var(--type-color),#10241e 88%),#0b1918f5);box-shadow:0 12px 40px #0009,inset 0 1px 0 #fff2;pointer-events:none}
 .type-tooltip-heading{display:flex;align-items:center;gap:9px;padding-bottom:10px;border-bottom:1px solid #ffffff24;color:var(--type-color)}
-.type-tooltip-heading .type-icon{width:30px;height:30px;margin:0}
+.type-tooltip-heading .type-icon{width:48px;height:21px;margin:0}
 .type-tooltip-heading b{font-size:16px;color:#fff1cf}
 .type-tooltip-heading strong{margin-left:auto;font-size:20px}
 .type-tooltip-heading small{font-size:9px;color:#c4d8c9}
@@ -506,11 +509,11 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .roster-body{border-top:2px solid var(--rarity);padding:12px}
 .roster-body>b{font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .roster-body>span{margin-top:8px;display:flex;align-items:center;min-height:20px}
-.roster-body .type-icon{width:17px;height:17px;margin-right:3px}
+.roster-body .type-icon{width:32px;height:14px;margin-right:3px}
 .roster-body small{font-size:10px;color:var(--rarity);margin-left:auto;font-weight:800}
 
 /* Faixa de capítulo: marcos circulares com progresso inferior. */
-.top-hud{width:min(990px,calc(100vw - 28px));height:94px;min-height:94px;top:14px;padding:13px 18px 16px 12px;gap:18px;display:flex;align-items:center;border:1px solid #436a72aa;border-radius:13px;background:linear-gradient(140deg,#15282edc,#13252afa);box-shadow:0 12px 45px #001b2299;backdrop-filter:blur(12px)}
+.top-hud{width:min(990px,calc(100vw - 28px));height:76px;min-height:76px;top:10px;padding:9px 14px 13px 10px;gap:14px;display:flex;align-items:center;border:1px solid #436a72aa;border-radius:13px;background:linear-gradient(140deg,#15282edc,#13252afa);box-shadow:0 12px 45px #001b2299;backdrop-filter:blur(12px)}
 .chapter-badge{flex:none;align-self:flex-start;padding:10px 13px;min-width:52px;height:43px;border-radius:7px;background:linear-gradient(140deg,#314b57,#243f48);color:#ffce6c;font-weight:1000;font-size:18px;text-align:center;font-variant-numeric:tabular-nums}
 .chapter-track{flex:1;align-self:flex-end;min-width:0;display:flex;flex-direction:column;gap:6px;padding-bottom:1px}
 .chapter-progress{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;align-items:center;justify-items:center;margin:0;order:0;width:100%}
@@ -527,14 +530,14 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .phase-progress i{background:linear-gradient(90deg,#efd36f,#f8d96b);box-shadow:0 0 7px #ffe19a}
 
 /* Loja com 6 cards, cadeado em aba externa e painel econômico à esquerda. */
-.bottom-hud{width:min(1120px,calc(100vw - 78px));bottom:14px;grid-template-columns:202px minmax(0,1fr);gap:13px;padding:12px 54px 12px 12px;min-height:154px;overflow:visible;border-radius:14px;border-color:#476c72ba;background:linear-gradient(140deg,#172d35f2,#0f252bfd);box-shadow:0 14px 45px #0009}
+.bottom-hud{width:min(1040px,calc(100vw - 48px));bottom:10px;grid-template-columns:182px minmax(0,1fr);gap:10px;padding:9px 80px 9px 10px;min-height:130px;overflow:visible;border-radius:14px;border-color:#476c72ba;background:linear-gradient(140deg,#172d35f2,#0f252bfd);box-shadow:0 14px 45px #0009}
 .bottom-hud .shop-tab-lock{position:absolute;z-index:5;left:19px;top:-32px;width:54px;height:32px;border:1px solid #60858ca9;border-bottom:none;border-radius:10px 10px 0 0;display:grid;place-items:center;background:#1a323b;color:#dbe9e8;box-shadow:0 -4px 10px #0003;transform:none}
 .bottom-hud .shop-tab-lock[aria-pressed="true"]{background:#554b2c;color:#ffdc7b;border-color:#d6b960}
 .bottom-hud .shop-tab-lock:disabled{opacity:.5}
-.shop-meta{display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;padding:8px 9px 7px;border-radius:10px;background:linear-gradient(#112833,#12252b);border:1px solid #44666e91;gap:9px}
+.shop-meta{display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;padding:6px 7px;border-radius:10px;background:linear-gradient(#112833,#12252b);border:1px solid #44666e91;gap:6px}
 .shop-finances{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .shop-gold{background:transparent;border:0;padding:0;display:flex;align-items:center;gap:7px;box-shadow:none}
-.shop-gold b{color:#ffdb72;font-size:29px;line-height:1;font-weight:950}
+.shop-gold b{color:#ffdb72;font-size:25px;line-height:1;font-weight:950}
 .gold-emblem{height:23px;width:23px}
 .next-income{display:grid;gap:3px;text-align:right}
 .next-income small{font-size:9px;text-transform:none;letter-spacing:0;line-height:1.1;color:#a6c1c8;max-width:91px}
@@ -542,20 +545,20 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .economy-bonuses{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
 .economy-bonuses span{font-size:12px;text-align:center;padding:4px;border:1px solid #3d667090;border-radius:6px;color:#c5e7d9;background:#1b3940}
 .shop-actions{display:block;width:100%}
-.shop-actions #reroll-shop{width:100%;min-height:38px;padding:5px 9px;gap:8px;border-radius:9px;background:linear-gradient(#42617a,#27465a);color:#f9f2d8;border:1px solid #7299ae;display:flex;justify-content:center;font-size:12px}
+.shop-actions #reroll-shop{width:100%;min-height:32px;padding:4px 7px;gap:6px;border-radius:9px;background:linear-gradient(#42617a,#27465a);color:#f9f2d8;border:1px solid #7299ae;display:flex;justify-content:center;font-size:12px}
 .reroll-icon{font-size:23px;color:#ffe49a}
 .gold-small{color:#ffdc74;font-size:11px}
-.shop-content{justify-content:space-between;gap:8px}
+.shop-content{justify-content:space-between;gap:5px}
 .shop-rarity-odds{gap:clamp(6px,1vw,15px);min-height:17px;flex-wrap:nowrap;overflow:hidden}
 .shop-rarity-odds .rarity-odd{font-size:10px}
-.shop-slots{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;width:100%;justify-content:stretch}
-.shop-card{width:100%;min-width:0;min-height:111px!important;border-radius:7px;background:#142e32;border:1px solid var(--rarity,#6b9995);overflow:hidden}
-.shop-portrait{min-height:0!important;aspect-ratio:1.12!important;background:#21453e}
-.shop-footer{min-height:33px;flex-direction:row;justify-content:space-between;gap:3px;background:linear-gradient(90deg,color-mix(in srgb,var(--rarity),#0c2228 77%),#10242c)}
+.shop-slots{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;width:100%;justify-content:stretch}
+.shop-card{width:100%;min-width:0;min-height:94px!important;border-radius:7px;background:#142e32;border:1px solid var(--rarity,#6b9995);overflow:hidden}
+.shop-portrait{min-height:0!important;aspect-ratio:1.25!important;background:#21453e}
+.shop-footer{min-height:28px;flex-direction:row;justify-content:space-between;gap:3px;background:linear-gradient(90deg,color-mix(in srgb,var(--rarity),#0c2228 77%),#10242c)}
 .shop-footer b{font-size:10px;min-width:0;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
 .shop-price{font-size:12px;flex-shrink:0}
-.compass-widget{right:-43px;top:51%;width:102px;height:102px}
-.compass-ring{height:96px;width:96px;box-shadow:0 0 0 4px #142d36,0 0 0 5px #92a97f,0 10px 25px #0009}
+.compass-widget{right:-12px;top:-18px;transform:none;width:84px;height:84px}
+.compass-ring{height:78px;width:78px;box-shadow:0 0 0 4px #142d36,0 0 0 5px #92a97f,0 10px 25px #0009}
 .consumables{position:absolute;left:13px;bottom:100%;margin-bottom:39px;display:flex;gap:5px}
 
 /* Apostas e dificuldade ocupam o centro da tela, nunca a loja. */
@@ -578,39 +581,39 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .move-card em{font-style:normal;font-size:8px;font-weight:900;padding:2px 4px;border-radius:4px;background:#3c616d;color:#c4f0ff;margin-left:4px}
 
 @media(max-width:950px){
- .top-hud{width:calc(100vw - 16px);height:85px;min-height:85px;gap:8px;padding:9px 9px 13px}
+ .top-hud{width:calc(100vw - 16px);height:69px;min-height:69px;gap:8px;padding:7px 9px 12px}
  .chapter-badge{height:38px;padding:9px;min-width:48px;font-size:15px}
  .stage-mark{width:22px;height:22px;font-size:10px}
  .chapter-meta{min-width:86px}.chapter-meta b{font-size:11px}.chapter-meta span{font-size:10px}
- .bottom-hud{width:calc(100vw - 48px);grid-template-columns:154px minmax(0,1fr);padding:9px 42px 9px 8px;gap:7px}
+ .bottom-hud{width:calc(100vw - 36px);grid-template-columns:145px minmax(0,1fr);padding:7px 68px 7px 8px;gap:6px;min-height:112px}
  .shop-meta{padding:6px;gap:5px}.shop-gold b{font-size:22px}.gold-emblem{width:17px;height:17px}
  .next-income small{font-size:8px}.next-income strong{font-size:14px}
  .shop-rarity-odds .rarity-odd{font-size:8px}.shop-slots{gap:4px}
- .shop-portrait{aspect-ratio:1!important}
+ .shop-portrait{aspect-ratio:1.2!important}
  .shop-footer{padding:4px;flex-direction:column;gap:0;min-height:30px}
  .shop-footer b{font-size:9px}.shop-price{font-size:10px}
- .compass-widget{right:-37px;width:82px;height:82px}.compass-ring{width:78px;height:78px}
+ .compass-widget{right:-9px;top:-18px;width:72px;height:72px}.compass-ring{width:68px;height:68px}
 }
 @media(max-width:650px){
  .entry-hero{padding:12px}.entry-hero h1{font-size:clamp(44px,13vw,70px)}.hero-ball{width:85vw;right:-30vw;opacity:.5}
- .top-hud{top:5px;height:74px;min-height:74px;gap:4px}
+ .top-hud{top:5px;height:62px;min-height:62px;gap:4px}
  .chapter-badge{min-width:43px;font-size:13px;padding:7px;height:32px}
  .chapter-track{gap:5px;align-self:center}.chapter-progress{gap:1px}
  .stage-mark{width:17px;height:17px;font-size:8px}.chapter-track-numbers{font-size:7px}
  .chapter-meta{min-width:62px}.chapter-meta b{font-size:9px}.chapter-meta span{font-size:8px}.chapter-meta small{font-size:8px}
  .top-hud .return-menu{width:20px;padding:0;font-size:12px}
- .bottom-hud{width:calc(100vw - 15px);padding:8px 8px 8px;grid-template-columns:1fr;gap:4px;bottom:6px;min-height:0}
+ .bottom-hud{width:calc(100vw - 15px);padding:13px 6px 6px;grid-template-columns:1fr;gap:3px;bottom:6px;min-height:0}
  .bottom-hud .shop-tab-lock{left:11px;width:42px;height:25px;top:-25px}
- .shop-meta{flex-direction:row;align-items:center;gap:7px;min-height:42px;padding:5px 9px}
+ .shop-meta{flex-direction:row;align-items:center;gap:6px;min-height:36px;padding:4px 7px}
  .shop-finances{gap:8px;flex:1}.shop-gold b{font-size:20px}.next-income{grid-auto-flow:row}.next-income small{font-size:7px}
  .economy-bonuses{gap:2px;flex:1}.economy-bonuses span{font-size:9px;padding:2px}
  .shop-meta .consumables{position:static;display:none}
  .shop-actions{width:95px;flex:none}.shop-actions #reroll-shop{min-height:31px;font-size:10px;gap:2px}.reroll-icon{font-size:17px}
  .shop-content{gap:3px}.shop-rarity-odds{justify-content:space-between}.shop-rarity-odds .rarity-odd{font-size:8px}
  .shop-slots{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}.shop-card{min-height:65px!important}
- .shop-portrait{aspect-ratio:1!important}.shop-footer{min-height:23px;padding:2px 1px}
+ .shop-portrait{aspect-ratio:1.2!important}.shop-footer{min-height:23px;padding:2px 1px}
  .shop-footer b{font-size:7px}.shop-price{font-size:8px}.coin-icon{width:10px;height:10px}
- .compass-widget{right:4px;top:-39px;width:62px;height:62px}.compass-ring{width:60px;height:60px}
+ .compass-widget{right:4px;top:-52px;width:62px;height:62px}.compass-ring{width:60px;height:60px}
  .roster-grid{grid-template-columns:repeat(auto-fill,minmax(114px,1fr));gap:8px}.roster-portrait{height:115px}
  .roster-header button{padding:8px}
 }

@@ -174,7 +174,7 @@ function makeUnits(lineups,environment=[{},{}]) {
 }
 export function createBattle(lineups = [[], []],environment=[{},{}]) {
   const clean = lineups.map((list, team) => list.map(entry => normalizeEntry(entry, team)));
-  const columns=lineups.length===3?15:lineups.length===4?20:10;
+  const columns=lineups.length===4?20:10;
   return { phase:'setup', paused:false, elapsed:0, winner:null, columns,bounds:{...fieldBounds,maxX:BOARD.x+columns*BOARD.tile-10},eliminatedAt:{},ranking:[],environment, lineups:clean, units:makeUnits(clean,environment), projectiles:[], effects:[], floaters:[], events:[], kills:lineups.map(()=>0) };
 }
 export function syncLineups(b, lineups) {
@@ -307,8 +307,7 @@ function moveToTarget(b, u, target, dt, ideal) {
   const dy = target.y - u.y;
   const d = Math.hypot(dx, dy) || 1;
   const edge = Math.max(0, d - u.radius - target.radius);
-  let intensity = clamp((edge - ideal) / 25, -1, 1);
-  if (Math.abs(intensity) < .25) intensity = 0;
+  const intensity = clamp((edge - ideal) / Math.max(1,moveSpeed(u.stats)*dt), 0, 1);
   if (intensity === 0) {
     u.vx = 0;
     u.vy = 0;
@@ -391,7 +390,8 @@ export function updateBattle(b, seconds, random = Math.random) {
       continue;
     }
     const target = getTarget(b, u);
-    if (!target) continue;
+    u.targetId=target?.uid||null;
+    if (!target) {u.vx=0;u.vy=0;setState(u,'Idle');continue;}
     const moves = getMoves(u);
     const [regular,charged]=moves;
     const gap=edgeDistance(u,target);
@@ -403,8 +403,8 @@ export function updateBattle(b, seconds, random = Math.random) {
     // O alcance nunca autoriza usar o especial sem a energia suficiente.
     if(chargedInRange){beginAttack(b,u,target,charged);continue;}
     if(u.cooldown<=0&&regularInRange){beginAttack(b,u,target,regular);continue;}
-    const approach=chargedReady?charged:regular;
-    moveToTarget(b,u,target,dt,Math.max(0,effectiveAttackRange(u,approach||regular)-BOARD.tile*.20));
+    if(regularInRange){u.vx=0;u.vy=0;setState(u,'Idle');continue;}
+    moveToTarget(b,u,target,dt,effectiveAttackRange(u,regular));
   }
   for (let i = b.projectiles.length - 1; i >= 0; i--) {
     const p = b.projectiles[i];

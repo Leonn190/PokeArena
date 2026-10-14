@@ -12,12 +12,21 @@ const edge = (a,b) => Math.max(0,distance(a,b)-a.radius-b.radius);
 
 export function chooseCombatTarget(unit, enemies, moves, tileSize) {
   if (!enemies.length) return null;
-  const maxReach = Math.max(0,...moves.map(move=>move.range*tileSize));
-  return enemies.reduce((best,enemy) => {
+  const regular = moves.find(move=>move.kind==='regular');
+  const reach = (regular?.range||0)*tileSize;
+  const current = enemies.find(enemy=>enemy.uid===unit.targetId);
+  if(current&&edge(unit,current)<=reach)return current;
+  const reachable = enemies.filter(enemy=>edge(unit,enemy)<=reach);
+  if(!reachable.length){
+    const nearest=enemies.reduce((best,enemy)=>edge(unit,enemy)<edge(unit,best)?enemy:best);
+    // Mantém a aproximação quando a alternativa não poupa sequer uma célula.
+    return current&&edge(unit,current)<=edge(unit,nearest)+tileSize?current:nearest;
+  }
+  return (reachable.length?reachable:enemies).reduce((best,enemy) => {
     const gap=edge(unit,enemy);
     const hp=enemy.health/Math.max(1,enemy.maxHealth);
     const threat=(enemy.stats.atk+enemy.stats.spa)/Math.max(1,enemy.stats.def+enemy.stats.spd);
-    const score=gap/(tileSize*1.45)+hp*1.6-threat*.45+(gap>maxReach ? .4 : 0);
+    const score=gap/(tileSize*1.45)+hp*1.6-threat*.45;
     return !best||score<best.score ? {enemy,score} : best;
   },null)?.enemy || null;
 }

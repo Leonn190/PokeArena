@@ -11,10 +11,9 @@ const activePlayers=match=>match.players.filter(p=>!p.eliminated&&p.hp>0);
 const findPlayer=(match,id)=>match.players.find(p=>p.id===id);
 const cloneFormation=player=>player.board.map(u=>({...u,activeMoves:[...u.activeMoves]}));
 
-// Formações em setores das bordas; a terceira equipe gira 90°.
+// Formações em quatro setores; a equipe observada ocupa o setor inferior.
 function arenaCell(col,row,team,count,size=1) {
   const local=row-6;
-  if(count===3&&team===2)return {col:10+local,row:1+col};
   if(count===4&&team>=2)return {col:col+10,row:team===2?row:5-local-(size-1)};
   return {col,row:team===1?5-local-(size-1):row};
 }
@@ -49,7 +48,7 @@ function pveTeam(match,player,random) {
 function makePairings(match,random) {
   const players=activePlayers(match),kind=battleKind(match.round);
   if(['pve','legendary'].includes(kind))return players.map((p,i)=>({id:`r${match.round}-${i}`,members:[p,pveTeam(match,p,random)]}));
-  const size=kind==='triple'?3:kind==='quadruple'?4:2;
+  const size=kind==='quadruple'?4:2;
   // Distribui os reais antes de completar grupos, minimizando clones e grupos solitários.
   const count=Math.ceil(players.length/size),groups=Array.from({length:count},()=>[]);
   const offset=(match.round-1)%players.length;
@@ -99,7 +98,7 @@ export function startCombatPhase(match,nowSeconds=0,random=Math.random) {
 }
 function finishCombat(match,combat,random) {
   if(combat.status!=='running'||combat.battle.phase!=='finished')return;
-  const battle=combat.battle,kind=battleKind(match.round),special=['triple','quadruple'].includes(kind),pve=['pve','legendary'].includes(kind);
+  const battle=combat.battle,kind=battleKind(match.round),special=kind==='quadruple',pve=['pve','legendary'].includes(kind);
   const winner=battle.winner,survivors=battle.units.filter(u=>!u.dead&&u.team===winner);
   combat.status='finished';combat.result={winnerId:combat.members[winner]?.id||null,damage:0,survivors:survivors.length,ranking:battle.ranking.map(t=>combat.members[t].id),outcomes:{}};
   for(const [team,member] of combat.members.entries()){
