@@ -1,0 +1,407 @@
+{
+  "version": 1,
+  "paths_relative_to": "public/",
+  "astro_usage": "import.meta.env.BASE_URL + path",
+  "note": "GIFs e spritesheets PNG sao alternativas de uso; hit e um efeito visual, nao frames originais de dano.",
+  "trainers": {
+    "red": {
+      "name": "Red",
+      "frame_size": [
+        16,
+        32
+      ],
+      "walk_sheet": {
+        "frame_width": 16,
+        "frame_height": 32,
+        "frames": 4,
+        "duration_ms": 125
+      },
+      "throw_kind": "original_battle_back_frames",
+      "assets": {
+        "overworld": "assets/treinadores/red/overworld.png",
+        "idle_down": "assets/treinadores/red/idle_down.png",
+        "idle_up": "assets/treinadores/red/idle_up.png",
+        "idle_left": "assets/treinadores/red/idle_left.png",
+        "idle_right": "assets/treinadores/red/idle_right.png",
+        "walk_down_sheet": "assets/treinadores/red/walk_down_sheet.png",
+        "walk_down": "assets/treinadores/red/walk_down.gif",
+        "walk_up_sheet": "assets/treinadores/red/walk_up_sheet.png",
+        "walk_up": "assets/treinadores/red/walk_up.gif",
+        "walk_left_sheet": "assets/treinadores/red/walk_left_sheet.png",
+        "walk_left": "assets/treinadores/red/walk_left.gif",
+        "walk_right_sheet": "assets/treinadores/red/walk_right_sheet.png",
+        "walk_right": "assets/treinadores/red/walk_right.gif",
+        "hit": "assets/treinadores/red/hit.gif",
+        "battle_front": "assets/treinadores/red/battle_front.png",
+        "battle_back_sheet": "assets/treinadores/red/battle_back_sheet.png",
+        "throw": "assets/treinadores/red/throw.gif"
+      },
+      "sources": {
+        "overworld": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/red.png",
+        "battle_front": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/front_pics/red.png",
+        "throw": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/back_pics/red.png"
+      }
+    },
+    "leaf": {
+      "name": "Leaf",
+      "frame_size": [
+        16,
+        32
+      ],
+      "walk_sheet": {
+        "frame_width": 16,
+        "frame_height": 32,
+        "frames": 4,
+        "duration_ms": 125
+      },
+      "throw_kind": "original_battle_back_frames",
+      "assets": {
+        "overworld": "assets/treinadores/leaf/overworld.png",
+        "idle_down": "assets/treinadores/leaf/idle_down.png",
+        "idle_up": "assets/treinadores/leaf/idle_up.png",
+        "idle_left": "assets/treinadores/leaf/idle_left.png",
+        "idle_right": "assets/treinadores/leaf/idle_right.png",
+        "walk_down_sheet": "assets/treinadores/leaf/walk_down_sheet.png",
+        "walk_down": "assets/treinadores/leaf/walk_down.gif",
+        "walk_up_sheet": "assets/treinadores/leaf/walk_up_sheet.png",
+        "walk_up": "assets/treinadores/leaf/walk_up.gif",
+        "walk_left_sheet": "assets/treinadores/leaf/walk_left_sheet.png",
+        "walk_left": "assets/treinadores/leaf/walk_left.gif",
+        "walk_right_sheet": "assets/treinadores/leaf/walk_right_sheet.png",
+        "walk_right": "assets/treinadores/leaf/walk_right.gif",
+        "hit": "assets/treinadores/leaf/hit.gif",
+        "battle_front": "assets/treinadores/leaf/battle_front.png",
+        "battle_back_sheet": "assets/treinadores/leaf/battle_back_sheet.png",
+        "throw": "assets/treinadores/leaf/throw.gif"
+      },
+      "sources": {
+        "overworld": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/leaf.png",
+        "battle_front": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/front_pics/leaf.png",
+        "throw": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/back_pics/leaf.png"
+      }
+    },
+    "brendan": {
+      "name": "Brendan",
+      "frame_size": [
+        16,
+        32
+      ],
+      "walk_sheet": {
+        "frame_width": 16,
+        "frame_height": 32,
+        "frames": 4,
+        "duration_ms": 125
+      },
+      "throw_kind": "original_battle_back_frames",
+      "assets": {
+        "overworld": "assets/treinadores/brendan/overworld.png",
+        "idle_down": "assets/treinadores/brendan/idle_down.png",
+        "idle_up": "assets/treinadores/brendan/idle_up.png",
+        "idle_left": "assets/treinadores/brendan/idle_left.png",
+        "idle_right": "assets/treinadores/brendan/idle_right.png",
+        "walk_down_sheet": "assets/treinadores/brendan/walk_down_sheet.png",
+        "walk_down": "assets/treinadores/brendan/walk_down.gif",
+        "walk_up_sheet": "assets/treinadores/brendan/walk_up_sheet.png",
+        "walk_up": "assets/treinadores/brendan/walk_up.gif",
+        "walk_left_sheet": "assets/treinadores/brendan/walk_left_sheet.png",
+        "walk_left": "assets/treinadores/brendan/walk_left.gif",
+        "walk_right_sheet": "assets/treinadores/brendan/walk_right_sheet.png",
+        "walk_right": "assets/treinadores/brendan/walk_right.gif",
+        "hit": "assets/treinadores/brendan/hit.gif",
+        "battle_front": "assets/treinadores/brendan/battle_front.png",
+        "battle_back_sheet": "assets/treinadores/brendan/battle_back_sheet.png",
+        "throw": "assets/treinadores/brendan/throw.gif"
+      },
+      "sources": {
+        "overworld": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/brendan/walking.png",
+        "battle_front": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/front_pics/brendan.png",
+        "throw": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/back_pics/brendan.png"
+      }
+    },
+    "may": {
+      "name": "May",
+      "frame_size": [
+        16,
+        32
+      ],
+      "walk_sheet": {
+        "frame_width": 16,
+        "frame_height": 32,
+        "frames": 4,
+        "duration_ms": 125
+      },
+      "throw_kind": "original_battle_back_frames",
+      "assets": {
+        "overworld": "assets/treinadores/may/overworld.png",
+        "idle_down": "assets/treinadores/may/idle_down.png",
+        "idle_up": "assets/treinadores/may/idle_up.png",
+        "idle_left": "assets/treinadores/may/idle_left.png",
+        "idle_right": "assets/treinadores/may/idle_right.png",
+        "walk_down_sheet": "assets/treinadores/may/walk_down_sheet.png",
+        "walk_down": "assets/treinadores/may/walk_down.gif",
+        "walk_up_sheet": "assets/treinadores/may/walk_up_sheet.png",
+        "walk_up": "assets/treinadores/may/walk_up.gif",
+        "walk_left_sheet": "assets/treinadores/may/walk_left_sheet.png",
+        "walk_left": "assets/treinadores/may/walk_left.gif",
+        "walk_right_sheet": "assets/treinadores/may/walk_right_sheet.png",
+        "walk_right": "assets/treinadores/may/walk_right.gif",
+        "hit": "assets/treinadores/may/hit.gif",
+        "battle_front": "assets/treinadores/may/battle_front.png",
+        "battle_back_sheet": "assets/treinadores/may/battle_back_sheet.png",
+        "throw": "assets/treinadores/may/throw.gif"
+      },
+      "sources": {
+        "overworld": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/may/walking.png",
+        "battle_front": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/front_pics/may.png",
+        "throw": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/back_pics/may.png"
+      }
+    },
+    "wally": {
+      "name": "Wally",
+      "frame_size": [
+        16,
+        32
+      ],
+      "walk_sheet": {
+        "frame_width": 16,
+        "frame_height": 32,
+        "frames": 4,
+        "duration_ms": 125
+      },
+      "throw_kind": "original_battle_back_frames",
+      "assets": {
+        "overworld": "assets/treinadores/wally/overworld.png",
+        "idle_down": "assets/treinadores/wally/idle_down.png",
+        "idle_up": "assets/treinadores/wally/idle_up.png",
+        "idle_left": "assets/treinadores/wally/idle_left.png",
+        "idle_right": "assets/treinadores/wally/idle_right.png",
+        "walk_down_sheet": "assets/treinadores/wally/walk_down_sheet.png",
+        "walk_down": "assets/treinadores/wally/walk_down.gif",
+        "walk_up_sheet": "assets/treinadores/wally/walk_up_sheet.png",
+        "walk_up": "assets/treinadores/wally/walk_up.gif",
+        "walk_left_sheet": "assets/treinadores/wally/walk_left_sheet.png",
+        "walk_left": "assets/treinadores/wally/walk_left.gif",
+        "walk_right_sheet": "assets/treinadores/wally/walk_right_sheet.png",
+        "walk_right": "assets/treinadores/wally/walk_right.gif",
+        "hit": "assets/treinadores/wally/hit.gif",
+        "battle_front": "assets/treinadores/wally/battle_front.png",
+        "battle_back_sheet": "assets/treinadores/wally/battle_back_sheet.png",
+        "throw": "assets/treinadores/wally/throw.gif"
+      },
+      "sources": {
+        "overworld": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/wally.png",
+        "battle_front": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/front_pics/wally.png",
+        "throw": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/back_pics/wally.png"
+      }
+    },
+    "steven": {
+      "name": "Steven",
+      "frame_size": [
+        16,
+        32
+      ],
+      "walk_sheet": {
+        "frame_width": 16,
+        "frame_height": 32,
+        "frames": 4,
+        "duration_ms": 125
+      },
+      "throw_kind": "original_battle_back_frames",
+      "assets": {
+        "overworld": "assets/treinadores/steven/overworld.png",
+        "idle_down": "assets/treinadores/steven/idle_down.png",
+        "idle_up": "assets/treinadores/steven/idle_up.png",
+        "idle_left": "assets/treinadores/steven/idle_left.png",
+        "idle_right": "assets/treinadores/steven/idle_right.png",
+        "walk_down_sheet": "assets/treinadores/steven/walk_down_sheet.png",
+        "walk_down": "assets/treinadores/steven/walk_down.gif",
+        "walk_up_sheet": "assets/treinadores/steven/walk_up_sheet.png",
+        "walk_up": "assets/treinadores/steven/walk_up.gif",
+        "walk_left_sheet": "assets/treinadores/steven/walk_left_sheet.png",
+        "walk_left": "assets/treinadores/steven/walk_left.gif",
+        "walk_right_sheet": "assets/treinadores/steven/walk_right_sheet.png",
+        "walk_right": "assets/treinadores/steven/walk_right.gif",
+        "hit": "assets/treinadores/steven/hit.gif",
+        "battle_front": "assets/treinadores/steven/battle_front.png",
+        "battle_back_sheet": "assets/treinadores/steven/battle_back_sheet.png",
+        "throw": "assets/treinadores/steven/throw.gif"
+      },
+      "sources": {
+        "overworld": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/steven.png",
+        "battle_front": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/front_pics/steven.png",
+        "throw": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/back_pics/steven.png"
+      }
+    },
+    "archie": {
+      "name": "Archie",
+      "frame_size": [
+        16,
+        32
+      ],
+      "walk_sheet": {
+        "frame_width": 16,
+        "frame_height": 32,
+        "frames": 4,
+        "duration_ms": 125
+      },
+      "throw_kind": "simulated_with_overworld_and_pokeball",
+      "assets": {
+        "overworld": "assets/treinadores/archie/overworld.png",
+        "idle_down": "assets/treinadores/archie/idle_down.png",
+        "idle_up": "assets/treinadores/archie/idle_up.png",
+        "idle_left": "assets/treinadores/archie/idle_left.png",
+        "idle_right": "assets/treinadores/archie/idle_right.png",
+        "walk_down_sheet": "assets/treinadores/archie/walk_down_sheet.png",
+        "walk_down": "assets/treinadores/archie/walk_down.gif",
+        "walk_up_sheet": "assets/treinadores/archie/walk_up_sheet.png",
+        "walk_up": "assets/treinadores/archie/walk_up.gif",
+        "walk_left_sheet": "assets/treinadores/archie/walk_left_sheet.png",
+        "walk_left": "assets/treinadores/archie/walk_left.gif",
+        "walk_right_sheet": "assets/treinadores/archie/walk_right_sheet.png",
+        "walk_right": "assets/treinadores/archie/walk_right.gif",
+        "hit": "assets/treinadores/archie/hit.gif",
+        "battle_front": "assets/treinadores/archie/battle_front.png",
+        "throw": "assets/treinadores/archie/throw.gif"
+      },
+      "sources": {
+        "overworld": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/team_aqua/archie.png",
+        "battle_front": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/front_pics/aqua_leader_archie.png",
+        "throw": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/team_aqua/archie.png"
+      }
+    },
+    "maxie": {
+      "name": "Maxie",
+      "frame_size": [
+        16,
+        32
+      ],
+      "walk_sheet": {
+        "frame_width": 16,
+        "frame_height": 32,
+        "frames": 4,
+        "duration_ms": 125
+      },
+      "throw_kind": "simulated_with_overworld_and_pokeball",
+      "assets": {
+        "overworld": "assets/treinadores/maxie/overworld.png",
+        "idle_down": "assets/treinadores/maxie/idle_down.png",
+        "idle_up": "assets/treinadores/maxie/idle_up.png",
+        "idle_left": "assets/treinadores/maxie/idle_left.png",
+        "idle_right": "assets/treinadores/maxie/idle_right.png",
+        "walk_down_sheet": "assets/treinadores/maxie/walk_down_sheet.png",
+        "walk_down": "assets/treinadores/maxie/walk_down.gif",
+        "walk_up_sheet": "assets/treinadores/maxie/walk_up_sheet.png",
+        "walk_up": "assets/treinadores/maxie/walk_up.gif",
+        "walk_left_sheet": "assets/treinadores/maxie/walk_left_sheet.png",
+        "walk_left": "assets/treinadores/maxie/walk_left.gif",
+        "walk_right_sheet": "assets/treinadores/maxie/walk_right_sheet.png",
+        "walk_right": "assets/treinadores/maxie/walk_right.gif",
+        "hit": "assets/treinadores/maxie/hit.gif",
+        "battle_front": "assets/treinadores/maxie/battle_front.png",
+        "throw": "assets/treinadores/maxie/throw.gif"
+      },
+      "sources": {
+        "overworld": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/team_magma/maxie.png",
+        "battle_front": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/trainers/front_pics/magma_leader_maxie.png",
+        "throw": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/object_events/pics/people/team_magma/maxie.png"
+      }
+    }
+  },
+  "types": {
+    "normal": {
+      "path": "assets/tipos/normal.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Normal.png"
+    },
+    "fire": {
+      "path": "assets/tipos/fire.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Fire.png"
+    },
+    "water": {
+      "path": "assets/tipos/water.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Water.png"
+    },
+    "electric": {
+      "path": "assets/tipos/electric.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Electric.png"
+    },
+    "grass": {
+      "path": "assets/tipos/grass.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Grass.png"
+    },
+    "ice": {
+      "path": "assets/tipos/ice.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Ice.png"
+    },
+    "fighting": {
+      "path": "assets/tipos/fighting.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Fighting.png"
+    },
+    "poison": {
+      "path": "assets/tipos/poison.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Poison.png"
+    },
+    "ground": {
+      "path": "assets/tipos/ground.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Ground.png"
+    },
+    "flying": {
+      "path": "assets/tipos/flying.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Flying.png"
+    },
+    "psychic": {
+      "path": "assets/tipos/psychic.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Psychic.png"
+    },
+    "bug": {
+      "path": "assets/tipos/bug.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Bug.png"
+    },
+    "rock": {
+      "path": "assets/tipos/rock.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Rock.png"
+    },
+    "ghost": {
+      "path": "assets/tipos/ghost.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Ghost.png"
+    },
+    "dragon": {
+      "path": "assets/tipos/dragon.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Dragon.png"
+    },
+    "dark": {
+      "path": "assets/tipos/dark.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Dark.png"
+    },
+    "steel": {
+      "path": "assets/tipos/steel.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Steel.png"
+    },
+    "fairy": {
+      "path": "assets/tipos/fairy.png",
+      "source": "https://play.pokemonshowdown.com/sprites/typeicons/Fairy.png"
+    }
+  },
+  "balls": {
+    "poke": {
+      "path": "assets/pokebolas/poke.png",
+      "source": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/items/icons/poke_ball.png"
+    },
+    "great": {
+      "path": "assets/pokebolas/great.png",
+      "source": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/items/icons/great_ball.png"
+    },
+    "ultra": {
+      "path": "assets/pokebolas/ultra.png",
+      "source": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/items/icons/ultra_ball.png"
+    },
+    "master": {
+      "path": "assets/pokebolas/master.png",
+      "source": "https://raw.githubusercontent.com/pret/pokeemerald/master/graphics/items/icons/master_ball.png"
+    }
+  },
+  "sources_and_rights": {
+    "trainers_and_balls": "https://github.com/pret/pokeemerald",
+    "type_icons": "https://play.pokemonshowdown.com/sprites/typeicons/",
+    "pokemon_rights": "Arte de Pokemon pertence aos respectivos titulares. Repositorios-fonte nao conferem automaticamente licenca comercial."
+  }
+}
