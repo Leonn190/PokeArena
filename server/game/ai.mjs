@@ -2,7 +2,7 @@
 // Recebe RNG injetável; usa exclusivamente ações públicas do domínio de partida.
 import { BY_ID, FUSION_COSTS } from './pokemon.mjs';
 import { RULES, fieldLimitForBattle, battleKind } from './rules.mjs';
-import { purchaseLocalOffer, refreshLocalShop, sellLocalUnit, confirmLocalBet, selectPveDifficulty, cloneLocalPokemon, moveLocalUnit, BALLS } from './roster.mjs';
+import { purchaseLocalOffer, refreshLocalShop, sellLocalUnit, confirmLocalBet, selectPveDifficulty, cloneLocalPokemon, moveLocalUnit, feedLocalUnit, canFeedLocalUnit, BALLS } from './roster.mjs';
 import { buyStructure, placeStructure } from './structures.mjs';
 import {calculateCompass} from './compass.mjs';
 
@@ -151,6 +151,18 @@ export function prepareLocalBots(match,random=Math.random) {
       if(target)cloneLocalPokemon(match,bot,ball,target,random);
     }
     reorganizeBot(match,bot,match.round,style);
+    // Alimentação opcional, uma vez por preparação; mantém o campo e cópias
+    // necessárias para evolução. Usa a mesma regra validada do jogador.
+    const target=bot.board.find(unit=>unit.level<RULES.niveis.maximo&&
+      !Object.hasOwn(FUSION_COSTS,unit.speciesId)&&
+      ['comum','incomum','raro','epico'].includes(BY_ID[unit.speciesId]?.rarity));
+    if(target){
+      const spare=bot.bench.find(unit=>unit?.kind!=='structure'&&
+        BY_ID[unit?.speciesId]?.rarity===BY_ID[target.speciesId].rarity&&
+        owned(bot).filter(candidate=>candidate.speciesId===unit.speciesId).length<
+          (FUSION_COSTS[unit.speciesId]||99)&&canFeedLocalUnit(match,bot,unit,target));
+      if(spare)feedLocalUnit(match,bot,spare,target);
+    }
     if(battleKind(match.round)==='gold'&&bot.gold>0)confirmLocalBet(match,bot,bot.board.length===limit?'win':'loss',Math.min(5,bot.gold));
     if(battleKind(match.round)==='pve')selectPveDifficulty(match,bot,bot.board.length<limit?'easy':style==='front'?'hard':'medium');
     bot.compass=calculateCompass(bot);

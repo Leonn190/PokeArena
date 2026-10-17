@@ -63,24 +63,21 @@ const base = import.meta.env.BASE_URL;
     </aside>
 
     <section class="side-hud collapsed" id="detail-panel" aria-label="Ficha do Pokémon selecionado">
-      <div class="panel-title"><span id="selected-number">#004</span><b id="selected-name">Charmander</b></div>
-      <div class="selected-head">
-        <canvas id="selected-avatar" width="78" height="70" aria-hidden="true"></canvas>
-        <div>
-          <small id="selected-type">Fogo</small>
-          <strong id="selected-place">Campo</strong>
-          <p id="selected-iv">IV geral 50%</p>
-          <p id="sell-value">Venda: 3 ouro</p>
+      <div class="panel-title"><b id="selected-name">Charmander</b><small id="selected-number">#004</small></div>
+      <div class="pokemon-overview"><canvas id="selected-avatar" width="64" height="56" aria-hidden="true"></canvas>
+        <div class="pokemon-summary">
+          <span id="selected-type"></span>
+          <div class="pokemon-metrics"><span>Nível <b id="selected-level">0</b></span><span>IV <b id="selected-iv">50%</b></span><span>Poder <b id="selected-power">0</b></span></div>
+          <small id="selected-place"></small>
         </div>
       </div>
-      <div id="stats-list" class="stats-list"></div>
+      <div class="pokemon-stat-header"><span>Atributo</span><span>IV</span><span>Efetivo</span></div>
+      <div id="stats-list" class="stats-list" aria-label="Atributos efetivos e IV individual"></div>
       <div class="attack-panel">
-        <div class="panel-subtitle">Ataques</div>
-        <p id="ability-status" class="ability-status">Habilidade única: nenhuma ativa nesta versão.</p>
+        <div class="panel-subtitle">Habilidade e ataques</div>
+        <div id="ability-status" class="ability-status"></div>
         <div id="moves-active" class="moves-list"></div>
-        <div class="attack-actions">
-          <button id="sell-selected" type="button">Vender</button>
-        </div>
+        <div class="attack-actions"><button id="sell-selected" type="button">Vender Pokémon</button><small id="sell-value"></small></div>
       </div>
     </section>
 

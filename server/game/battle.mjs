@@ -1,8 +1,12 @@
 import { BY_ID, getDirection } from './pokemon.mjs';
 import { RULES } from './rules.mjs';
-import { MOVES_BY_ID, initialLoadout, validLoadout, abilityForPokemon, chooseMoveAnimation, ENERGY_PER_SECOND, BASE_REGENERATION_PER_SECOND } from './moves.mjs';
+import { MOVES_BY_ID, initialLoadout, validLoadout, abilityForPokemon, chooseMoveAnimation } from './moves.mjs';
 import { chooseCombatTarget } from './ai.mjs';
 import {structureModifiers} from './structures.mjs';
+import {effectiveUnitStats,individualIVs,meanIV,normalizedLevel,applyStructureStats,ivMultiplier} from './stats.mjs';
+export {effectiveUnitStats,ivMultiplier} from './stats.mjs';
+// Mantém a exportação usada por integrações anteriores, agora com a mesma regra de IV.
+export const effectiveStats=(pokemon,iv=50)=>effectiveUnitStats(pokemon,{iv,level:0});
 
 export const BOARD = Object.freeze({
   columns: 10,
@@ -39,29 +43,6 @@ export const benchTeamForCell = cell => cell?.row === BOARD.enemyBenchRow ? 1 : 
 export const validCellForTeam = (team, cell) => !!cell && (team === 1
   ? cell.row >= BOARD.enemyFieldStart && cell.row < BOARD.enemyFieldStart + BOARD.enemyRows
   : cell.row >= BOARD.playerFieldStart && cell.row < BOARD.playerBenchRow);
-export const ivMultiplier = iv => .85 + clamp(iv, 0, 100) * .003;
-export function effectiveStats(pokemon, iv = 50) {
-  return Object.fromEntries(Object.entries(pokemon.stats).map(([key, value]) => [key, Math.round(value * ivMultiplier(iv))]));
-}
-// Zygarde tem escala temporária até o GDD definir ganhos exatos por forma.
-export function effectiveUnitStats(pokemon,entry) {
-  const stats=effectiveStats(pokemon,entry.iv);
-  if(entry.bossIv){
-    const scale=(.85+.003*entry.bossIv)/ivMultiplier(entry.iv);
-    for(const key of Object.keys(stats))stats[key]=Math.round(stats[key]*scale);
-  }
-  if(entry.pveModifiers)for(const key of Object.keys(stats)){
-    const mods=entry.pveModifiers;
-    const factor=key==='vida'?mods.hp:['atk','spa'].includes(key)?mods.offense:mods.stats;
-    stats[key]=Math.round(stats[key]*factor);
-  }
-  if(pokemon.name==='Zygarde'&&entry.zygardeProgress) {
-    const progress=Math.min(100,entry.zygardeProgress);
-    const boost=1+progress*.0025+(progress>=50?.08:0)+(progress===100?.15:0);
-    for(const key of Object.keys(stats)) stats[key]=Math.round(stats[key]*boost);
-  }
-  return stats;
-}
 export const maxHealth = (stats,hpScale=1) => 60*hpScale + stats.vida * 2;
 export const moveSpeed = stats => 55 + stats.vel * .62;
 export const attackInterval = stats => clamp(1.58 - stats.vel * .0088, .46, 1.45);
@@ -113,7 +94,9 @@ export function normalizeEntry(entry, team) {
     y: p.y,
     col,
     row,
-    iv: clamp(Math.round(entry.iv ?? 50), 0, 100),
+    iv: meanIV(entry),
+    ivs: individualIVs(entry),
+    level:normalizedLevel(entry.level),
     bossIv:entry.bossIv||0,
     pveModifiers:entry.pveModifiers?{...entry.pveModifiers}:null,
     zygardeProgress: entry.zygardeProgress ?? 0,
@@ -134,9 +117,7 @@ function makeUnits(lineups,environment=[{},{}]) {
     const stats = {...rawStats};
     const start={type,x:entry.x,y:entry.y};
     const structures=structureModifiers(environment,start);
-    for(const stat of ['vida','atk','def','spa','spd','vel']) {
-      if(structures[stat])stats[stat]=Math.round(stats[stat]*(1+structures[stat]));
-    }
+    Object.assign(stats,applyStructureStats(rawStats,structures));
     const hpScale=entry.pveModifiers?.hp||1;
     const hp = Math.round(maxHealth(stats,hpScale));
     return {
@@ -148,10 +129,12 @@ function makeUnits(lineups,environment=[{},{}]) {
       environmentMods:structures,
       hpScale,
       iv: entry.iv,
+      ivs: entry.ivs,
+      level: entry.level,
       slots: entry.slots,
       activeMoves: validLoadout(entry.speciesId,entry.activeMoves),
       abilityId:abilityForPokemon(entry.speciesId),
-      energy:0,energyRegen:ENERGY_PER_SECOND,regeneration:BASE_REGENERATION_PER_SECOND,
+      energy:0,energyRegen:stats.energia,regeneration:stats.regeneracao,
       maxEnergy:MOVES_BY_ID[entry.activeMoves[1]]?.energyCost||4,
       x: entry.x,
       y: entry.y,
@@ -359,9 +342,8 @@ export function updateBattle(b, seconds, random = Math.random) {
     // Distância à estrutura é avaliada com a posição atual: reforço local 1,5×.
     const structural=structureModifiers(b.environment,u);
     u.environmentMods=structural;
-    for(const key of Object.keys(u.baseStats)) {
-      u.stats[key]=Math.round(u.baseStats[key]*(1+(structural[key]||0)));
-    }
+    Object.assign(u.stats,applyStructureStats(u.baseStats,structural));
+    u.energyRegen=u.stats.energia;u.regeneration=u.stats.regeneracao;
     const nextMax=Math.round(maxHealth(u.stats,u.hpScale));
     if(nextMax!==u.maxHealth) {u.health=Math.min(nextMax,u.health*(nextMax/u.maxHealth));u.maxHealth=nextMax;}
     if(!u.dead&&b.phase==='fighting') {
