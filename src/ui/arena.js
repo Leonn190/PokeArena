@@ -20,6 +20,7 @@ const keys = ['vida','atk','def','spa','spd','vel','energia','regeneracao'];
 const stageName = {1:'Base',2:'Evoluído',3:'Final'};
 const RARITY_COLORS = {comum:'#9ca3af',incomum:'#4ad779',raro:'#5aa5ff',epico:'#b87afa',mitico:'#ff575d',lendario:'#ffda52'};
 const RARITY_LABELS = {comum:'Comum',incomum:'Incomum',raro:'Raro',epico:'Épico',mitico:'Mítico',lendario:'Lendário'};
+const coinSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10"/></svg>';
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 
 let localMatch=null;
