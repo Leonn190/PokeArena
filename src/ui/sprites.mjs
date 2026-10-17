@@ -50,6 +50,13 @@ export function createSpriteCache(base, onImageReady = () => {}) {
     const image=images.get(`${p.id}:${action}`);
     if(!image&&p.spriteAvailable)void loadImage(p,action);
     if(image)return {image,meta:desired};
+    // A família Bulbasaur usa Attack se a folha da habilidade não carregar.
+    if(['0001','0002','0003'].includes(p.id)&&!['Idle','Walk','Hurt','Sleep'].includes(visualAction)&&p.sprites.Attack){
+      const fallback=p.sprites.Attack,asset=fallback.asset||'Attack';
+      const attackImage=images.get(`${p.id}:${asset}`);
+      if(attackImage)return {image:attackImage,meta:fallback};
+      if(p.spriteAvailable)void loadImage(p,asset);
+    }
     // Nunca combinar imagem Idle com dimensões/durações de Attack/Walk/Shoot:
     // isso fazia um quadro cortar frames adjacentes, criando sprites "extras".
     const idle=p.sprites.Idle;

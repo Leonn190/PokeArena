@@ -71,14 +71,16 @@ const TYPE_EFFECTIVENESS = Object.freeze({
 });
 export function typeMultiplier(attackType, defendingTypes) {
   const types=Array.isArray(defendingTypes)?defendingTypes:[defendingTypes];
-  return types.reduce((mult,type)=>mult*(TYPE_EFFECTIVENESS[attackType]?.[type]??1),1);
+  return types.reduce((mult,type)=>{
+    const relation=TYPE_EFFECTIVENESS[attackType]?.[type]??1;
+    return mult*(relation===2 ? 1.25 : (relation===.5||relation===0) ? .8 : 1);
+  },1);
 }
-export function physicalOrSpecialDamage(attacker, defender, kind, random = Math.random, baseDamage = 30, attackType = 'Normal') {
+export function physicalOrSpecialDamage(attacker, defender, kind, random = Math.random, baseDamage = 30, attackType = 'Normal', scaledByAttribute = false) {
   const a = attacker.stats[kind === 'atk' ? 'atk' : 'spa'];
   const d = defender.stats[kind === 'atk' ? 'def' : 'spd'];
   const multiplier = typeMultiplier(attackType, defender.type.types) * (1+(attacker.environmentMods?.damage||0));
-  if (multiplier === 0) return 0;
-  return Math.max(1, Math.round(baseDamage * (.62 + a / 105) * (100 / (80 + d)) * multiplier * (.92 + random() * .16)));
+  return Math.max(1, Math.round(baseDamage * (scaledByAttribute?1:(.62 + a / 105)) * (100 / (80 + d)) * multiplier * (.92 + random() * .16)));
 }
 export function normalizeEntry(entry, team) {
   const speciesId = entry.speciesId ?? entry.id;
@@ -192,22 +194,57 @@ export function effectiveAttackRange(_unit, move) {
 const setState = (u, state) => { if (u.state !== state) { u.state = state; u.stateTime = 0; } };
 function getTarget(b, u, moves = getMoves(u)) { return chooseCombatTarget(u,b.units.filter(other=>!other.dead&&other.team!==u.team),moves,BOARD.tile); }
 function getMoves(u) { return u.activeMoves.map(m => MOVES_BY_ID[m]).filter(Boolean); }
+// Centros candidatos de círculos: posições inimigas e interseções dos limites
+// de área/alcance. A contagem usa posições atuais e desempate pela ordem estável.
+function pollenCenter(b,u,move) {
+  const enemies=b.units.filter(v=>!v.dead&&v.team!==u.team);
+  const radius=move.areaRadius*BOARD.tile,reach=effectiveAttackRange(u,move)+u.radius;
+  const circles=[...enemies.map(v=>({x:v.x,y:v.y,r:radius})),{x:u.x,y:u.y,r:reach}];
+  const candidates=enemies.map(v=>({x:v.x,y:v.y}));
+  for(let i=0;i<circles.length;i++)for(let j=i+1;j<circles.length;j++){
+    const a=circles[i],c=circles[j],d=dist(a,c);
+    if(d<1e-6||d>a.r+c.r||d<Math.abs(a.r-c.r))continue;
+    const along=(a.r*a.r-c.r*c.r+d*d)/(2*d);
+    const height=Math.sqrt(Math.max(0,a.r*a.r-along*along));
+    const dx=(c.x-a.x)/d,dy=(c.y-a.y)/d;
+    for(const sign of [-1,1])candidates.push({x:a.x+dx*along-sign*dy*height,y:a.y+dy*along+sign*dx*height});
+  }
+  let best=null,count=0;
+  for(const point of candidates){
+    if(dist(u,point)>reach+1e-6)continue;
+    const hits=enemies.filter(v=>dist(v,point)<=radius+1e-6).length;
+    if(hits>count){best=point;count=hits;}
+  }
+  return best;
+}
 function beginAttack(b, u, target, move) {
+  const destination=move.behavior==='pollen'?pollenCenter(b,u,move):null;
+  if(move.behavior==='pollen'&&!destination)return false;
   const animation = chooseMoveAnimation(move, u.type.sprites);
   const meta = u.type.sprites[animation] || u.type.sprites.Attack;
   const durations = meta?.durations || [4, 4, 4, 4, 4];
   const natural = durations.reduce((s, n) => s + n, 0) / 60;
-  const length = clamp(natural, .28, 1.15);
+  let length = clamp(natural, .28, 1.15);
   const hitFrame = clamp(meta?.hitFrame ?? Math.floor(durations.length * .55), 0, durations.length - 1);
   const hitAt = clamp(durations.slice(0, hitFrame).reduce((s, n) => s + n, 0) / 60, .08, length * .92);
+  if(move.shots)length=Math.max(length,hitAt+(move.shots-1)*move.shotInterval+.08);
   if(move.kind==='charged')u.energy=Math.max(0,u.energy-move.energyCost);
-  u.cast = { moveId:move.id, animation, length, hitAt, elapsed:0, fired:false, targetId:target.uid };
+  u.cast = { moveId:move.id, animation, length, hitAt, elapsed:0, fired:false, shotsFired:0, targetId:target.uid, destination };
   u.vx = 0;
   u.vy = 0;
   u.facing = getDirection(target.x - u.x, target.y - u.y);
   setState(u, animation);
+  return true;
 }
-function spawnProjectile(b, u, target, move) {
+function spawnProjectile(b, u, target, move, destination=null) {
+  if(move.behavior==='boomerang'||move.behavior==='pollen'){
+    const end=destination||{x:target.x,y:target.y};
+    b.projectiles.push({owner:u.uid,team:u.team,moveId:move.id,behavior:move.behavior,
+      x:u.x,y:u.y,startX:u.x,startY:u.y,endX:end.x,endY:end.y,
+      vx:0,vy:0,speed:move.projectileSpeed,color:move.color,radius:8,
+      returning:false,hitIds:[],life:Math.max(2,dist(u,end)*2/move.projectileSpeed+1)});
+    return;
+  }
   const dx = target.x - u.x;
   const dy = target.y - u.y;
   const length = Math.hypot(dx, dy) || 1;
@@ -221,14 +258,16 @@ function spawnProjectile(b, u, target, move) {
     vx:dx / length,
     vy:dy / length,
     speed:move.projectileSpeed || 410,
-    radius:move.category === 'atk' ? 6 : 9,
+    radius:move.behavior==='seeds'?4:move.category === 'atk' ? 6 : 9,
     color:move.color,
     life:1.8
   });
 }
 function applyHit(b, attacker, target, move, random) {
   if (target.dead) return;
-  const damage = physicalOrSpecialDamage(attacker, target, move.category, random, move.damage, move.type);
+  const scaled=move.spaCoefficient!==undefined;
+  const base=scaled?attacker.stats.spa*move.spaCoefficient:move.damage;
+  const damage = physicalOrSpecialDamage(attacker, target, move.category, random, base, move.type, scaled);
   attacker.damageDealt += Math.min(target.health,damage);
   target.health = Math.max(0, target.health - damage);
   target.hitFlash = .20;
@@ -249,11 +288,16 @@ function handleCast(b, u, dt, random) {
   cast.elapsed += dt;
   u.vx = 0;
   u.vy = 0;
-  if (!cast.fired && cast.elapsed >= cast.hitAt) {
+  while (cast.shotsFired<(move.shots||1) && cast.elapsed+1e-6 >= cast.hitAt+cast.shotsFired*(move.shotInterval||0)) {
+    cast.shotsFired++;
     cast.fired = true;
     const target = b.units.find(z => z.uid === cast.targetId && !z.dead);
-    if (target) {
-      if (move.projectile && edgeDistance(u, target) <= effectiveAttackRange(u, move) + 35) spawnProjectile(b, u, target, move);
+    if(move.behavior==='pollen'){
+      // Reavalia a concentração ao lançar, sem depender da sobrevivência do alvo inicial.
+      const center=pollenCenter(b,u,move);
+      if(center)spawnProjectile(b,u,center,move,center);
+    } else if (target) {
+      if (move.projectile && (move.behavior==='seeds'||edgeDistance(u, target) <= effectiveAttackRange(u, move) + 35)) spawnProjectile(b, u, target, move);
       else if (!move.projectile && edgeDistance(u, target) <= effectiveAttackRange(u, move) + 9) applyHit(b, u, target, move, random);
     }
   }
@@ -262,6 +306,44 @@ function handleCast(b, u, dt, random) {
     setState(u, 'Idle');
     u.cooldown = attackInterval(u.stats) / (1+(u.environmentMods?.attackSpeed||0)) * (.88 + random() * .24);
   }
+}
+function segmentDistance(point,a,c){
+  const dx=c.x-a.x,dy=c.y-a.y,length=dx*dx+dy*dy;
+  const t=length?clamp(((point.x-a.x)*dx+(point.y-a.y)*dy)/length,0,1):0;
+  return Math.hypot(point.x-a.x-t*dx,point.y-a.y-t*dy);
+}
+function explodePollen(b,owner,p,move,random){
+  const radius=move.areaRadius*BOARD.tile;
+  b.effects.push({x:p.endX,y:p.endY,color:move.color,radius,style:'pollen-area',time:.65,total:.65});
+  for(const unit of b.units){
+    if(unit.dead||dist(unit,{x:p.endX,y:p.endY})>radius+1e-6)continue;
+    if(unit.team!==owner.team){applyHit(b,owner,unit,move,random);continue;}
+    const healing=Math.min(unit.maxHealth-unit.health,owner.stats.spa*move.healCoefficient);
+    if(healing<=0)continue;
+    unit.health+=healing;
+    b.floaters.push({x:unit.x,y:unit.y-40,text:`+${Math.round(healing)}`,kind:'heal',time:.85,total:.85});
+    b.events.push({type:'heal',name:owner.type.name,target:unit.type.name,healing,move:move.name});
+  }
+}
+function updateAbilityProjectile(b,p,dt,random){
+  const owner=b.units.find(u=>u.uid===p.owner),move=MOVES_BY_ID[p.moveId];
+  if(!owner||!move)return true;
+  const destination=p.returning?{x:p.startX,y:p.startY}:{x:p.endX,y:p.endY};
+  const old={x:p.x,y:p.y},distance=dist(p,destination),step=Math.min(distance,p.speed*dt);
+  p.vx=distance?(destination.x-p.x)/distance:0;p.vy=distance?(destination.y-p.y)/distance:0;
+  p.x+=p.vx*step;p.y+=p.vy*step;
+  if(p.behavior==='boomerang'){
+    for(const enemy of b.units){
+      if(enemy.dead||enemy.team===p.team||p.hitIds.includes(enemy.uid))continue;
+      if(segmentDistance(enemy,old,p)<=enemy.radius+p.radius){
+        p.hitIds.push(enemy.uid);applyHit(b,owner,enemy,move,random);
+      }
+    }
+  }
+  if(distance>step+1e-6)return false;
+  if(p.behavior==='pollen'){explodePollen(b,owner,p,move,random);return true;}
+  if(p.returning)return true;
+  p.returning=true;p.hitIds=[];return false;
 }
 function collideAndClamp(b, u) {
   const fieldBounds=b.bounds;
@@ -384,7 +466,7 @@ export function updateBattle(b, seconds, random = Math.random) {
     const inRange=edgeDistance(u,target)<=effectiveAttackRange(u,selectedMove);
     u.cooldown-=dt;
     if(inRange&&(chargedReady||u.cooldown<=0)){
-      beginAttack(b,u,target,selectedMove);continue;
+      if(beginAttack(b,u,target,selectedMove))continue;
     }
     if(inRange){u.vx=0;u.vy=0;setState(u,'Idle');continue;}
     moveToTarget(b,u,target,dt,effectiveAttackRange(u,selectedMove));
@@ -392,6 +474,10 @@ export function updateBattle(b, seconds, random = Math.random) {
   for (let i = b.projectiles.length - 1; i >= 0; i--) {
     const p = b.projectiles[i];
     p.life -= dt;
+    if(p.behavior){
+      if(p.life<=0||updateAbilityProjectile(b,p,dt,random))b.projectiles.splice(i,1);
+      continue;
+    }
     const target = b.units.find(u => u.uid === p.target && !u.dead);
     if (p.life <= 0 || !target) {
       b.projectiles.splice(i, 1);

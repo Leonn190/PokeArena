@@ -1,5 +1,5 @@
 import {LOOT_TIERS,BALL_CONFIG} from '../../config/espolios.mjs';
-import {initialLoadout, validLoadout, chargedPoolForPokemon, abilityForPokemon} from './moves.mjs';
+import {initialLoadout, abilityForPokemon} from './moves.mjs';
 import { RULES, fieldLimitForBattle, interestForGold, shopOddsForBattle, roomModifier, battleKind, streakBonus, PVE_DIFFICULTIES } from './rules.mjs';
 import { BY_ID, SHOP_POKEMON, FUSION_COSTS, EVOLUTION_OPTIONS } from './pokemon.mjs';
 import {calculateCompass, speciesCompassWeight, weightedSpeciesPick,ALL_TYPES} from './compass.mjs';
@@ -30,7 +30,7 @@ export function createParticipant({id,name,isBot}) {
 export function createMatchPokemon(speciesId,team,instanceId,random=Math.random) {
   const unit={
     instanceId,speciesId,team,iv:50,ivs:Object.fromEntries(['vida','atk','def','spa','spd','vel','energia','regeneracao'].map(key=>[key,Math.min(100,Math.floor(random()*101))])),level:RULES.niveis.inicial,
-    activeMoves:initialLoadout(speciesId,random),abilityId:abilityForPokemon(speciesId),slots:2,
+    activeMoves:initialLoadout(speciesId),abilityId:abilityForPokemon(speciesId),slots:2,
     col:team?5:4,row:team?2:7
   };
   unit.iv=meanIV(unit);return unit;
@@ -181,10 +181,7 @@ export function fuseLocalUnits(match,participant,random=Math.random) {
     keeper.iv=meanIV(keeper);
     keeper.evolutionSteps=Math.max(...copies.map(unit=>unit.evolutionSteps||0))+1;
     keeper.speciesId=targetId;
-    // A evolução determina seu próprio regular. Conserva o carregado apenas
-    // quando a nova espécie também o possui na respectiva pool de três.
-    keeper.activeMoves=chargedPoolForPokemon(targetId).includes(keeper.activeMoves?.[1])
-      ? validLoadout(targetId,keeper.activeMoves) : initialLoadout(targetId,random);
+    keeper.activeMoves=initialLoadout(targetId);
     keeper.abilityId=abilityForPokemon(targetId);
     keeper.slots=2;
     // Os itens não são comercializados nesta etapa, mas as fusões preservam até dois.
@@ -314,23 +311,8 @@ export function prepareLocalRound(match,random=Math.random) {
   }
   // Preparação tática de bots ocorre em ai.mjs, chamada pelo ciclo da partida.
 }
-export function changeLocalMove(match,participant,unit,slot,random=Math.random) {
-  // Só é permitido roletar o ataque CARREGADO dentro da pool da espécie.
-  // O regular e a habilidade nunca podem ser trocados.
-  if(match.phase!=='preparation'||participant.eliminated||
-    !ownedUnits(participant).includes(unit)||slot!==1||
-    participant.gold<RULES.moveChangeCostGold)return false;
-  const pool=chargedPoolForPokemon(unit.speciesId);
-  const alternatives=pool.filter(id=>id!==unit.activeMoves?.[1]);
-  if(!alternatives.length)return false;
-  participant.gold-=RULES.moveChangeCostGold;
-  const index=Math.min(alternatives.length-1,Math.floor(Math.max(0,random())*alternatives.length));
-  unit.activeMoves=validLoadout(unit.speciesId,[null,alternatives[index]]);
-  unit.abilityId=abilityForPokemon(unit.speciesId);
-  unit.slots=2;
-  match.revision++;
-  return true;
-}
+// Compatibilidade com integrações antigas: golpes fixos nunca são trocados.
+export function changeLocalMove() { return false; }
 export function awardLocalRoundIncome(match) {
   for(const participant of match.players) {
     if(participant.eliminated||participant.lastIncomeRound===match.round)continue;
@@ -371,7 +353,7 @@ export function cloneLocalPokemon(match,player,ballId,unit,random=Math.random) {
   player.consumables.splice(index,1);
   const success=random()<chance;
   if(success){
-    const copy={...unit,level:RULES.niveis.inicial,ivs:{...individualIVs(unit)},instanceId:`${match.id}-unit-${++match.nextUnitId}`,items:[],activeMoves:[...unit.activeMoves],
+    const copy={...unit,level:RULES.niveis.inicial,ivs:{...individualIVs(unit)},instanceId:`${match.id}-unit-${++match.nextUnitId}`,items:[],activeMoves:initialLoadout(unit.speciesId),abilityId:abilityForPokemon(unit.speciesId),
       provenance:purchasedCopies(unit).map(part=>({...part,pool:false})),col:slot,row:11};
     player.bench[slot]=copy;
     fuseLocalUnits(match,player,random);

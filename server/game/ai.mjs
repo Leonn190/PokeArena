@@ -12,8 +12,8 @@ const edge = (a,b) => Math.max(0,distance(a,b)-a.radius-b.radius);
 
 export function chooseCombatTarget(unit, enemies, moves, tileSize) {
   if (!enemies.length) return null;
-  const regular = moves.find(move=>move.kind==='regular');
-  const reach = (regular?.range||0)*tileSize;
+  const selected = moves[0];
+  const reach = (selected?.range||0)*tileSize;
   const current = enemies.find(enemy=>enemy.uid===unit.targetId);
   if(current&&edge(unit,current)<=reach)return current;
   const reachable = enemies.filter(enemy=>edge(unit,enemy)<=reach);
@@ -39,7 +39,8 @@ export function chooseCombatAttack(attacker, target, moves, tileSize) {
     const special=move.category==='spa';
     const offense=attacker.stats[special?'spa':'atk'];
     const defense=target.stats[special?'spd':'def'];
-    const projected=move.damage*(.62+offense/105)*(100/(80+defense));
+    const base=move.spaCoefficient!==undefined?offense*move.spaCoefficient:move.damage*(.62+offense/105);
+    const projected=base*(move.shots||1)*(100/(80+defense));
     const travel=move.projectile ? gap/Math.max(1,move.projectileSpeed||400) : 0;
     const reach=move.range*tileSize;
     // Prioriza dano por oportunidade, alcance adequado e menor atraso do projétil.

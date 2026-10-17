@@ -1,10 +1,10 @@
 // UI exclusiva da partida local. Toda regra competitiva é aplicada em server/game/.
-import { createLocalMatchState, purchaseLocalOffer, refreshLocalShop, sellLocalUnit, toggleLocalShopLock, changeLocalMove, saleValueLocal, canFeedLocalUnit, feedLocalUnit, canManageLocalInventory, confirmLocalBet, selectPveDifficulty, cloneLocalPokemon, BALLS, moveLocalAvatar, moveLocalUnit } from '../../server/game/roster.mjs';
+import { createLocalMatchState, purchaseLocalOffer, refreshLocalShop, sellLocalUnit, toggleLocalShopLock, saleValueLocal, canFeedLocalUnit, feedLocalUnit, canManageLocalInventory, confirmLocalBet, selectPveDifficulty, cloneLocalPokemon, BALLS, moveLocalAvatar, moveLocalUnit } from '../../server/game/roster.mjs';
 import { createCamera } from './camera.mjs';
 import { createSpriteCache } from './sprites.mjs';
 import { createSpriteRenderer } from './renderer.mjs';
 import { BY_ID, POKEMON, EVOLUTION_OPTIONS, getDirection } from '../../server/game/pokemon.mjs';
-import { MOVES_BY_ID, chargedPoolForPokemon, chooseMoveAnimation } from '../../server/game/moves.mjs';
+import { MOVES_BY_ID, validLoadout, chooseMoveAnimation } from '../../server/game/moves.mjs';
 import { fieldLimitForBattle, shopOddsForBattle, RULES, STAGES, STAGE_NAMES, chapterForBattle, stageForBattle, battleKind, interestForGold, streakBonus, PVE_DIFFICULTIES } from '../../server/game/rules.mjs';
 import { aliveCount, combatForPlayer, phaseRemainingSeconds, startLocalMatchCycle, updateLocalMatchCycle } from '../../server/game/match-cycle.mjs';
 import { BOARD, TAU, cellAtWorld, tilePosition, validCellForTeam, effectiveUnitStats, maxHealth } from '../../server/game/battle.mjs';
@@ -818,26 +818,19 @@ function renderDetails() {
     <span class="stat-title">${statIcon(key)}<span>${STAT_NAMES[key]}</span></span>
     <small>${ivs[key].toFixed(0)}%</small><b>${formatStat(key,stats[key]??0)}</b>
   </div>`).join('');
-  const ability=mon.abilityId?String(mon.abilityId):'Sem habilidade ativa';
-  $('ability-status').innerHTML=`<span class="ability-name" tabindex="0" title="Habilidade única fixa; nenhuma habilidade ativa está configurada nesta versão.">${ability}</span>`;
-  $('moves-active').innerHTML=(mon.activeMoves||[]).slice(0,2).map((id,i)=>{
+  const loadout=validLoadout(mon.speciesId);
+  const ability=MOVES_BY_ID[loadout[1]];
+  $('ability-status').innerHTML=`<span class="ability-name" tabindex="0" title="Habilidade fixa da espécie, executada automaticamente com energia suficiente.">${ability.name}</span>`;
+  $('moves-active').innerHTML=loadout.map((id,i)=>{
     const move=MOVES_BY_ID[id];if(!move)return '';
     const tooltipId=`move-description-${i}`;
     const details=[`Categoria: ${move.category==='atk'?'Físico':'Especial'}`,`Tipo: ${move.type}`,
-      `Dano: ${move.damage}`,`Alcance: ${move.range} células`,
+      move.spaCoefficient!==undefined?`Dano por acerto: ${Math.round(move.spaCoefficient*100)}% do SpA`:`Dano-base: ${move.damage}`,`Alcance: ${move.range} células`,
+      ...(move.healCoefficient?[`Cura: ${Math.round(move.healCoefficient*100)}% do SpA`,`Raio: ${move.areaRadius} células`]:[]),
       ...(i?[`Energia: ${move.energyCost}`]:[]),`Efeito: ${move.effect}`,move.description];
-    return `<div class="move-row"><div class="move-card"><button type="button" class="move-help" aria-describedby="${tooltipId}" aria-label="Detalhes de ${move.name}">${move.name}</button>
-      <div class="move-tooltip" id="${tooltipId}" role="tooltip">${details.map(text=>`<span>${text}</span>`).join('')}</div></div>
-      ${i===1?`<button type="button" class="move-reroll" data-slot="1" aria-label="Roletar ataque carregado por ${RULES.moveChangeCostGold} de ouro" title="Roletar outro golpe carregado">↻ ${RULES.moveChangeCostGold}</button>`:''}</div>`;
+    return `<div class="move-row"><div class="move-card"><button type="button" class="move-help" aria-describedby="${tooltipId}" aria-label="Detalhes de ${move.name}">${i?'Habilidade':'Básico'} · ${move.name}</button>
+      <div class="move-tooltip" id="${tooltipId}" role="tooltip">${details.map(text=>`<span>${text}</span>`).join('')}</div></div></div>`;
   }).join('');
-  $('moves-active').querySelectorAll('.move-reroll').forEach(btn=>{
-    btn.disabled=!canEdit()||!ownsUnit(mon)||humanParticipant().gold<RULES.moveChangeCostGold;
-    btn.addEventListener('click',()=>{
-      if(changeLocalMove(localMatch,humanParticipant(),mon,Number(btn.dataset.slot),Math.random)){
-        renderHud();showToast('Novo ataque carregado sorteado.');
-      }
-    });
-  });
   $('sell-selected').disabled=!canManage()||!ownsUnit(mon)||!!mon.combatUnit;
 }
 
@@ -1212,12 +1205,29 @@ function drawBattleUnit(u) {
 function drawEffects(activeBattle) {
   for (const p of activeBattle.projectiles) {
     ctx.save();
-    ctx.translate(p.x, p.y);
+    const move = MOVES_BY_ID[p.moveId];
+    const distance=p.behavior==='pollen'?Math.hypot(p.endX-p.startX,p.endY-p.startY):0;
+    const progress=distance?clamp(Math.hypot(p.x-p.startX,p.y-p.startY)/distance,0,1):0;
+    ctx.translate(p.x, p.y-(p.behavior==='pollen'?Math.sin(progress*Math.PI)*55:0));
+    if(move?.behavior==='boomerang'){
+      ctx.globalAlpha=.2;ellipse(-p.vx*14,-p.vy*14,19,7,move.color);ctx.globalAlpha=1;
+      ctx.rotate(visualTime*18);
+      ctx.fillStyle=move.color;ctx.beginPath();ctx.moveTo(-13,0);
+      ctx.quadraticCurveTo(0,-13,13,0);ctx.quadraticCurveTo(0,13,-13,0);ctx.fill();
+      line(-10,0,10,0,'#d5f9a3',1.5);ctx.restore();continue;
+    }
+    if(move?.behavior==='seeds'){
+      ctx.rotate(Math.atan2(p.vy,p.vx));
+      ctx.globalAlpha=.2;ellipse(-7,0,10,3,move.color);ctx.globalAlpha=1;
+      ellipse(0,0,5,3.5,move.color);ellipse(1,-1,2,1,'#d6f5a5');ctx.restore();continue;
+    }
+    if(move?.behavior==='pollen'){
+      ellipse(0,0,10,10,move.color);ellipse(-2,-3,4,4,'#fff2ab');ctx.restore();continue;
+    }
     ctx.rotate(Math.atan2(p.vy, p.vx));
     ctx.globalAlpha = .24;
     ellipse(-13, 0, 20, 8, p.color);
     ctx.globalAlpha = 1;
-    const move = MOVES_BY_ID[p.moveId];
     ellipse(0, 0, 15, 7, move?.color || '#fff');
     ellipse(4, 0, 7, 4, '#f8fdff');
     ctx.restore();
@@ -1226,9 +1236,16 @@ function drawEffects(activeBattle) {
     const a = 1 - e.time / e.total;
     ctx.save();
     ctx.globalAlpha = 1 - a;
+    if(e.style==='pollen-area'){
+      ctx.globalAlpha*=.28;
+      ellipse(e.x,e.y,e.radius*(.3+.7*a),e.radius*(.3+.7*a),e.color);
+      ctx.globalAlpha=1-a;
+      ctx.strokeStyle='#f0f6a2';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(e.x,e.y,e.radius*a,0,TAU);ctx.stroke();ctx.restore();continue;
+    }
     for (let j = 0; j < 7; j++) {
       const angle = TAU * j / 7;
-      const r = 8 + a * 33;
+      const r = e.style==='seed'?3+a*12:8+a*33;
       line(e.x + Math.cos(angle) * r * .4, e.y + Math.sin(angle) * r * .4, e.x + Math.cos(angle) * r, e.y + Math.sin(angle) * r, e.color, 3);
     }
     ctx.restore();
@@ -1241,7 +1258,7 @@ function drawEffects(activeBattle) {
     ctx.textAlign = 'center';
     ctx.shadowColor = '#17371f';
     ctx.shadowBlur = 4;
-    ctx.fillStyle = f.kind === 'atk' ? '#fff0aa' : '#e4f7ff';
+    ctx.fillStyle = f.kind==='heal'?'#79f59a':f.kind === 'atk' ? '#fff0aa' : '#e4f7ff';
     ctx.fillText(f.text, f.x, f.y - a * 34);
     ctx.restore();
   }

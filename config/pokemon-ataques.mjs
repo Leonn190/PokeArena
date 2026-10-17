@@ -1,12 +1,15 @@
-// Configurações por espécie. Um único regular IMUTÁVEL e uma pool de três
-// carregados, da qual o Pokémon nasce com um escolhido aleatoriamente.
-// Override opcional: { regular:'tapa', chargedPool:['...','...','...'] }.
-// Espécies sem override recebem seleção fixa calculada por tipo e atributos.
-export const POKEMON_ATTACK_OVERRIDES = Object.freeze({});
+// Um ataque básico e uma habilidade fixos por espécie, inclusive após evolução.
+export const POKEMON_ATTACK_OVERRIDES = Object.freeze({
+  '0001':Object.freeze({regular:'basico-bulbasaur'}),
+  '0002':Object.freeze({regular:'basico-bulbasaur'}),
+  '0003':Object.freeze({regular:'basico-bulbasaur'})
+});
 export const DEFAULT_POKEMON_REGULAR = 'tapa';
-export const DEFAULT_CHARGED_POOL = Object.freeze(['tapa-carregado','disparo-carregado','energia-carregada']);
+// Alias legado de uma única habilidade; nenhuma pool aleatória é utilizada.
+export const DEFAULT_CHARGED_POOL = Object.freeze(['tapa-carregado']);
 
-// Espaço reservado para habilidades únicas. Nesta versão NENHUM Pokémon
-// possui habilidade ativa: a definição null não concede efeitos de combate.
-export const POKEMON_ABILITY_OVERRIDES = Object.freeze({});
+// Demais espécies usam o carregado correspondente ao básico, sem sorteio.
+export const POKEMON_ABILITY_OVERRIDES = Object.freeze({
+  '0001':'rajada-sementes', '0002':'folha-navalha', '0003':'morteiro-polen'
+});
 export const DEFAULT_POKEMON_ABILITY = null;

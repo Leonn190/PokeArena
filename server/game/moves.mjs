@@ -1,18 +1,12 @@
-// Catálogo, escolhas imutáveis por espécie e roleta de ataques carregados.
+// Catálogo e resolução determinística do básico e da habilidade por espécie.
 import { ATTACKS, ENERGY_PER_SECOND, BASE_REGENERATION_PER_SECOND } from '../../config/ataques.mjs';
-import { POKEMON_ATTACK_OVERRIDES, DEFAULT_POKEMON_REGULAR, DEFAULT_CHARGED_POOL, POKEMON_ABILITY_OVERRIDES, DEFAULT_POKEMON_ABILITY } from '../../config/pokemon-ataques.mjs';
+import { POKEMON_ATTACK_OVERRIDES, DEFAULT_POKEMON_REGULAR, POKEMON_ABILITY_OVERRIDES, DEFAULT_POKEMON_ABILITY } from '../../config/pokemon-ataques.mjs';
 import { BY_ID } from './pokemon.mjs';
 export { ENERGY_PER_SECOND, BASE_REGENERATION_PER_SECOND };
 export const MOVES = ATTACKS;
 export const MOVES_BY_ID = Object.freeze(Object.fromEntries(MOVES.map(move=>[move.id,move])));
 export const movePool = () => MOVES;
 const rangedTypes = new Set(['Elétrico','Água','Fogo','Grama','Gelo','Psíquico','Fantasma','Fada','Dragão','Voador']);
-const chargedForRegular = Object.freeze({
-  'disparo':['disparo-carregado','tapa-carregado','tiro-energia-carregado'],
-  'tapa':['tapa-carregado','disparo-carregado','energia-carregada'],
-  'energia':['energia-carregada','tapa-carregado','tiro-energia-carregado'],
-  'tiro-energia':['tiro-energia-carregado','energia-carregada','disparo-carregado']
-});
 export function regularForPokemon(speciesId) {
   const override=POKEMON_ATTACK_OVERRIDES[speciesId]?.regular;
   if(MOVES_BY_ID[override]?.kind==='regular')return override;
@@ -23,21 +17,20 @@ export function regularForPokemon(speciesId) {
   return special?(ranged?'tiro-energia':'energia'):(ranged?'disparo':'tapa');
 }
 export function chargedPoolForPokemon(speciesId) {
-  const override=POKEMON_ATTACK_OVERRIDES[speciesId]?.chargedPool;
-  const pool=override||chargedForRegular[regularForPokemon(speciesId)]||DEFAULT_CHARGED_POOL;
-  const valid=[...new Set(pool)].filter(id=>MOVES_BY_ID[id]?.kind==='charged');
-  return valid.length===3?valid:[...DEFAULT_CHARGED_POOL];
+  // Exportação legada: agora contém apenas a habilidade fixa.
+  return [abilityForPokemon(speciesId)];
 }
 export function abilityForPokemon(speciesId) {
-  return POKEMON_ABILITY_OVERRIDES[speciesId]??DEFAULT_POKEMON_ABILITY;
+  return POKEMON_ABILITY_OVERRIDES[speciesId]??DEFAULT_POKEMON_ABILITY??{
+    disparo:'disparo-carregado',tapa:'tapa-carregado',energia:'energia-carregada',
+    'tiro-energia':'tiro-energia-carregado'
+  }[regularForPokemon(speciesId)]??'tapa-carregado';
 }
-export function initialLoadout(speciesId,random=Math.random) {
-  const regular=regularForPokemon(speciesId),pool=chargedPoolForPokemon(speciesId);
-  return [regular,pool[Math.min(pool.length-1,Math.floor(Math.max(0,random())*pool.length))]];
+export function initialLoadout(speciesId) {
+  return [regularForPokemon(speciesId),abilityForPokemon(speciesId)];
 }
-export function validLoadout(speciesId,moves) {
-  const regular=regularForPokemon(speciesId),pool=chargedPoolForPokemon(speciesId);
-  return [regular,pool.includes(moves?.[1])?moves[1]:pool[0]];
+export function validLoadout(speciesId) {
+  return initialLoadout(speciesId);
 }
 export function chooseMoveAnimation(move,available) {
   for(const name of move?.animationPriority||[])if(available?.[name])return name;
