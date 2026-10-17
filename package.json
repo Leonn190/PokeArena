@@ -7,8 +7,6 @@
     "dev": "astro dev --host 0.0.0.0",
     "build": "node scripts/prepare-sprites.mjs && astro build"
   },
-  "dependencies": {
-    "astro": "^5.0.0"
-  },
-  "engines": { "node": ">=20.0.0" }
+  "dependencies": {"astro": "^5.0.0"},
+  "engines": {"node": ">=20.0.0"}
 }
