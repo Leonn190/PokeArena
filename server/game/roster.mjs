@@ -4,7 +4,6 @@ import { RULES, fieldLimitForBattle, interestForGold, shopOddsForBattle, roomMod
 import { BY_ID, SHOP_POKEMON, FUSION_COSTS, EVOLUTION_OPTIONS } from './pokemon.mjs';
 import {calculateCompass, speciesCompassWeight, weightedSpeciesPick,ALL_TYPES} from './compass.mjs';
 import {STRUCTURES,placeStructure,movePlacedStructure,bankStructure} from './structures.mjs';
-import {individualIVs,meanIV,mergedIVs,perfectIVs,normalizedLevel} from './stats.mjs';
 
 // Todas as operações de partida são síncronas e executadas em memória.
 // match.pool representa somente cópias LIVRES; ofertas possuem reservas próprias.
@@ -28,12 +27,11 @@ export function createParticipant({id,name,isBot}) {
 
 // Entidade de partida; a lógica não depende de um simulador paralelo.
 export function createMatchPokemon(speciesId,team,instanceId,random=Math.random) {
-  const unit={
-    instanceId,speciesId,team,iv:50,ivs:Object.fromEntries(['vida','atk','def','spa','spd','vel','energia','regeneracao'].map(key=>[key,Math.min(100,Math.floor(random()*101))])),level:RULES.niveis.inicial,
+  return {
+    instanceId,speciesId,team,iv:Math.min(100,Math.floor(random()*101)),
     activeMoves:initialLoadout(speciesId,random),abilityId:abilityForPokemon(speciesId),slots:2,
     col:team?5:4,row:team?2:7
   };
-  unit.iv=meanIV(unit);return unit;
 }
 
 export function createLocalMatchState(playerCount,sessionId) {
@@ -142,8 +140,7 @@ export function fuseLocalUnits(match,participant,random=Math.random) {
       keeper.provenance=[...purchasedCopies(keeper),...purchasedCopies(other)];
       keeper.purchaseCost=keeper.provenance.reduce((sum,p)=>sum+p.cost,0);
       keeper.zygardeProgress=Math.min(100,keeper.zygardeProgress+(other.zygardeProgress||10));
-      keeper.ivs=mergedIVs([keeper,other]);keeper.iv=meanIV(keeper);
-      keeper.level=Math.max(normalizedLevel(keeper.level),normalizedLevel(other.level));
+      keeper.iv=Math.max(keeper.iv,other.iv);
       participant.items.push(...(other.items||[]));removeOwnedUnit(participant,other);count++;match.revision++;
     }
     if(keeper.zygardeProgress>=100)for(let slot=0;slot<RULES.shopSlots;slot++){
@@ -171,14 +168,12 @@ export function fuseLocalUnits(match,participant,random=Math.random) {
     for(const other of copies.slice(1))removeOwnedUnit(participant,other);
     keeper.provenance=copies.flatMap(purchasedCopies);
     keeper.purchaseCost=keeper.provenance.reduce((sum,item)=>sum+item.cost,0);
-    keeper.ivs=mergedIVs(copies);
-    keeper.level=Math.max(...copies.map(u=>normalizedLevel(u.level)));
-    if(copies.some(unit=>unit.babyPerfect))keeper.ivs=perfectIVs();
+    keeper.iv=Math.max(...copies.map(u=>u.iv));
+    if(copies.some(unit=>unit.babyPerfect))keeper.iv=100;
     if(['0172','0173','0174','0440','0446'].includes(speciesId)) {
-      keeper.ivs=perfectIVs();
+      keeper.iv=100;
       keeper.babyPerfect=true;
     }
-    keeper.iv=meanIV(keeper);
     keeper.evolutionSteps=Math.max(...copies.map(unit=>unit.evolutionSteps||0))+1;
     keeper.speciesId=targetId;
     // A evolução determina seu próprio regular. Conserva o carregado apenas
@@ -196,39 +191,6 @@ export function fuseLocalUnits(match,participant,random=Math.random) {
     match.revision++;
   }
   return count;
-}
-export function canFeedLocalUnit(match,player,food,target){
-  if(match?.phase!=='preparation'||!player||player.eliminated||!food||!target||food===target)return false;
-  if(!ownedUnits(player).includes(food)||!ownedUnits(player).includes(target))return false;
-  const foodSpecies=BY_ID[food.speciesId],targetSpecies=BY_ID[target.speciesId];
-  if(!foodSpecies||!targetSpecies||foodSpecies.rarity!==targetSpecies.rarity)return false;
-  if(!['comum','incomum','raro','epico'].includes(targetSpecies.rarity))return false;
-  if(EVOLUTION_OPTIONS[target.speciesId]?.length)return false;
-  return normalizedLevel(target.level)<RULES.niveis.maximo;
-}
-export function feedLocalUnit(match,player,food,target){
-  if(!canFeedLocalUnit(match,player,food,target))return false;
-  // Alimentação é destrutiva: não devolve cópias à pool e não paga venda.
-  removeOwnedUnit(player,food);
-  player.items.push(...(food.items||[]));
-  target.level=Math.min(RULES.niveis.maximo,normalizedLevel(target.level)+RULES.niveis.porAlimentacao);
-  player.compass=calculateCompass(player);match.revision++;
-  return true;
-}
-export function awardLocalRoundLevels(match){
-  if(match.levelsAwardedRound===match.round)return false;
-  match.levelsAwardedRound=match.round;
-  for(const [playerId,roster] of Object.entries(match.roundLevelRoster||{})){
-    const player=match.players.find(p=>p.id===playerId);
-    if(!player)continue;
-    const participants=new Set(roster.field),bench=new Set(roster.bench);
-    for(const unit of ownedUnits(player)){
-      const award=participants.has(unit.instanceId)?RULES.niveis.porBatalha:
-        bench.has(unit.instanceId)?RULES.niveis.porBanco:0;
-      if(award)unit.level=Math.min(RULES.niveis.maximo,normalizedLevel(unit.level)+award);
-    }
-  }
-  match.revision++;return true;
 }
 export function purchaseLocalOffer(match,participant,index,random=Math.random) {
   if(!canManageLocalInventory(match,participant)||!Number.isInteger(index)||index<0||index>=RULES.shopSlots)return null;
@@ -248,8 +210,7 @@ export function purchaseLocalOffer(match,participant,index,random=Math.random) {
   let unit;
   if(existingZygarde) {
     existingZygarde.zygardeProgress=Math.min(100,(existingZygarde.zygardeProgress||10)+10);
-    existingZygarde.ivs=mergedIVs([existingZygarde,createMatchPokemon(id,0,'iv-only',random)]);
-    existingZygarde.iv=meanIV(existingZygarde);
+    existingZygarde.iv=Math.max(existingZygarde.iv,Math.min(100,Math.floor(random()*101)));
     existingZygarde.provenance.push(part);
     existingZygarde.purchaseCost+=p.price;
     if(existingZygarde.zygardeProgress===100) {
@@ -371,7 +332,7 @@ export function cloneLocalPokemon(match,player,ballId,unit,random=Math.random) {
   player.consumables.splice(index,1);
   const success=random()<chance;
   if(success){
-    const copy={...unit,level:RULES.niveis.inicial,ivs:{...individualIVs(unit)},instanceId:`${match.id}-unit-${++match.nextUnitId}`,items:[],activeMoves:[...unit.activeMoves],
+    const copy={...unit,instanceId:`${match.id}-unit-${++match.nextUnitId}`,items:[],activeMoves:[...unit.activeMoves],
       provenance:purchasedCopies(unit).map(part=>({...part,pool:false})),col:slot,row:11};
     player.bench[slot]=copy;
     fuseLocalUnits(match,player,random);

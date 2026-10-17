@@ -1,7 +1,7 @@
 import {initialLoadout} from './moves.mjs';
 import { createBattle, startBattle, updateBattle, tilePosition } from './battle.mjs';
 import { RULES, defeatDamage, placementDamage, fieldLimitForBattle, chapterForBattle, stageForBattle, battleKind, bossIv, PVE_DIFFICULTIES, shopOddsForBattle } from './rules.mjs';
-import { awardLocalRoundIncome, awardLocalRoundLevels, prepareLocalRound, releaseEliminatedLocalPlayer, recordLocalResult, grantLocalLoot, collectLocalLoot, updateLocalAvatars } from './roster.mjs';
+import { awardLocalRoundIncome, prepareLocalRound, releaseEliminatedLocalPlayer, recordLocalResult, grantLocalLoot, collectLocalLoot, updateLocalAvatars } from './roster.mjs';
 import { prepareLocalBots } from './ai.mjs';
 import { SHOP_POKEMON } from './pokemon.mjs';
 import { STRUCTURE_BY_ID } from './structures.mjs';
@@ -86,10 +86,6 @@ export function startLocalMatchCycle(match,nowSeconds=0,random=Math.random) {
   match.lastMessage='Prepare sua equipe para a próxima fase.';return match;
 }
 export function startCombatPhase(match,nowSeconds=0,random=Math.random) {
-  match.roundLevelRoster=Object.fromEntries(activePlayers(match).map(player=>[player.id,{
-    field:player.board.slice(0,fieldLimitForBattle(match.round)).map(unit=>unit.instanceId),
-    bench:player.bench.filter(unit=>unit&&unit.kind!=='structure').map(unit=>unit.instanceId)
-  }]));
   match.phase='intro';match.phaseStartedAt=nowSeconds;match.phaseDeadline=nowSeconds+RULES.battleIntroSeconds;
   match.pairings=makePairings(match,random);
   match.combats=match.pairings.map(pairing=>{
@@ -121,7 +117,6 @@ function finishCombat(match,combat,random) {
 function finishCombatPhase(match,nowSeconds,random) {
   for(const combat of match.combats)finishCombat(match,combat,random);
   match.outcomes.push({round:match.round,combats:match.combats.map(c=>({id:c.id,playerIds:c.playerIds,status:c.status,result:c.result}))});
-  awardLocalRoundLevels(match);
   awardLocalRoundIncome(match);
   for(const p of match.players)releaseEliminatedLocalPlayer(match,p);
   // A animação representa o HP já decidido no domínio.

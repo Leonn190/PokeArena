@@ -12,12 +12,11 @@ const SPRITES = {
   '0008': { Idle:[24,40,[40,2,2,2]], Walk:[32,40,[8,10,8,10]], Attack:[64,72,[4,2,4,2,2,2,2,2,2,2,4]], Hurt:[48,48,[2,8]] },
   '0009': { Idle:[40,40,[32,12,4,4,4,4,4,8]], Walk:[32,40,[8,14,8,14]], Attack:[64,72,[2,2,2,2,2,2,2,1,1,1,2,2,4]], Hurt:[40,40,[2,8]] },
 };
-// Elenco: 90 espécies compráveis; Wigglytuff só por evolução.
-// Identidades e tipagens do elenco; valores de combate vêm de config/status-pokemon.mjs.
+// Catálogo aprovado no GDD v0.4: 100 entradas COMPRÁVEIS.
+// Estatísticas base da Pokédex (HP, Atk, Def, SpA, SpD, Vel); Klawf #950: Pokédex Gen IX.
 // Os tipos numéricos são os IDs canônicos veekun. Formas derivadas fora da lista
 // comprável só entram na loja se forem explicitamente listadas pelo GDD.
 import { RULES } from './rules.mjs';
-import { obterStatusPokemon } from '../../config/status-pokemon.mjs';
 
 const TYPE_NAMES = ['','Normal','Lutador','Voador','Venenoso','Terrestre','Pedra','Inseto','Fantasma','Aço','Fogo','Água','Grama','Elétrico','Psíquico','Gelo','Dragão','Sombrio','Fada'];
 const TYPE_COLORS = ['','#c5bf9b','#db8b63','#a6c5d5','#aa8ac4','#cfae72','#ae9983','#b6c96d','#a69bc8','#afc3cc','#ffa56f','#83c7ff','#75d8a9','#f5d36f','#e6aed4','#a1d8e6','#9baee0','#8c88af','#e5acd2'];
@@ -34,12 +33,14 @@ const CATALOG = [
   [582,'Vanillite','comum',[36,50,50,65,60,44],[15]],
   [761,'Bounsweet','comum',[42,30,38,30,38,32],[12]],
   [129,'Magikarp','comum',[20,10,55,15,20,80],[11]],
+  [568,'Trubbish','comum',[50,50,62,40,62,65],[4]],
   [174,'Igglybuff','comum',[90,30,15,40,20,15],[1,18]],
   [172,'Pichu','comum',[20,40,15,35,35,60],[13]],
   [173,'Cleffa','comum',[50,25,28,45,55,15],[18]],
   [440,'Happiny','comum',[100,5,5,15,65,30],[1]],
   [446,'Munchlax','comum',[135,85,40,40,85,5],[1]],
   [767,'Wimpod','comum',[25,35,40,20,30,80],[7,11]],
+  [712,'Bergmite','comum',[55,69,85,32,35,28],[15]],
   [41,'Zubat','comum',[40,45,35,30,40,55],[4,3]],
   [92,'Gastly','incomum',[30,35,30,100,35,80],[8,4]],
   [63,'Abra','incomum',[25,20,15,105,55,90],[14]],
@@ -54,10 +55,14 @@ const CATALOG = [
   [25,'Pikachu','incomum',[35,55,40,50,50,90],[13]],
   [133,'Eevee','incomum',[55,55,50,45,65,55],[1]],
   [39,'Jigglypuff','incomum',[115,45,20,45,25,20],[1,18]],
+  [331,'Cacnea','incomum',[50,85,40,85,40,35],[12]],
   [361,'Snorunt','incomum',[50,50,50,50,50,50],[15]],
+  [557,'Dwebble','incomum',[50,65,85,35,35,55],[7,6]],
   [318,'Carvanha','incomum',[45,90,20,65,20,65],[11,17]],
+  [320,'Wailmer','incomum',[130,70,35,70,35,60],[11]],
   [333,'Swablu','incomum',[45,40,60,40,75,50],[1,3]],
   [714,'Noibat','incomum',[40,30,35,45,40,55],[3,16]],
+  [702,'Dedenne','incomum',[67,58,57,81,67,101],[13,18]],
   [562,'Yamask','incomum',[38,30,85,55,65,30],[8]],
   [718,'Zygarde','incomum',[108,100,121,81,95,95],[16,5]],
   [532,'Timburr','incomum',[75,80,55,25,35,35],[2]],
@@ -74,6 +79,7 @@ const CATALOG = [
   [570,'Zorua','raro',[40,65,40,80,40,65],[17]],
   [622,'Golett','raro',[59,74,50,35,50,35],[5,8]],
   [708,'Phantump','raro',[43,70,48,50,60,38],[8,12]],
+  [40,'Wigglytuff','raro',[140,70,45,85,50,45],[1,18]],
   [147,'Dratini','raro',[41,64,45,50,50,50],[16]],
   [443,'Gible','raro',[58,70,45,40,45,42],[16,5]],
   [246,'Larvitar','raro',[50,64,50,45,50,41],[6,5]],
@@ -83,9 +89,11 @@ const CATALOG = [
   [624,'Pawniard','raro',[45,85,70,40,40,60],[17,9]],
   [131,'Lapras','epico',[130,85,80,85,95,60],[11,15]],
   [143,'Snorlax','epico',[160,110,65,65,110,30],[1]],
+  [621,'Druddigon','epico',[77,120,90,60,90,48],[16]],
   [778,'Mimikyu','epico',[55,90,80,50,105,96],[8,18]],
   [701,'Hawlucha','epico',[78,92,75,74,63,118],[2,3]],
   [359,'Absol','epico',[65,130,60,75,60,75],[17]],
+  [950,'Klawf','epico',[70,100,115,35,55,75],[6]],
   [794,'Buzzwole','epico',[107,139,139,53,53,79],[7,2]],
   [95,'Onix','epico',[35,45,160,30,45,70],[6,5]],
   [123,'Scyther','epico',[70,110,80,55,80,105],[7,3]],
@@ -94,6 +102,7 @@ const CATALOG = [
   [214,'Heracross','epico',[80,125,75,40,95,85],[7,2]],
   [227,'Skarmory','epico',[65,80,140,40,70,70],[9,3]],
   [789,'Cosmog','mitico',[43,29,31,29,31,37],[14]],
+  [891,'Kubfu','mitico',[60,90,60,53,50,72],[2]],
   [808,'Meltan','mitico',[46,65,65,55,35,34],[9]],
   [151,'Mew','mitico',[100,100,100,100,100,100],[14]],
   [648,'Meloetta','mitico',[100,77,77,128,128,90],[1,14]],
@@ -127,12 +136,14 @@ export const EVOLUTION_PATHS = Object.freeze({
   'Vanillite':'Vanillish,Vanilluxe',
   'Bounsweet':'Steenee,Tsareena',
   'Magikarp':'Gyarados',
+  'Trubbish':'Garbodor',
   'Igglybuff':'Jigglypuff,Wigglytuff',
   'Pichu':'Pikachu,Raichu',
   'Cleffa':'Clefairy,Clefable',
   'Happiny':'Chansey,Blissey',
   'Munchlax':'Snorlax',
   'Wimpod':'Golisopod',
+  'Bergmite':'Avalugg',
   'Zubat':'Golbat,Crobat',
   'Gastly':'Haunter,Gengar',
   'Abra':'Kadabra,Alakazam',
@@ -147,8 +158,11 @@ export const EVOLUTION_PATHS = Object.freeze({
   'Pikachu':'Raichu',
   'Eevee':'Eeveelution',
   'Jigglypuff':'Wigglytuff',
+  'Cacnea':'Cacturne',
   'Snorunt':'Glalie|Froslass',
+  'Dwebble':'Crustle',
   'Carvanha':'Sharpedo',
+  'Wailmer':'Wailord',
   'Swablu':'Altaria',
   'Noibat':'Noivern',
   'Yamask':'Cofagrigus',
@@ -176,6 +190,7 @@ export const EVOLUTION_PATHS = Object.freeze({
   'Onix':'Steelix',
   'Scyther':'Scizor|Kleavor',
   'Cosmog':'Cosmoem,Solgaleo|Lunala',
+  'Kubfu':'Urshifu',
   'Meltan':'Melmetal',
 });
 
@@ -184,12 +199,10 @@ const make = ([num,name,rarity,[vida,atk,def,spa,spd,vel],typeIds]) => {
   const id = String(num).padStart(4,'0');
   const types = typeIds.map(type => TYPE_NAMES[type]);
   const evolution = EVOLUTION_PATHS[name] || '';
-  const configured=obterStatusPokemon(id);
-  const base=Object.fromEntries(['vida','atk','def','spa','spd','vel'].map((key,index)=>[key,configured?.[key]??[vida,atk,def,spa,spd,vel][index]]));
   const stage = SPRITES[id] ? (['0001','0004','0007'].includes(id) ? 1 : ['0002','0005','0008'].includes(id) ? 2 : 3) : 1;
   return {
     id,number:num,name,group:name,rarity,price:RULES.rarityPrice[rarity],type:types[0],types,
-    color:TYPE_COLORS[typeIds[0]],stats:{...base,energia:configured?.energia??1,regeneracao:configured?.regeneracao??0},
+    color:TYPE_COLORS[typeIds[0]],stats:{vida,atk,def,spa,spd,vel},
     stage,collisionRadius:stage===3?23:stage===2?19:16,
     evolutionPath:evolution,
     spriteAvailable:!!SPRITES[id],
@@ -197,7 +210,7 @@ const make = ([num,name,rarity,[vida,atk,def,spa,spd,vel],typeIds]) => {
   };
 };
 export const SHOP_POKEMON = CATALOG.map(make);
-// Seis evoluções dos iniciais não aparecem nas ofertas da loja.
+// Seis evoluções preservadas do simulador, não fazem parte das 100 entradas da loja.
 const starterEvolutions = [
   [2,'Ivysaur','Bulbasaur',1,'incomum',[60,62,63,80,80,60],[12,4],2],
   [3,'Venusaur','Bulbasaur',1,'raro',[80,82,83,100,100,80],[12,4],3],
@@ -210,20 +223,21 @@ const starterEvolutions = [
   collisionRadius:stage===3?23:19,
   price:stage===2?2:3
 }));
-// Índices estáveis para as evoluções válidas.
-// Cada forma válida recebe os próprios atributos locais cadastrados por ID.
+// Índices estáveis de evolução. As 100 espécies acima são as ÚNICAS compráveis.
+// Atributos das formas derivadas ainda sem dados completos usam escala visual provisória
+// (sem se fazer passar por valores oficiais); iniciais preservam seus atributos já cadastrados.
 const EVOLUTION_NUMBERS = Object.freeze({
   Ivysaur:2,Venusaur:3,Wartortle:8,Blastoise:9,Charmeleon:5,Charizard:6,
-  Wigglytuff:40,Kakuna:14,Beedrill:15,Metapod:11,Butterfree:12,Poliwhirl:61,Poliwrath:62,Politoed:186,
+  Kakuna:14,Beedrill:15,Metapod:11,Butterfree:12,Poliwhirl:61,Poliwrath:62,Politoed:186,
   Machoke:67,Machamp:68,Nuzleaf:274,Shiftry:275,Lombre:271,Ludicolo:272,
-  Vanillish:583,Vanilluxe:584,Steenee:762,Tsareena:763,Gyarados:130,
-  Raichu:26,Clefairy:35,Clefable:36,Blissey:242,Golisopod:768,
+  Vanillish:583,Vanilluxe:584,Steenee:762,Tsareena:763,Gyarados:130,Garbodor:569,
+  Raichu:26,Clefairy:35,Clefable:36,Blissey:242,Golisopod:768,Avalugg:713,
   Golbat:42,Crobat:169,Haunter:93,Gengar:94,Kadabra:64,Alakazam:65,
   Magneton:82,Magnezone:462,Kirlia:281,Gardevoir:282,Gallade:475,
   Combusken:256,Blaziken:257,Sealeo:364,Walrein:365,Prinplup:394,Empoleon:395,
   Frogadier:657,Greninja:658,Braixen:654,Delphox:655,Brionne:729,Primarina:730,
   Vaporeon:134,Jolteon:135,Flareon:136,Espeon:196,Umbreon:197,Leafeon:470,Glaceon:471,Sylveon:700,
-  Glalie:362,Froslass:478,Sharpedo:319,
+  Cacturne:332,Glalie:362,Froslass:478,Crustle:558,Sharpedo:319,Wailord:321,
   Altaria:334,Noivern:715,Cofagrigus:563,Gurdurr:533,Conkeldurr:534,Abomasnow:460,
   Lairon:305,Aggron:306,Rhydon:112,Rhyperior:464,Lampent:608,Chandelure:609,
   Floette:670,Florges:671,Dartrix:723,Decidueye:724,Torracat:726,Incineroar:727,
@@ -231,8 +245,8 @@ const EVOLUTION_NUMBERS = Object.freeze({
   Trevenant:709,Dragonair:148,Dragonite:149,Gabite:444,Garchomp:445,
   Pupitar:247,Tyranitar:248,Zweilous:634,Hydreigon:635,Doublade:680,Aegislash:681,
   Lucario:448,Bisharp:625,Kingambit:983,Steelix:208,Scizor:212,Kleavor:900,
-  Cosmoem:790,Solgaleo:791,Lunala:792,
-  Melmetal:809
+  Cosmoem:790,Solgaleo:791,Lunala:792,Urshifu:892,
+  'Urshifu (Decisivo)':892,'Urshifu (Fluido)':892,Melmetal:809
 });
 const EEVEELUTIONS = 'Vaporeon|Jolteon|Flareon|Espeon|Umbreon|Leafeon|Glaceon|Sylveon';
 // Tipagens canônicas que MUDAM ao evoluir (demais formas herdam da origem).
@@ -243,26 +257,28 @@ const EVOLUTION_TYPES = Object.freeze({
   Empoleon:['Água','Aço'],Greninja:['Água','Sombrio'],Delphox:['Fogo','Psíquico'],
   Primarina:['Água','Fada'],Vaporeon:['Água'],Jolteon:['Elétrico'],Flareon:['Fogo'],
   Espeon:['Psíquico'],Umbreon:['Sombrio'],Leafeon:['Grama'],Glaceon:['Gelo'],Sylveon:['Fada'],
-Froslass:['Gelo','Fantasma'],Altaria:['Dragão','Voador'],
+  Cacturne:['Grama','Sombrio'],Froslass:['Gelo','Fantasma'],Altaria:['Dragão','Voador'],
   Abomasnow:['Grama','Gelo'],Decidueye:['Grama','Fantasma'],
   Incineroar:['Fogo','Sombrio'],Hatterene:['Psíquico','Fada'],
   Dragonite:['Dragão','Voador'],Tyranitar:['Pedra','Sombrio'],Lucario:['Lutador','Aço'],
   Steelix:['Aço','Terrestre'],Scizor:['Inseto','Aço'],Kleavor:['Inseto','Pedra'],
   Solgaleo:['Psíquico','Aço'],Lunala:['Psíquico','Fantasma'],
+  'Urshifu (Decisivo)':['Lutador','Sombrio'],
+  'Urshifu (Fluido)':['Lutador','Água']
 });
 // Quantidades do GDD 5.4, em cada avanço de estágio (não três para todos).
 const FIRST_STAGE_COUNTS = Object.freeze({
   ...Object.fromEntries(['Bulbasaur','Squirtle','Charmander','Weedle','Caterpie','Poliwag','Machop',
     'Seedot','Lotad','Vanillite','Bounsweet','Zubat','Gastly','Abra','Magnemite','Ralts',
     'Torchic','Spheal','Piplup','Froakie','Fennekin','Popplio','Pikachu','Jigglypuff',
-    'Carvanha','Swablu','Noibat','Yamask','Timburr','Snover',
+    'Cacnea','Dwebble','Carvanha','Wailmer','Swablu','Noibat','Yamask','Timburr','Snover',
     'Chansey','Zorua','Golett','Phantump','Dratini','Gible','Larvitar','Deino','Honedge',
     'Pawniard'].map(n=>[n,3])),
-  ...Object.fromEntries(['Igglybuff','Pichu','Cleffa','Happiny','Wimpod',
+  ...Object.fromEntries(['Trubbish','Igglybuff','Pichu','Cleffa','Happiny','Wimpod','Bergmite',
     'Eevee','Snorunt','Riolu'].map(n=>[n,4])),
   Magikarp:6,Munchlax:5,
   ...Object.fromEntries(['Aron','Rhyhorn','Litwick','Flabébé','Rowlet','Litten','Hatenna',
-    'Impidimp','Onix','Scyther','Cosmog','Meltan'].map(n=>[n,2]))
+    'Impidimp','Onix','Scyther','Cosmog','Kubfu','Meltan'].map(n=>[n,2]))
 });
 const SECOND_STAGE_COUNTS = Object.freeze({
   ...Object.fromEntries(['Ivysaur','Wartortle','Charmeleon','Kakuna','Metapod','Poliwhirl','Machoke',
@@ -273,7 +289,8 @@ const SECOND_STAGE_COUNTS = Object.freeze({
     'Zweilous','Doublade','Bisharp','Cosmoem'].map(n=>[n,2]))
 });
 const PATHS = Object.fromEntries(Object.entries(EVOLUTION_PATHS).map(([name,path]) =>
-  [name,path.replace('Eeveelution',EEVEELUTIONS).split(',').map(step=>step.split('|'))]));
+  [name,path.replace('Eeveelution',EEVEELUTIONS)
+    .replace('Urshifu','Urshifu (Decisivo)|Urshifu (Fluido)').split(',').map(step => step.split('|'))]));
 const derived = [...starterEvolutions];
 const allByName = new Map([...SHOP_POKEMON,...derived].map(p=>[p.name,p]));
 for(const [origin,steps] of Object.entries(PATHS)) {
@@ -285,15 +302,15 @@ for(const [origin,steps] of Object.entries(PATHS)) {
       if(!allByName.has(name)) {
         const number=EVOLUTION_NUMBERS[name];
         if(!number)continue;
-        const id=String(number).padStart(4,'0');
+        const id=String(number).padStart(4,'0')+(name==='Urshifu (Decisivo)'?'-dec':name==='Urshifu (Fluido)'?'-flu':'');
         const baseStats=Object.fromEntries(Object.entries(predecessor.stats).map(([key,value]) =>
           [key,Math.max(1,Math.round(value * (step===0?1.28:1.38)))]));
-        const evolved={...make([number,name,name==='Wigglytuff'?'raro':predecessor.rarity,
+        const evolved={...make([number,name,predecessor.rarity,
           [baseStats.vida,baseStats.atk,baseStats.def,baseStats.spa,baseStats.spd,baseStats.vel],
           (EVOLUTION_TYPES[name]||predecessor.types).map(type=>TYPE_NAMES.indexOf(type))]),
-          id,group:origin,stage:name==='Wigglytuff'?3:Math.min(3,predecessor.stage+1),
-          collisionRadius:name==='Wigglytuff'||Math.min(3,predecessor.stage+1)===3?23:19,
-          buyable:false,estimatedStats:!obterStatusPokemon(id)};
+          id,group:origin,stage:Math.min(3,predecessor.stage+1),
+          collisionRadius:Math.min(3,predecessor.stage+1)===3?23:19,
+          buyable:false,estimatedStats:true};
         derived.push(evolved);
         allByName.set(name,evolved);
       }

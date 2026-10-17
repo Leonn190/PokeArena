@@ -6,8 +6,6 @@ const clamp = (value,low,high) => Math.max(low,Math.min(high,value));
 export function createSpriteRenderer(ctx, getImageMeta) {
   const frameBounds = new Map();
   const pokemonScale = new Map();
-  const anchors=new Map();
-  const floaters=new Set(['Gastly','Haunter','Gengar','Magnemite','Magneton','Magnezone','Mew','Mewtwo','Cosmog','Cosmoem','Lunala','Solgaleo','Flabébé','Floette']);
   const sampleCanvas = document.createElement('canvas');
   const sampleCtx = sampleCanvas.getContext('2d', {willReadFrequently:true});
   function visibleFrameBounds(p, action, frame, direction) {
@@ -48,31 +46,15 @@ export function createSpriteRenderer(ctx, getImageMeta) {
     pokemonScale.set(p.id,scale);
     return scale;
   }
-  function stableFoot(p,action,direction,meta){
-    const key=`${p.id}:${action}:${direction}`;
-    if(anchors.has(key))return anchors.get(key);
-    // Ancorar à mediana de quadros impede saltos de 1–3 px entre estados,
-    // preservando movimentos verticais naturais desenhados dentro das folhas.
-    const available=Math.min(8,meta?.durations?.length||1);
-    const positions=[];
-    for(let i=0;i<available;i++){
-      const bounds=visibleFrameBounds(p,action,i,direction);
-      if(bounds)positions.push(bounds.bottom);
-    }
-    positions.sort((a,b)=>a-b);
-    const result=positions.length?positions[Math.floor(positions.length/2)]:meta?.height||40;
-    anchors.set(key,result);
-    return result;
-  }
   function groundShadow(p,x,y,highlight=null) {
     const bounds=visibleFrameBounds(p,'Idle',0,0);
     const width=(bounds?.width||18)*unitScale(p);
-    const radiusX=clamp(width*.30,7,18),radiusY=clamp(radiusX*.24,2.4,4.5);
+    const radiusX=clamp(width*.35,9,23),radiusY=clamp(radiusX*.28,3,6);
     ctx.fillStyle='rgba(12,38,22,.25)';
-    ctx.beginPath(); ctx.ellipse(x,y+3,radiusX,radiusY,0,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x,y+9,radiusX,radiusY,0,0,TAU); ctx.fill();
     if(highlight){
       ctx.save(); ctx.strokeStyle=highlight;ctx.globalAlpha=.82;ctx.lineWidth=1.65;
-      ctx.beginPath();ctx.ellipse(x,y+3,radiusX+2.5,radiusY+1.7,0,0,TAU);ctx.stroke();ctx.restore();
+      ctx.beginPath();ctx.ellipse(x,y+9,radiusX+2.5,radiusY+1.7,0,0,TAU);ctx.stroke();ctx.restore();
     }
   }
   function drawUnitSprite(type,x,y,stateName,facing,stateTime,castElapsed=0,cast=null) {
@@ -84,13 +66,11 @@ export function createSpriteRenderer(ctx, getImageMeta) {
       // recortam o frame vizinho e o exibem como outro Pokémon.
       const columns=Math.floor(image.naturalWidth/meta.width);
       const frame=clamp(declared,0,Math.max(0,columns-1));
-      const scale=unitScale(type);
-      const hover=floaters.has(type.name)?9:0;
-      const footY=y+3-hover;
-      const anchor=stableFoot(type,stateName,direction,meta);
+      const bounds=visibleFrameBounds(type,stateName,frame,direction)||visibleFrameBounds(type,'Idle',0,direction);
+      const scale=unitScale(type),footY=y+7;
       ctx.imageSmoothingEnabled=false;
       ctx.drawImage(image,frame*meta.width,direction*meta.height,meta.width,meta.height,
-        Math.round(x-meta.width*scale/2),Math.round(footY-anchor*scale),
+        Math.round(x-meta.width*scale/2),Math.round(footY-(bounds?.bottom??meta.height)*scale),
         Math.round(meta.width*scale),Math.round(meta.height*scale));
       ctx.imageSmoothingEnabled=true;
     } else {

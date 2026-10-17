@@ -39,10 +39,10 @@ export function createSpriteCache(base, onImageReady = () => {}) {
     for(const p of POKEMON.filter(p => ['0001','0004','0007'].includes(p.id))) warmPokemon(p);
     onLoaded();
   }
-  const cleanOnly=new Set(['0131','0582']);
+  const cleanOnly=new Set(['0702','0131','0582']);
   function getImageMeta(p, stateName) {
     // Certas folhas de golpes incluem efeitos em redor da criatura. O visual
-    // desses Pokémon usa uma folha limpa, sem mudar seu ataque real.
+    // desses três Pokémon usa uma folha limpa, sem mudar seu ataque real.
     const visualAction=cleanOnly.has(p.id)&&!['Idle','Walk','Hurt','Sleep'].includes(stateName)
       ? (p.sprites.Walk?'Walk':'Idle') : stateName;
     const desired=p.sprites[visualAction] || p.sprites.Idle;
