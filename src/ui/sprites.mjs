@@ -42,8 +42,9 @@ export function createSpriteCache(base, onImageReady = () => {}) {
   const cleanOnly=new Set(['0702','0131','0582']);
   function getImageMeta(p, stateName) {
     // Certas folhas de golpes incluem efeitos em redor da criatura. O visual
-    // desses três Pokémon usa uma folha limpa, sem mudar seu ataque real.
-    const visualAction=cleanOnly.has(p.id)&&!['Idle','Walk','Hurt','Sleep'].includes(stateName)
+    // desses três Pokémon usa uma folha limpa para outras habilidades;
+    // Attack/Shoot respeitam a escolha obrigatória do regular por alcance.
+    const visualAction=cleanOnly.has(p.id)&&!['Idle','Walk','Hurt','Sleep','Attack','Shoot'].includes(stateName)
       ? (p.sprites.Walk?'Walk':'Idle') : stateName;
     const desired=p.sprites[visualAction] || p.sprites.Idle;
     const action=desired?.asset || visualAction;

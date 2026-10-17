@@ -1,12 +1,12 @@
 import {NIVEIS} from '../../config/niveis.mjs';
 import {ATRIBUTOS_DE_COMBATE} from '../../config/status-pokemon.mjs';
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,Number.isFinite(Number(value))?Number(value):min));
-const decimals=(key,value)=>['energia','regeneracao'].includes(key)?Math.round(value*1000)/1000:Math.round(value);
+const decimals=(_key,value)=>Math.round(value);
 export const normalizedLevel=value=>Math.round(clamp(value??NIVEIS.inicial,0,NIVEIS.maximo));
 export const levelMultiplier=level=>1+normalizedLevel(level)*NIVEIS.atributoPorNivel;
 export const ivMultiplier=iv=>.85+clamp(iv,0,100)*.003;
 export function individualIVs(entry={}){
-  // Unidades antigas usam o IV global como valor compatível dos oito atributos.
+  // Unidades antigas usam o IV global como valor compatível dos seis atributos.
   const legacy=clamp(entry.iv??50,0,100);
   return Object.fromEntries(ATRIBUTOS_DE_COMBATE.map(key=>[key,clamp(entry.ivs?.[key]??legacy,0,100)]));
 }
@@ -20,7 +20,7 @@ export function effectiveUnitStats(pokemon,entry={}){
   const boss=entry.bossIv>100?entry.bossIv:null;
   const output={};
   for(const key of ATRIBUTOS_DE_COMBATE){
-    const base=pokemon.stats[key]??(key==='energia'?1:0);
+    const base=pokemon.stats[key]??0;
     // Chefe >100 IV usa a mesma escala histórica para cada atributo.
     const multiplier=boss!==null ? (.85+.003*boss) : ivMultiplier(ivs[key]);
     let factor=level*multiplier;
@@ -37,14 +37,12 @@ export function effectiveUnitStats(pokemon,entry={}){
   return output;
 }
 // Índice sem unidades: cada grandeza é normalizada contra um valor de referência
-// de batalha. DPS (atk/spa/vel), tanque (vida/def/spd) e energia têm pesos
-// explícitos. Regeneração normalizada separadamente; não se somam HP com HP/s.
+// de batalha. Os seis pesos de dano, resistência e frequência somam 1.
 export function combatPower(stats){
   const normalized=[
-    [.20,(stats.vida??0)/120],[.17,(stats.atk??0)/105],
-    [.14,(stats.spa??0)/105],[.14,(stats.def??0)/105],
-    [.13,(stats.spd??0)/105],[.12,(stats.vel??0)/105],
-    [.07,(stats.energia??0)/1],[.03,(stats.regeneracao??0)/5]
+    [.22,(stats.vida??0)/120],[.18,(stats.atk??0)/105],
+    [.18,(stats.spa??0)/105],[.15,(stats.def??0)/105],
+    [.15,(stats.spd??0)/105],[.12,(stats.vel??0)/105]
   ];
   return Math.max(0,Math.round(100*normalized.reduce((sum,[weight,value])=>sum+weight*Math.max(0,value),0)));
 }

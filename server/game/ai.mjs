@@ -5,15 +5,15 @@ import { RULES, fieldLimitForBattle, battleKind } from './rules.mjs';
 import { purchaseLocalOffer, refreshLocalShop, sellLocalUnit, confirmLocalBet, selectPveDifficulty, cloneLocalPokemon, moveLocalUnit, feedLocalUnit, canFeedLocalUnit, BALLS } from './roster.mjs';
 import { buyStructure, placeStructure } from './structures.mjs';
 import {calculateCompass} from './compass.mjs';
+import {combatRange} from './moves.mjs';
 
 const owned = player => [...player.board, ...player.bench.filter(u=>u&&u.kind!=='structure')];
 const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
 const edge = (a,b) => Math.max(0,distance(a,b)-a.radius-b.radius);
 
-export function chooseCombatTarget(unit, enemies, moves, tileSize) {
+export function chooseCombatTarget(unit, enemies, tileSize) {
   if (!enemies.length) return null;
-  const selected = moves[0];
-  const reach = (selected?.range||0)*tileSize;
+  const reach = combatRange(unit.type.id,unit)*tileSize;
   const current = enemies.find(enemy=>enemy.uid===unit.targetId);
   if(current&&edge(unit,current)<=reach)return current;
   const reachable = enemies.filter(enemy=>edge(unit,enemy)<=reach);
@@ -29,24 +29,6 @@ export function chooseCombatTarget(unit, enemies, moves, tileSize) {
     const score=gap/(tileSize*1.45)+hp*1.6-threat*.45;
     return !best||score<best.score ? {enemy,score} : best;
   },null)?.enemy || null;
-}
-
-export function chooseCombatAttack(attacker, target, moves, tileSize) {
-  const gap=edge(attacker,target);
-  const options=moves.filter(move=>gap<=move.range*tileSize);
-  if (!options.length) return null;
-  return options.reduce((best,move) => {
-    const special=move.category==='spa';
-    const offense=attacker.stats[special?'spa':'atk'];
-    const defense=target.stats[special?'spd':'def'];
-    const base=move.spaCoefficient!==undefined?offense*move.spaCoefficient:move.damage*(.62+offense/105);
-    const projected=base*(move.shots||1)*(100/(80+defense));
-    const travel=move.projectile ? gap/Math.max(1,move.projectileSpeed||400) : 0;
-    const reach=move.range*tileSize;
-    // Prioriza dano por oportunidade, alcance adequado e menor atraso do projétil.
-    const score=projected/(1+travel*.65)+Math.min(gap,reach)*.008+(move.projectile?.25:0);
-    return !best||score>best.score ? {move,score} : best;
-  },null)?.move || null;
 }
 
 function preference(player,speciesId,round,style) {

@@ -189,7 +189,7 @@ const make = ([num,name,rarity,[vida,atk,def,spa,spd,vel],typeIds]) => {
   const stage = SPRITES[id] ? (['0001','0004','0007'].includes(id) ? 1 : ['0002','0005','0008'].includes(id) ? 2 : 3) : 1;
   return {
     id,number:num,name,group:name,rarity,price:RULES.rarityPrice[rarity],type:types[0],types,
-    color:TYPE_COLORS[typeIds[0]],stats:{...base,energia:configured?.energia??1,regeneracao:configured?.regeneracao??0},
+    color:TYPE_COLORS[typeIds[0]],stats:{...base},
     stage,collisionRadius:stage===3?23:stage===2?19:16,
     evolutionPath:evolution,
     spriteAvailable:!!SPRITES[id],

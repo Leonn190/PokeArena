@@ -1,5 +1,6 @@
 import {LOOT_TIERS,BALL_CONFIG} from '../../config/espolios.mjs';
-import {initialLoadout, abilityForPokemon} from './moves.mjs';
+import {initialLoadout, abilityForPokemon, availableAbilities, equippedAbility, validLoadout} from './moves.mjs';
+import {ATRIBUTOS_DE_COMBATE} from '../../config/status-pokemon.mjs';
 import { RULES, fieldLimitForBattle, interestForGold, shopOddsForBattle, roomModifier, battleKind, streakBonus, PVE_DIFFICULTIES } from './rules.mjs';
 import { BY_ID, SHOP_POKEMON, FUSION_COSTS, EVOLUTION_OPTIONS } from './pokemon.mjs';
 import {calculateCompass, speciesCompassWeight, weightedSpeciesPick,ALL_TYPES} from './compass.mjs';
@@ -29,7 +30,7 @@ export function createParticipant({id,name,isBot}) {
 // Entidade de partida; a lógica não depende de um simulador paralelo.
 export function createMatchPokemon(speciesId,team,instanceId,random=Math.random) {
   const unit={
-    instanceId,speciesId,team,iv:50,ivs:Object.fromEntries(['vida','atk','def','spa','spd','vel','energia','regeneracao'].map(key=>[key,Math.min(100,Math.floor(random()*101))])),level:RULES.niveis.inicial,
+    instanceId,speciesId,team,iv:50,ivs:Object.fromEntries(ATRIBUTOS_DE_COMBATE.map(key=>[key,Math.min(100,Math.floor(random()*101))])),level:RULES.niveis.inicial,
     activeMoves:initialLoadout(speciesId),abilityId:abilityForPokemon(speciesId),slots:2,
     col:team?5:4,row:team?2:7
   };
@@ -48,6 +49,22 @@ export function createLocalMatchState(playerCount,sessionId) {
     pool:Object.fromEntries(SHOP_POKEMON.map(p => [p.id,RULES.rarityPool[p.rarity]])),
     pairings:[],phaseDeadline:null,nextUnitId:0,localOnly:true,initialPlayerCount:playerCount,roomModifier:roomModifier(playerCount),chapter:1,stage:1
   };
+}
+
+export function canRerollLocalAbility(match,player,unit) {
+  return match?.phase==='preparation'&&match.players.includes(player)&&!player.eliminated&&
+    ownedUnits(player).includes(unit)&&player.gold>=RULES.moveChangeCostGold&&
+    availableAbilities(unit.speciesId).length>1;
+}
+export function rerollLocalAbility(match,player,unit,random=Math.random) {
+  if(!canRerollLocalAbility(match,player,unit))return false;
+  const current=equippedAbility(unit.speciesId,unit).id;
+  const options=availableAbilities(unit.speciesId).filter(id=>id!==current);
+  unit.abilityId=options[Math.min(options.length-1,Math.max(0,Math.floor(random()*options.length)))];
+  unit.activeMoves=validLoadout(unit.speciesId,unit);
+  player.gold-=RULES.moveChangeCostGold;
+  match.revision++;
+  return true;
 }
 
 function poolCount(match,speciesId) {return match.pool[speciesId] ?? 0;}

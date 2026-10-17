@@ -628,7 +628,6 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 /* Ataque regular imutável; apenas o carregado possui roleta. */
 .move-row--locked{grid-template-columns:minmax(0,1fr)}
 .moves-list .move-card{display:block;min-width:0;border:1px solid rgba(234,255,198,.22);background:#203827;color:#eff8e9;border-radius:6px;min-height:47px;padding:8px;text-align:left}
-.moves-list .charged-pool{color:#83c9e8;line-height:1.35}
 .ability-status{font-size:10px;line-height:1.4;margin:0 0 8px;color:#b9d4bf}
 
 /* Ficha compacta de Pokémon: sem blocos redundantes; números reais do combate. */
@@ -646,8 +645,15 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .pokemon-summary #selected-type{display:flex;align-items:center;gap:3px;font-size:9px}
 .pokemon-summary #selected-type small{color:#b2d3b7;white-space:nowrap}
 .pokemon-summary #selected-place{display:block;color:#a0bfa9;margin-top:4px;font-size:9px}
-.pokemon-metrics{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;font-size:9px;color:#a9d7c4}
-.pokemon-metrics span{white-space:nowrap}
+.pokemon-metrics{display:grid;grid-template-columns:auto auto auto;gap:5px;margin:7px 0;font-size:9px;color:#a9d7c4}
+.pokemon-metrics span{padding:4px;background:#0d241b;border:1px solid #ffffff16;border-radius:5px}
+.pokemon-metrics b{display:block;margin-top:2px}
+.detail-bar{position:relative;isolation:isolate;height:15px;margin-top:4px;border:1px solid #ffffff35;border-radius:4px;overflow:hidden;background:#061b1c}
+.detail-bar>i{display:block;height:100%;transition:width .15s;background:#4ab878}
+.detail-bar>span{position:absolute;inset:0;text-align:center;font-size:9px;line-height:13px;color:#fff;text-shadow:0 1px 2px #000;font-variant-numeric:tabular-nums}
+.detail-energy>i{background:#318bdb}
+.iv-track{display:block;width:100%;height:3px;margin-top:3px;background:#ffffff24;border-radius:2px;overflow:hidden}
+.iv-track>i{display:block;height:100%;background:#7edeb6}
 .pokemon-metrics b{color:#ffeba5;font-variant-numeric:tabular-nums}
 .pokemon-stat-header{display:grid;grid-template-columns:minmax(0,1fr) 36px 52px;gap:4px;margin:8px 0 3px;padding:0 6px;color:#9dbca7;font-size:9px;font-weight:700;text-transform:uppercase}
 .pokemon-stat-header span:nth-child(n+2){text-align:right}
@@ -655,14 +661,14 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .side-hud .stats-list .stat{display:grid;grid-template-columns:minmax(0,1fr) 36px 52px;align-items:center;gap:4px;min-height:25px;padding:2px 6px;border:1px solid #a1edc01a;border-radius:4px;background:#122820bd}
 .stat-title{display:flex;align-items:center;gap:6px;min-width:0;color:#bbdcca;font-size:10px;text-transform:none}
 .stat-title svg{width:15px;height:15px;flex:none;color:#7edeb6}
-.stat-title span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat-title span{white-space:normal;line-height:1.2}
 .side-hud .stat small{display:block!important;text-align:right;font-size:9px;color:#adc9ac}
 .side-hud .stat b{font-size:11px;text-align:right;color:#ffe8a1;font-variant-numeric:tabular-nums}
 .side-hud .attack-panel{margin-top:5px}
 .side-hud .panel-subtitle{margin:0 0 5px;font-size:10px}
 .side-hud .ability-status{font-size:10px;color:#d1e3cc;padding:5px 7px;border:1px solid #b7e1b71a;border-radius:5px}
 .side-hud .moves-list{gap:4px}
-.side-hud .move-row{grid-template-columns:minmax(0,1fr) 45px;gap:4px;align-items:stretch}
+.side-hud .move-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;align-items:stretch}
 .side-hud .move-card{min-height:26px;padding:0!important;position:relative;border:1px solid #ffffff23;border-radius:5px;background:#172f24}
 .move-help{display:block;width:100%;height:100%;min-height:27px;background:none;border:0;text-align:left;padding:4px 7px;color:#e6f4df;font-weight:700;font-size:10px;cursor:help}
 .move-help:focus-visible,.ability-name:focus-visible{outline:2px solid #6de2b3;outline-offset:-1px}

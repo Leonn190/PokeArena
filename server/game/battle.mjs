@@ -1,6 +1,7 @@
 import { BY_ID, getDirection } from './pokemon.mjs';
 import { RULES } from './rules.mjs';
-import { MOVES_BY_ID, initialLoadout, validLoadout, abilityForPokemon, chooseMoveAnimation } from './moves.mjs';
+import { MOVES_BY_ID, validLoadout, equippedAbility, resolvedMoves, combatRange, chooseMoveAnimation } from './moves.mjs';
+import { ENERGY_PER_ATTACK } from '../../config/ataques.mjs';
 import { chooseCombatTarget } from './ai.mjs';
 import {structureModifiers} from './structures.mjs';
 import {effectiveUnitStats,individualIVs,meanIV,normalizedLevel,applyStructureStats,ivMultiplier} from './stats.mjs';
@@ -48,7 +49,7 @@ export const moveSpeed = stats => 55 + stats.vel * .62;
 export const attackInterval = stats => clamp(1.58 - stats.vel * .0088, .46, 1.45);
 
 // Tabela canônica dos 18 tipos: efeitos dos tipos de ataque contra defensores.
-// O catálogo de golpes ainda só utiliza Normal. Não libera golpes adicionais.
+// Regulares e genéricos usam Normal; habilidades exclusivas declaram seu tipo.
 const TYPE_EFFECTIVENESS = Object.freeze({
   Normal:{Pedra:.5,Aço:.5,Fantasma:0},
   Fogo:{Fogo:.5,Água:.5,Grama:2,Gelo:2,Inseto:2,Pedra:.5,Dragão:.5,Aço:2},
@@ -106,8 +107,8 @@ export function normalizeEntry(entry, team) {
     provenance: entry.provenance?.map(part=>({...part})),
     evolutionSteps: entry.evolutionSteps ?? 0,
     babyPerfect: entry.babyPerfect ?? false,
-    activeMoves: validLoadout(speciesId,entry.activeMoves||initialLoadout(speciesId)),
-    abilityId:abilityForPokemon(speciesId),
+    activeMoves: validLoadout(speciesId,entry),
+    abilityId:equippedAbility(speciesId,entry).id,
     slots: 2
   };
 }
@@ -134,10 +135,10 @@ function makeUnits(lineups,environment=[{},{}]) {
       ivs: entry.ivs,
       level: entry.level,
       slots: entry.slots,
-      activeMoves: validLoadout(entry.speciesId,entry.activeMoves),
-      abilityId:abilityForPokemon(entry.speciesId),
-      energy:0,energyRegen:stats.energia,regeneration:stats.regeneracao,
-      maxEnergy:MOVES_BY_ID[entry.activeMoves[1]]?.energyCost||4,
+      activeMoves: validLoadout(entry.speciesId,entry),
+      abilityId:equippedAbility(entry.speciesId,entry).id,
+      energy:0,
+      maxEnergy:equippedAbility(entry.speciesId,entry).energyCost,
       x: entry.x,
       y: entry.y,
       col: entry.col,
@@ -186,19 +187,18 @@ export function startBattle(b) {
 }
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const edgeDistance = (a, b) => Math.max(0, dist(a, b) - a.radius - b.radius);
-export const attackRangePixels = move => move.range * BOARD.tile;
-export function effectiveAttackRange(_unit, move) {
+export function effectiveAttackRange(unit) {
   // Nunca derivar alcance do tamanho da imagem ou da animação.
-  return attackRangePixels(move);
+  return combatRange(unit.type.id,unit)*BOARD.tile;
 }
 const setState = (u, state) => { if (u.state !== state) { u.state = state; u.stateTime = 0; } };
-function getTarget(b, u, moves = getMoves(u)) { return chooseCombatTarget(u,b.units.filter(other=>!other.dead&&other.team!==u.team),moves,BOARD.tile); }
-function getMoves(u) { return u.activeMoves.map(m => MOVES_BY_ID[m]).filter(Boolean); }
+function getTarget(b, u) { return chooseCombatTarget(u,b.units.filter(other=>!other.dead&&other.team!==u.team),BOARD.tile); }
+function getMoves(u) { return resolvedMoves(u.type.id,u); }
 // Centros candidatos de círculos: posições inimigas e interseções dos limites
 // de área/alcance. A contagem usa posições atuais e desempate pela ordem estável.
 function pollenCenter(b,u,move) {
   const enemies=b.units.filter(v=>!v.dead&&v.team!==u.team);
-  const radius=move.areaRadius*BOARD.tile,reach=effectiveAttackRange(u,move)+u.radius;
+  const radius=move.areaRadius*BOARD.tile,reach=effectiveAttackRange(u)+u.radius;
   const circles=[...enemies.map(v=>({x:v.x,y:v.y,r:radius})),{x:u.x,y:u.y,r:reach}];
   const candidates=enemies.map(v=>({x:v.x,y:v.y}));
   for(let i=0;i<circles.length;i++)for(let j=i+1;j<circles.length;j++){
@@ -228,7 +228,7 @@ function beginAttack(b, u, target, move) {
   const hitFrame = clamp(meta?.hitFrame ?? Math.floor(durations.length * .55), 0, durations.length - 1);
   const hitAt = clamp(durations.slice(0, hitFrame).reduce((s, n) => s + n, 0) / 60, .08, length * .92);
   if(move.shots)length=Math.max(length,hitAt+(move.shots-1)*move.shotInterval+.08);
-  if(move.kind==='charged')u.energy=Math.max(0,u.energy-move.energyCost);
+  u.energy=clamp(u.energy-(move.kind==='charged'?move.energyCost:0)+ENERGY_PER_ATTACK,0,u.maxEnergy);
   u.cast = { moveId:move.id, animation, length, hitAt, elapsed:0, fired:false, shotsFired:0, targetId:target.uid, destination };
   u.vx = 0;
   u.vy = 0;
@@ -237,12 +237,12 @@ function beginAttack(b, u, target, move) {
   return true;
 }
 function spawnProjectile(b, u, target, move, destination=null) {
-  if(move.behavior==='boomerang'||move.behavior==='pollen'){
+  if(move.behavior==='pollen'){
     const end=destination||{x:target.x,y:target.y};
     b.projectiles.push({owner:u.uid,team:u.team,moveId:move.id,behavior:move.behavior,
       x:u.x,y:u.y,startX:u.x,startY:u.y,endX:end.x,endY:end.y,
       vx:0,vy:0,speed:move.projectileSpeed,color:move.color,radius:8,
-      returning:false,hitIds:[],life:Math.max(2,dist(u,end)*2/move.projectileSpeed+1)});
+      life:Math.max(2,dist(u,end)/move.projectileSpeed+1)});
     return;
   }
   const dx = target.x - u.x;
@@ -265,8 +265,9 @@ function spawnProjectile(b, u, target, move, destination=null) {
 }
 function applyHit(b, attacker, target, move, random) {
   if (target.dead) return;
-  const scaled=move.spaCoefficient!==undefined;
-  const base=scaled?attacker.stats.spa*move.spaCoefficient:move.damage;
+  const coefficient=move.category==='atk'?move.atkCoefficient:move.spaCoefficient;
+  const scaled=coefficient!==undefined;
+  const base=scaled?attacker.stats[move.category]*coefficient:move.damage;
   const damage = physicalOrSpecialDamage(attacker, target, move.category, random, base, move.type, scaled);
   attacker.damageDealt += Math.min(target.health,damage);
   target.health = Math.max(0, target.health - damage);
@@ -284,7 +285,7 @@ function applyHit(b, attacker, target, move, random) {
 }
 function handleCast(b, u, dt, random) {
   const cast = u.cast;
-  const move = MOVES_BY_ID[cast.moveId];
+  const move = getMoves(u).find(move=>move.id===cast.moveId);
   cast.elapsed += dt;
   u.vx = 0;
   u.vy = 0;
@@ -296,9 +297,11 @@ function handleCast(b, u, dt, random) {
       // Reavalia a concentração ao lançar, sem depender da sobrevivência do alvo inicial.
       const center=pollenCenter(b,u,move);
       if(center)spawnProjectile(b,u,center,move,center);
+    } else if(move.behavior==='vines'){
+      strikeVines(b,u,move,random);
     } else if (target) {
-      if (move.projectile && (move.behavior==='seeds'||edgeDistance(u, target) <= effectiveAttackRange(u, move) + 35)) spawnProjectile(b, u, target, move);
-      else if (!move.projectile && edgeDistance(u, target) <= effectiveAttackRange(u, move) + 9) applyHit(b, u, target, move, random);
+      if (move.projectile && (move.behavior==='seeds'||edgeDistance(u, target) <= effectiveAttackRange(u) + 35)) spawnProjectile(b, u, target, move);
+      else if (!move.projectile && edgeDistance(u, target) <= effectiveAttackRange(u) + 9) applyHit(b, u, target, move, random);
     }
   }
   if (cast.elapsed >= cast.length) {
@@ -307,10 +310,27 @@ function handleCast(b, u, dt, random) {
     u.cooldown = attackInterval(u.stats) / (1+(u.environmentMods?.attackSpeed||0)) * (.88 + random() * .24);
   }
 }
-function segmentDistance(point,a,c){
-  const dx=c.x-a.x,dy=c.y-a.y,length=dx*dx+dy*dy;
-  const t=length?clamp(((point.x-a.x)*dx+(point.y-a.y)*dy)/length,0,1):0;
-  return Math.hypot(point.x-a.x-t*dx,point.y-a.y-t*dy);
+function strikeVines(b,u,move,random){
+  const target=b.units.find(v=>v.uid===u.cast.targetId);
+  const angle=target?Math.atan2(target.y-u.y,target.x-u.x):Math.PI/2-u.facing*Math.PI/4;
+  const dx=Math.cos(angle),dy=Math.sin(angle),reach=effectiveAttackRange(u);
+  b.effects.push({x:u.x,y:u.y,angle,radius:reach,halfAngle:move.coneHalfAngle,color:move.color,style:'vine-cone',time:.45,total:.45});
+  for(const enemy of b.units){
+    if(enemy.dead||enemy.team===u.team||edgeDistance(u,enemy)>reach)continue;
+    const x=enemy.x-u.x,y=enemy.y-u.y,forward=x*dx+y*dy,lateral=-x*dy+y*dx;
+    if(forward<0||Math.abs(lateral)>Math.tan(move.coneHalfAngle)*forward+enemy.radius)continue;
+    applyHit(b,u,enemy,move,random);
+    const pull=clamp(lateral,-move.pullDistance*BOARD.tile,move.pullDistance*BOARD.tile)*.65;
+    // Movimento curto e varrido: rejeita passos que atravessam unidades ou limites.
+    const steps=Math.ceil(Math.abs(pull)/3);
+    for(let i=0;i<steps;i++){
+      const next={x:enemy.x+dy*pull/steps,y:enemy.y-dx*pull/steps};
+      if(next.x<b.bounds.minX+enemy.radius||next.x>b.bounds.maxX-enemy.radius||
+        next.y<b.bounds.minY+enemy.radius||next.y>b.bounds.maxY-enemy.radius||
+        b.units.some(v=>v!==enemy&&!v.dead&&dist(next,v)<enemy.radius+v.radius+3))break;
+      enemy.x=next.x;enemy.y=next.y;
+    }
+  }
 }
 function explodePollen(b,owner,p,move,random){
   const radius=move.areaRadius*BOARD.tile;
@@ -328,22 +348,12 @@ function explodePollen(b,owner,p,move,random){
 function updateAbilityProjectile(b,p,dt,random){
   const owner=b.units.find(u=>u.uid===p.owner),move=MOVES_BY_ID[p.moveId];
   if(!owner||!move)return true;
-  const destination=p.returning?{x:p.startX,y:p.startY}:{x:p.endX,y:p.endY};
-  const old={x:p.x,y:p.y},distance=dist(p,destination),step=Math.min(distance,p.speed*dt);
+  const destination={x:p.endX,y:p.endY};
+  const distance=dist(p,destination),step=Math.min(distance,p.speed*dt);
   p.vx=distance?(destination.x-p.x)/distance:0;p.vy=distance?(destination.y-p.y)/distance:0;
   p.x+=p.vx*step;p.y+=p.vy*step;
-  if(p.behavior==='boomerang'){
-    for(const enemy of b.units){
-      if(enemy.dead||enemy.team===p.team||p.hitIds.includes(enemy.uid))continue;
-      if(segmentDistance(enemy,old,p)<=enemy.radius+p.radius){
-        p.hitIds.push(enemy.uid);applyHit(b,owner,enemy,move,random);
-      }
-    }
-  }
   if(distance>step+1e-6)return false;
-  if(p.behavior==='pollen'){explodePollen(b,owner,p,move,random);return true;}
-  if(p.returning)return true;
-  p.returning=true;p.hitIds=[];return false;
+  explodePollen(b,owner,p,move,random);return true;
 }
 function collideAndClamp(b, u) {
   const fieldBounds=b.bounds;
@@ -425,13 +435,11 @@ export function updateBattle(b, seconds, random = Math.random) {
     const structural=structureModifiers(b.environment,u);
     u.environmentMods=structural;
     Object.assign(u.stats,applyStructureStats(u.baseStats,structural));
-    u.energyRegen=u.stats.energia;u.regeneration=u.stats.regeneracao;
     const nextMax=Math.round(maxHealth(u.stats,u.hpScale));
     if(nextMax!==u.maxHealth) {u.health=Math.min(nextMax,u.health*(nextMax/u.maxHealth));u.maxHealth=nextMax;}
-    if(!u.dead&&b.phase==='fighting') {
-      const regen=u.regeneration+(u.environmentMods?.regen||0)*u.maxHealth;
+    if(!u.dead&&b.phase==='fighting'&&!b.paused) {
+      const regen=(u.environmentMods?.regen||0)*u.maxHealth;
       if(regen)u.health=Math.min(u.maxHealth,u.health+regen*dt);
-      u.energy=Math.min(u.maxEnergy,u.energy+u.energyRegen*dt);
     }
     u.stateTime += dt;
     u.hitFlash = Math.max(0, u.hitFlash - dt);
@@ -460,16 +468,16 @@ export function updateBattle(b, seconds, random = Math.random) {
     // Com energia cheia o carregado é obrigatório: inclusive quando ele
     // exige caminhar até ficar ao alcance. Não usa regulares nesse intervalo.
     const selectedMove=chargedReady?charged:regular;
-    const target=getTarget(b,u,[selectedMove]);
+    const target=getTarget(b,u);
     u.targetId=target?.uid||null;
     if(!target||!selectedMove){u.vx=0;u.vy=0;setState(u,'Idle');continue;}
-    const inRange=edgeDistance(u,target)<=effectiveAttackRange(u,selectedMove);
+    const inRange=edgeDistance(u,target)<=effectiveAttackRange(u);
     u.cooldown-=dt;
     if(inRange&&(chargedReady||u.cooldown<=0)){
       if(beginAttack(b,u,target,selectedMove))continue;
     }
     if(inRange){u.vx=0;u.vy=0;setState(u,'Idle');continue;}
-    moveToTarget(b,u,target,dt,effectiveAttackRange(u,selectedMove));
+    moveToTarget(b,u,target,dt,effectiveAttackRange(u));
   }
   for (let i = b.projectiles.length - 1; i >= 0; i--) {
     const p = b.projectiles[i];

@@ -4,7 +4,9 @@ import { createCamera } from './camera.mjs';
 import { createSpriteCache } from './sprites.mjs';
 import { createSpriteRenderer } from './renderer.mjs';
 import { BY_ID, POKEMON, EVOLUTION_OPTIONS, getDirection } from '../../server/game/pokemon.mjs';
-import { MOVES_BY_ID, validLoadout, chooseMoveAnimation } from '../../server/game/moves.mjs';
+import { MOVES_BY_ID, equippedAbility, availableAbilities, resolvedMoves, chooseMoveAnimation } from '../../server/game/moves.mjs';
+import { canRerollLocalAbility, rerollLocalAbility } from '../../server/game/roster.mjs';
+import { ATRIBUTOS_DE_COMBATE } from '../../config/status-pokemon.mjs';
 import { fieldLimitForBattle, shopOddsForBattle, RULES, STAGES, STAGE_NAMES, chapterForBattle, stageForBattle, battleKind, interestForGold, streakBonus, PVE_DIFFICULTIES } from '../../server/game/rules.mjs';
 import { aliveCount, combatForPlayer, phaseRemainingSeconds, startLocalMatchCycle, updateLocalMatchCycle } from '../../server/game/match-cycle.mjs';
 import { BOARD, TAU, cellAtWorld, tilePosition, validCellForTeam, effectiveUnitStats, maxHealth } from '../../server/game/battle.mjs';
@@ -16,7 +18,7 @@ const $ = id => document.getElementById(id);
 const canvas = $('arena');
 const ctx = canvas.getContext('2d',{alpha:false});
 const base = (canvas.dataset.base || '/').replace(/\/?$/, '/');
-const keys = ['vida','atk','def','spa','spd','vel','energia','regeneracao'];
+const keys = ATRIBUTOS_DE_COMBATE;
 const stageName = {1:'Base',2:'Evoluído',3:'Final'};
 const RARITY_COLORS = {comum:'#9ca3af',incomum:'#4ad779',raro:'#5aa5ff',epico:'#b87afa',mitico:'#ff575d',lendario:'#ffda52'};
 const RARITY_LABELS = {comum:'Comum',incomum:'Incomum',raro:'Raro',epico:'Épico',mitico:'Mítico',lendario:'Lendário'};
@@ -76,7 +78,7 @@ function selectedMon() {
   const fighter=battle?.phase!=='finished'?battle?.units.find(u=>u.uid===selectedId):null;
   if(fighter) {
     const original=battle.lineups[fighter.team].find(u=>u.instanceId===selectedId);
-    return {...original,speciesId:fighter.type.id,health:fighter.health,maxHealth:fighter.maxHealth,level:fighter.level,ivs:fighter.ivs,liveStats:{...fighter.stats},combatUnit:true};
+    return {...original,speciesId:fighter.type.id,abilityId:fighter.abilityId,activeMoves:fighter.activeMoves,energy:fighter.energy,maxEnergy:fighter.maxEnergy,health:fighter.health,maxHealth:fighter.maxHealth,level:fighter.level,ivs:fighter.ivs,liveStats:{...fighter.stats},combatUnit:true};
   }
   return allUnits().find(mon=>mon.instanceId===selectedId)||null;
 }
@@ -784,20 +786,18 @@ function previewUnitStats(mon,p){
   const mods=structureModifiers([{structures:member.structures}],{type:p,x:pos.x,y:pos.y});
   return applyStructureStats(baseStats,mods);
 }
-const STAT_NAMES={vida:'Vida',atk:'Ataque',def:'Defesa',spa:'Ataque especial',spd:'Defesa especial',vel:'Velocidade',energia:'Energia/s',regeneracao:'Regeneração/s'};
-// Vetores locais, sem emojis nem URLs remotas. Ícones na ordem dos oito atributos.
+const STAT_NAMES={vida:'Vida',atk:'Ataque físico',def:'Defesa física',spa:'Ataque especial',spd:'Defesa especial',vel:'Velocidade'};
+// Vetores locais, sem emojis nem URLs remotas. Ícones dos seis atributos.
 const STAT_ICONS={
   vida:'M12 21s-8-5-8-11a5 5 0 0 1 8-4 5 5 0 0 1 8 4c0 6-8 11-8 11Z',
   atk:'M5 19 19 5M14 5l5 5M4 16l4 4m0-5 3 3',
   def:'M12 2 4 5v6c0 5 4 9 8 11 4-2 8-6 8-11V5Z',
   spa:'M12 2 9 12h-6l-3 10-1-8H3Z',
   spd:'M12 2 4 8v5c0 4 4 7 8 9 4-2 8-5 8-9V8Zm0 5-2 5h4l-2 5',
-  vel:'M3 12h10m-6-5h10M3 17h8m5-7 5 2-5 2',
-  energia:'M12 2v4m0 12v4M2 12h4m12 0h4M5 5l3 3m8 8 3 3M19 5l-3 3m-8 8-3 3M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6',
-  regeneracao:'M12 3a9 9 0 1 0 9 9m0-7v7h-7M12 7v10m-5-5h10'
+  vel:'M3 12h10m-6-5h10M3 17h8m5-7 5 2-5 2'
 };
 const statIcon=key=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${STAT_ICONS[key]}"></path></svg>`;
-const formatStat=(key,n)=>['energia','regeneracao'].includes(key)?Number(n).toLocaleString('pt-BR',{maximumFractionDigits:3}):Math.round(n).toLocaleString('pt-BR');
+const formatStat=(_key,n)=>Math.round(n).toLocaleString('pt-BR');
 function renderDetails() {
   const mon=selectedMon();
   $('detail-panel').classList.toggle('collapsed',!mon||mon.kind==='structure');
@@ -816,21 +816,32 @@ function renderDetails() {
   drawPortrait($('selected-avatar'),p);
   $('stats-list').innerHTML=keys.map(key=>`<div class="stat" title="${STAT_NAMES[key]}">
     <span class="stat-title">${statIcon(key)}<span>${STAT_NAMES[key]}</span></span>
-    <small>${ivs[key].toFixed(0)}%</small><b>${formatStat(key,stats[key]??0)}</b>
+    <small>${ivs[key].toFixed(0)}%<i class="iv-track"><i style="width:${clamp(ivs[key],0,100)}%"></i></i></small><b>${formatStat(key,stats[key]??0)}</b>
   </div>`).join('');
-  const loadout=validLoadout(mon.speciesId);
-  const ability=MOVES_BY_ID[loadout[1]];
-  $('ability-status').innerHTML=`<span class="ability-name" tabindex="0" title="Habilidade fixa da espécie, executada automaticamente com energia suficiente.">${ability.name}</span>`;
-  $('moves-active').innerHTML=loadout.map((id,i)=>{
-    const move=MOVES_BY_ID[id];if(!move)return '';
-    const tooltipId=`move-description-${i}`;
-    const details=[`Categoria: ${move.category==='atk'?'Físico':'Especial'}`,`Tipo: ${move.type}`,
-      move.spaCoefficient!==undefined?`Dano por acerto: ${Math.round(move.spaCoefficient*100)}% do SpA`:`Dano-base: ${move.damage}`,`Alcance: ${move.range} células`,
-      ...(move.healCoefficient?[`Cura: ${Math.round(move.healCoefficient*100)}% do SpA`,`Raio: ${move.areaRadius} células`]:[]),
-      ...(i?[`Energia: ${move.energyCost}`]:[]),`Efeito: ${move.effect}`,move.description];
-    return `<div class="move-row"><div class="move-card"><button type="button" class="move-help" aria-describedby="${tooltipId}" aria-label="Detalhes de ${move.name}">${i?'Habilidade':'Básico'} · ${move.name}</button>
-      <div class="move-tooltip" id="${tooltipId}" role="tooltip">${details.map(text=>`<span>${text}</span>`).join('')}</div></div></div>`;
-  }).join('');
+  const ability=equippedAbility(mon.speciesId,mon);
+  const healthMax=mon.combatUnit?mon.maxHealth:Math.round(maxHealth(stats,mon.pveModifiers?.hp||1));
+  for(const [id,value,max] of [['selected-health',mon.combatUnit?mon.health:healthMax,healthMax],['selected-energy',mon.combatUnit?mon.energy:0,ability.energyCost]]){
+    const bar=$(id),current=clamp(value??0,0,max);
+    bar.querySelector('i').style.width=`${100*current/Math.max(1,max)}%`;
+    bar.querySelector('span').textContent=`${Math.round(current)} / ${Math.round(max)}`;
+    bar.setAttribute('aria-valuemin','0');bar.setAttribute('aria-valuemax',max);bar.setAttribute('aria-valuenow',current);
+  }
+  const canRoll=!mon.combatUnit&&ownsUnit(mon)&&availableAbilities(mon.speciesId).length>1;
+  $('ability-status').textContent=`Alcance ${ability.range} · Energia ${ability.energyCost}`;
+  // Não recriar o botão a cada atualização: preserva foco do teclado e tooltip.
+  const signature=`${mon.instanceId}:${ability.id}:${canRoll}`;
+  if($('moves-active').dataset.signature!==signature){
+    $('moves-active').dataset.signature=signature;
+    const coefficient=ability.atkCoefficient??ability.spaCoefficient;
+    const details=[ability.description,`Tipo do dano: ${ability.type}`,`Categoria: ${ability.category==='atk'?'Física (Atk/Def)':'Especial (SpA/SpD)'}`,
+      coefficient!==undefined?`Dano por acerto: ${Math.round(coefficient*100)}% do ${ability.category==='atk'?'Atk':'SpA'}${ability.shots?` × ${ability.shots}`:''}`:`Dano-base: ${ability.damage}`,
+      `Alcance: ${ability.range} células`,`Energia: ${ability.energyCost}`,
+      ...(ability.healCoefficient?[`Cura: ${Math.round(ability.healCoefficient*100)}% do SpA`,`Raio: ${ability.areaRadius} células`]:[])];
+    $('moves-active').innerHTML=`<div class="move-row"><div class="move-card"><button type="button" class="move-help" aria-describedby="ability-description"><span aria-hidden="true">✦</span> ${ability.name}</button>
+      <div class="move-tooltip" id="ability-description" role="tooltip">${details.map(text=>`<span>${text}</span>`).join('')}</div></div>
+      ${canRoll?'<button id="reroll-ability" class="move-reroll" type="button" title="Trocar habilidade por 2 ouros" aria-label="Roletar habilidade por 2 ouros">↻ · 2</button>':''}</div>`;
+  }
+  if($('reroll-ability'))$('reroll-ability').disabled=!canManage()||!canRerollLocalAbility(localMatch,humanParticipant(),mon);
   $('sell-selected').disabled=!canManage()||!ownsUnit(mon)||!!mon.combatUnit;
 }
 
@@ -1146,7 +1157,7 @@ function drawSetupUnit(mon) {
   const resting=benchIndex(mon)!==null && !(drag?.kind==='unit'&&drag.mon===mon);
   drawUnitSprite(p,pos.x,pos.y,resting?'Sleep':'Idle',facing,visualTime);
   const effective=previewUnitStats(mon,p);
-  drawPokemonBars(p,pos.x,pos.y,mon.level,mon.health??maxHealth(effective),mon.maxHealth??maxHealth(effective),0,4);
+  drawPokemonBars(p,pos.x,pos.y,mon.level,maxHealth(effective),maxHealth(effective),0,equippedAbility(mon.speciesId,mon).energyCost);
   if(drag?.feedTarget===mon){ctx.fillStyle='#9affcf';ctx.textAlign='center';ctx.font='bold 11px system-ui';ctx.fillText(`+${RULES.niveis.porAlimentacao} níveis`,pos.x,pos.y-90);}
   // O sprite Sleep real é usado quando disponível; as notas são um detalhe
   // visual do banco, sem mexer em colisões nem na animação de combate.
@@ -1188,7 +1199,7 @@ function drawBattleUnit(u) {
   const target=result?trainerAttackTarget():null;
   const celebratoryCast=!!target&&u.team===observedCombat()?.battle?.winner&&resultTime<1.03;
   const resultAnimation=celebratoryCast
-    ? chooseMoveAnimation(MOVES_BY_ID[u.activeMoves[0]],u.type.sprites) : 'Idle';
+    ? chooseMoveAnimation(resolvedMoves(u.type.id,u)[0],u.type.sprites) : 'Idle';
   const gotHit=u.hurtTime>0&&!intro&&!result;
   const state=intro?'Idle':result?resultAnimation:gotHit?'Hurt':u.state;
   const facing=intro?(u.team===0?Math.round(progress*4):0)
@@ -1209,13 +1220,6 @@ function drawEffects(activeBattle) {
     const distance=p.behavior==='pollen'?Math.hypot(p.endX-p.startX,p.endY-p.startY):0;
     const progress=distance?clamp(Math.hypot(p.x-p.startX,p.y-p.startY)/distance,0,1):0;
     ctx.translate(p.x, p.y-(p.behavior==='pollen'?Math.sin(progress*Math.PI)*55:0));
-    if(move?.behavior==='boomerang'){
-      ctx.globalAlpha=.2;ellipse(-p.vx*14,-p.vy*14,19,7,move.color);ctx.globalAlpha=1;
-      ctx.rotate(visualTime*18);
-      ctx.fillStyle=move.color;ctx.beginPath();ctx.moveTo(-13,0);
-      ctx.quadraticCurveTo(0,-13,13,0);ctx.quadraticCurveTo(0,13,-13,0);ctx.fill();
-      line(-10,0,10,0,'#d5f9a3',1.5);ctx.restore();continue;
-    }
     if(move?.behavior==='seeds'){
       ctx.rotate(Math.atan2(p.vy,p.vx));
       ctx.globalAlpha=.2;ellipse(-7,0,10,3,move.color);ctx.globalAlpha=1;
@@ -1236,6 +1240,16 @@ function drawEffects(activeBattle) {
     const a = 1 - e.time / e.total;
     ctx.save();
     ctx.globalAlpha = 1 - a;
+    if(e.style==='vine-cone'){
+      ctx.translate(e.x,e.y);ctx.rotate(e.angle);
+      for(let j=-2;j<=2;j++){
+        const angle=j*e.halfAngle/2,length=e.radius*Math.sin(Math.min(1,a*3)*Math.PI/2);
+        ctx.beginPath();ctx.moveTo(0,0);
+        ctx.quadraticCurveTo(length*.5,Math.sin(angle)*length*.3,length*Math.cos(angle),length*Math.sin(angle));
+        ctx.strokeStyle=e.color;ctx.lineWidth=3;ctx.stroke();
+      }
+      ctx.restore();continue;
+    }
     if(e.style==='pollen-area'){
       ctx.globalAlpha*=.28;
       ellipse(e.x,e.y,e.radius*(.3+.7*a),e.radius*(.3+.7*a),e.color);
@@ -1431,6 +1445,14 @@ $('lock-shop').addEventListener('click',()=>{
   if(canManage()) {toggleLocalShopLock(localMatch,humanParticipant());shopSignature='';renderHud();}
 });
 $('sell-selected').addEventListener('click',()=>sell(selectedMon()));
+$('moves-active').addEventListener('click',event=>{
+  if(!event.target.closest('#reroll-ability')||!canManage())return;
+  const mon=selectedMon();
+  if(!ownsUnit(mon)||mon.combatUnit)return;
+  if(rerollLocalAbility(localMatch,humanParticipant(),mon)){
+    renderHud();$('reroll-ability')?.focus();
+  }
+});
 window.addEventListener('resize',sizeCanvas);
 sizeCanvas();
 renderHud();

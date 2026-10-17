@@ -67,14 +67,16 @@ const base = import.meta.env.BASE_URL;
       <div class="pokemon-overview"><canvas id="selected-avatar" width="64" height="56" aria-hidden="true"></canvas>
         <div class="pokemon-summary">
           <span id="selected-type"></span>
-          <div class="pokemon-metrics"><span>Nível <b id="selected-level">0</b></span><span>IV <b id="selected-iv">50%</b></span><span>Poder <b id="selected-power">0</b></span></div>
+          <div class="detail-bar detail-health" id="selected-health" role="progressbar" aria-label="Vida"><i></i><span></span></div>
+          <div class="detail-bar detail-energy" id="selected-energy" role="progressbar" aria-label="Energia"><i></i><span></span></div>
           <small id="selected-place"></small>
         </div>
       </div>
+      <div class="pokemon-metrics"><span>Nível <b id="selected-level">0</b></span><span>IV geral <b id="selected-iv">50%</b></span><span>Poder total <b id="selected-power">0</b></span></div>
       <div class="pokemon-stat-header"><span>Atributo</span><span>IV</span><span>Efetivo</span></div>
       <div id="stats-list" class="stats-list" aria-label="Atributos efetivos e IV individual"></div>
       <div class="attack-panel">
-        <div class="panel-subtitle">Habilidade e ataques</div>
+        <div class="panel-subtitle">Habilidade equipada</div>
         <div id="ability-status" class="ability-status"></div>
         <div id="moves-active" class="moves-list"></div>
         <div class="attack-actions"><button id="sell-selected" type="button">Vender Pokémon</button><small id="sell-value"></small></div>

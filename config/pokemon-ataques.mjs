@@ -1,15 +1,9 @@
-// Um ataque básico e uma habilidade fixos por espécie, inclusive após evolução.
-export const POKEMON_ATTACK_OVERRIDES = Object.freeze({
-  '0001':Object.freeze({regular:'basico-bulbasaur'}),
-  '0002':Object.freeze({regular:'basico-bulbasaur'}),
-  '0003':Object.freeze({regular:'basico-bulbasaur'})
-});
+// O regular conserva a categoria da espécie; alcance e animação seguem a habilidade.
+export const POKEMON_ATTACK_OVERRIDES = Object.freeze({});
 export const DEFAULT_POKEMON_REGULAR = 'tapa';
-// Alias legado de uma única habilidade; nenhuma pool aleatória é utilizada.
-export const DEFAULT_CHARGED_POOL = Object.freeze(['tapa-carregado']);
 
 // Demais espécies usam o carregado correspondente ao básico, sem sorteio.
 export const POKEMON_ABILITY_OVERRIDES = Object.freeze({
-  '0001':'rajada-sementes', '0002':'folha-navalha', '0003':'morteiro-polen'
+  '0001':'0001', '0002':'0002', '0003':'0003'
 });
 export const DEFAULT_POKEMON_ABILITY = null;
