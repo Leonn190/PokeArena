@@ -900,13 +900,18 @@ function renderDetails() {
   const canRoll=!mon.combatUnit&&ownsUnit(mon)&&availableAbilities(mon.speciesId).length>1;
   $('ability-status').textContent=`Alcance ${ability.range} · Energia ${ability.energyCost}`;
   // Não recriar o botão a cada atualização: preserva foco do teclado e tooltip.
-  const signature=`${mon.instanceId}:${ability.id}:${canRoll}`;
+  const signature=`${mon.instanceId}:${ability.id}:${canRoll}:${ability.reductionPerAtk?stats.atk:0}`;
   if($('moves-active').dataset.signature!==signature){
     $('moves-active').dataset.signature=signature;
     const coefficient=ability.atkCoefficient??ability.spaCoefficient;
-    const details=[ability.description,`Tipo do dano: ${ability.type}`,`Categoria: ${ability.category==='atk'?'Física (Atk/Def)':'Especial (SpA/SpD)'}`,
-      coefficient!==undefined?`Dano por acerto: ${Math.round(coefficient*100)}% do ${ability.category==='atk'?'Atk':'SpA'}${ability.shots?` × ${ability.shots}`:''}`:`Dano-base: ${ability.damage}`,
+    const damageLabel=ability.defCoefficient
+      ? `Dano por inimigo: ${Math.round(ability.atkCoefficient*100)}% do Atk + ${Math.round(ability.defCoefficient*100)}% da Def`
+      :coefficient!==undefined?`Dano ${ability.duration?'total ao longo da duração':'por acerto'}: ${Math.round(coefficient*100)}% do ${ability.category==='atk'?'Atk':'SpA'}${ability.shots?` × ${ability.shots}`:''}`:`Dano-base: ${ability.damage}`;
+    const details=[ability.description,`Tipo do dano: ${ability.type}`,`Categoria: ${ability.category==='atk'?'Física (Atk/Def)':'Especial (SpA/SpD)'}`,damageLabel,
       `Alcance: ${ability.range} células`,`Energia: ${ability.energyCost}`,
+      ...(ability.duration?[`Duração: ${ability.duration} s`]:[]),
+      ...(ability.splashCoefficient?[`Dano secundário: ${Math.round(ability.splashCoefficient*100)}% do SpA`,`Raio: ${ability.areaRadius} células`]:[]),
+      ...(ability.reductionPerAtk?[`Redução atual: ${(Math.min(ability.reductionCap,ability.reductionBase+stats.atk*ability.reductionPerAtk)*100).toFixed(1)}% durante o giro`,`Raio: ${ability.areaRadius} células`]:[]),
       ...(ability.healCoefficient?[`Cura: ${Math.round(ability.healCoefficient*100)}% do SpA`,`Raio: ${ability.areaRadius} células`]:[])];
     $('moves-active').innerHTML=`<div class="move-row"><div class="move-card"><button type="button" class="move-help" aria-describedby="ability-description"><span aria-hidden="true">✦</span> ${ability.name}</button>
       <div class="move-tooltip" id="ability-description" role="tooltip">${details.map(text=>`<span>${text}</span>`).join('')}</div></div>
@@ -1159,7 +1164,7 @@ function drawBoard(t) {
   ctx.restore();
 
 }
-const {unitScale,groundShadow,drawUnitSprite} = createSpriteRenderer(ctx,getImageMeta);
+const {unitScale,groundShadow,drawUnitSprite,castEmitters} = createSpriteRenderer(ctx,getImageMeta);
 
 // A bola percorre um arco até a célula; o Pokémon se materializa sem cair.
 function drawSummon(x,y,progress,team=0) {
@@ -1271,7 +1276,8 @@ function drawBattleUnit(u) {
   const celebratoryCast=!!target&&u.team===observedCombat()?.battle?.winner&&resultTime<1.03;
   const resultAnimation=celebratoryCast
     ? chooseMoveAnimation(resolvedMoves(u.type.id,u)[0],u.type.sprites) : 'Idle';
-  const gotHit=u.hurtTime>0&&!intro&&!result;
+  const sustained=!!(u.cast?.duration||u.cast?.behavior==='ricochet');
+  const gotHit=u.hurtTime>0&&!intro&&!result&&!sustained;
   const state=intro?'Idle':result?resultAnimation:gotHit?'Hurt':u.state;
   const facing=intro?(u.team===0?Math.round(progress*4):0)
     :result?(celebratoryCast?getDirection(target.x-u.x,target.y-u.y):0):u.facing;
@@ -1284,7 +1290,68 @@ function drawBattleUnit(u) {
   ctx.restore();
 }
 
+function drawAbilityStream(source,end,age,fire){
+  ctx.save();
+  const dx=end.x-source.x,dy=end.y-source.y,length=Math.hypot(dx,dy)||1;
+  const nx=-dy/length,ny=dx/length;
+  if(fire){
+    // Faixas curtas sobrepostas mantêm um fluxo contínuo e bordas pixeladas.
+    for(let j=0;j<18;j++){
+      const t=j/18,next=(j+1.7)/18;
+      const width=5+t*22,wobble=Math.sin(age*22+j*2)*t*3;
+      const x=source.x+dx*t+nx*wobble,y=source.y+dy*t+ny*wobble;
+      const ex=source.x+dx*Math.min(1,next),ey=source.y+dy*Math.min(1,next);
+      line(x,y,ex,ey,'#db4929',width);
+      line(x,y,ex,ey,'#ff962f',width*.7);
+      line(x,y,ex,ey,'#ffe46f',width*.32);
+    }
+  }else{
+    for(const [color,width] of [['#287cdb',8],['#65d6ff',5],['#e6fcff',2]]){
+      ctx.strokeStyle=color;ctx.lineWidth=width;
+      ctx.beginPath();ctx.moveTo(source.x,source.y);
+      ctx.quadraticCurveTo((source.x+end.x)/2+nx*3,(source.y+end.y)/2+ny*3,end.x,end.y);ctx.stroke();
+    }
+  }
+  for(let j=0;j<8;j++){
+    const t=(age*(fire?1.4:2.1)+j/8)%1,side=Math.sin(j*7+age*12)*(fire?t*12:3);
+    ctx.fillStyle=fire?(j%2?'#fff0a1':'#ff7733'):'#e0fcff';
+    ctx.globalAlpha=.8*(1-t*.5);
+    ctx.fillRect(Math.round(source.x+dx*t+nx*side),Math.round(source.y+dy*t+ny*side),fire?4:2,fire?3:2);
+  }
+  if(!fire){
+    for(let j=0;j<5;j++){
+      const angle=age*17+j*TAU/5,r=4+(age*22+j*3)%13;
+      ctx.fillRect(Math.round(end.x+Math.cos(angle)*r),Math.round(end.y+Math.sin(angle)*r),3,3);
+    }
+  }
+  ctx.restore();
+}
 function drawEffects(activeBattle) {
+  for(const unit of activeBattle.units){
+    const cast=unit.cast,move=MOVES_BY_ID[cast?.moveId];
+    if(unit.dead||!cast||!move||cast.recoveryAt!==undefined)continue;
+    const age=cast.elapsed-cast.hitAt;
+    if(age<0||age>=(move.duration??Infinity))continue;
+    if(move.behavior==='water-spin'){
+      ctx.save();
+      const radius=move.areaRadius*BOARD.tile;
+      ctx.strokeStyle='#8deaff';ctx.lineWidth=3;ctx.globalAlpha=.75;
+      ctx.beginPath();ctx.ellipse(unit.x,unit.y-5,radius*.65,radius*.34,age*4,0,TAU);ctx.stroke();
+      for(let j=0;j<8;j++){
+        const angle=age*12+j*TAU/8,r=radius*(.45+.15*Math.sin(age*8+j));
+        const px=unit.x+Math.cos(angle)*r,py=unit.y-6+Math.sin(angle)*r*.6;
+        ctx.fillStyle=j%2?'#e0fbff':'#57bdf7';ctx.fillRect(Math.round(px),Math.round(py),3,3);
+      }
+      ctx.restore();
+    }else if(move.behavior==='flamethrower'||move.behavior==='double-jet'){
+      const target=activeBattle.units.find(v=>v.uid===cast.targetId&&!v.dead);
+      if(move.behavior==='double-jet'&&!target)continue;
+      const end=move.behavior==='double-jet'?{x:target.x,y:target.y-22}
+        :{x:unit.x+Math.cos(cast.angle)*(unit.radius+move.range*BOARD.tile),y:unit.y-24+Math.sin(cast.angle)*(unit.radius+move.range*BOARD.tile)};
+      const sources=castEmitters(unit);
+      for(const source of sources)drawAbilityStream(source,end,age,move.behavior==='flamethrower');
+    }
+  }
   for (const p of activeBattle.projectiles) {
     ctx.save();
     const move = MOVES_BY_ID[p.moveId];
@@ -1299,6 +1366,16 @@ function drawEffects(activeBattle) {
     if(move?.behavior==='pollen'){
       ellipse(0,0,10,10,move.color);ellipse(-2,-3,4,4,'#fff2ab');ctx.restore();continue;
     }
+    if(move?.behavior==='fireball'){
+      ctx.rotate(Math.atan2(p.vy,p.vx));
+      ellipse(-5,0,15,10,'#e85324');ellipse(0,0,10,8,'#ff9c39');ellipse(2,-1,5,5,'#fff4a1');
+      for(let j=0;j<4;j++){
+        const phase=(visualTime*7+j*.27)%1;
+        ctx.globalAlpha=1-phase;ctx.fillStyle=j%2?'#ffe385':'#ff6c29';
+        ctx.fillRect(Math.round(-10-phase*22),Math.round(Math.sin(j*4+visualTime*13)*7),3,3);
+      }
+      ctx.restore();continue;
+    }
     ctx.rotate(Math.atan2(p.vy, p.vx));
     ctx.globalAlpha = .24;
     ellipse(-13, 0, 20, 8, p.color);
@@ -1308,9 +1385,26 @@ function drawEffects(activeBattle) {
     ctx.restore();
   }
   for (const e of activeBattle.effects) {
+    if(e.ownerId&&activeBattle.units.find(u=>u.uid===e.ownerId)?.dead)continue;
     const a = 1 - e.time / e.total;
     ctx.save();
     ctx.globalAlpha = 1 - a;
+    if(e.style==='pound'){
+      ctx.strokeStyle=e.color;ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(e.x,e.y,4+a*12,0,TAU);ctx.stroke();
+      for(let j=0;j<4;j++){
+        const angle=j*TAU/4+.4;
+        line(e.x+Math.cos(angle)*6,e.y+Math.sin(angle)*6,e.x+Math.cos(angle)*(9+a*9),e.y+Math.sin(angle)*(9+a*9),e.color,2);
+      }
+      ctx.restore();continue;
+    }
+    if(e.style==='fire-explosion'||e.style==='water-wave'){
+      const fire=e.style==='fire-explosion',radius=e.radius*(.25+.75*a);
+      if(fire){ctx.globalAlpha*=.35;ellipse(e.x,e.y-15,radius,radius,'#f75d29');ctx.globalAlpha=(1-a)*.8;}
+      ctx.strokeStyle=fire?'#ffcc65':'#b4f3ff';ctx.lineWidth=fire?4:2;
+      ctx.beginPath();ctx.ellipse(e.x,e.y-(fire?15:3),radius,fire?radius:radius*.65,0,0,TAU);ctx.stroke();
+      ctx.restore();continue;
+    }
     if(e.style==='vine-cone'){
       ctx.translate(e.x,e.y);ctx.rotate(e.angle);
       for(let j=-2;j<=2;j++){

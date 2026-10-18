@@ -51,8 +51,8 @@ export function createSpriteCache(base, onImageReady = () => {}) {
     const image=images.get(`${p.id}:${action}`);
     if(!image&&p.spriteAvailable)void loadImage(p,action);
     if(image)return {image,meta:desired};
-    // A família Bulbasaur usa Attack se a folha da habilidade não carregar.
-    if(['0001','0002','0003'].includes(p.id)&&!['Idle','Walk','Hurt','Sleep'].includes(visualAction)&&p.sprites.Attack){
+    // Habilidades dos iniciais usam Attack se a folha não carregar.
+    if(['0001','0002','0003','0004','0005','0006','0007','0008','0009'].includes(p.id)&&!['Idle','Walk','Hurt','Sleep'].includes(visualAction)&&p.sprites.Attack){
       const fallback=p.sprites.Attack,asset=fallback.asset||'Attack';
       const attackImage=images.get(`${p.id}:${asset}`);
       if(attackImage)return {image:attackImage,meta:fallback};

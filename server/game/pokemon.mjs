@@ -12,6 +12,14 @@ const SPRITES = {
   '0008': { Idle:[24,40,[40,2,2,2]], Walk:[32,40,[8,10,8,10]], Attack:[64,72,[4,2,4,2,2,2,2,2,2,2,4]], Hurt:[48,48,[2,8]] },
   '0009': { Idle:[40,40,[32,12,4,4,4,4,4,8]], Walk:[32,40,[8,14,8,14]], Attack:[64,72,[2,2,2,2,2,2,2,1,1,1,2,2,4]], Hurt:[40,40,[2,8]] },
 };
+// Folhas locais das novas habilidades: disponíveis mesmo antes de regenerar o
+// manifesto. Quarto elemento = HitFrame real do XML (índice a partir de zero).
+Object.assign(SPRITES['0004'],{Kick:[56,56,[2,6,2,4,2,2,2,2,2,2,2],3]});
+Object.assign(SPRITES['0005'],{Strike:[64,72,[2,2,6,1,2,2,2,2,2,2,2,2,2],4],Shoot:[48,48,[2,2,4,1,1,2,2,2,2,2,2,2],2]});
+Object.assign(SPRITES['0006'],{Strike:[72,80,[2,2,6,1,2,2,2,2,2,2,2,2,2],4],Shoot:[56,56,[4,6,2,2,2,2,2,2,2,2,2],2],Charge:[48,48,[2,2,2,2,2,2,2,2,2,2],5]});
+Object.assign(SPRITES['0007'],{Withdraw:[32,16,[20,2,2,1,1,2,2],1]});
+Object.assign(SPRITES['0008'],{Withdraw:[32,16,[20,2,2,1,1,2,2],1],Ricochet:[64,72,[6,2,2,4,3,2,1,1,1,1,2,2,2,2,2,2,2],6]});
+Object.assign(SPRITES['0009'],{Withdraw:[32,24,[20,2,2,1,1,2,2],1],Ricochet:[64,72,[6,2,2,4,3,2,1,1,1,1,2,2,2,2,2,2,2],6],Shoot:[48,56,[4,2,6,2,2,4],1]});
 // Elenco: 90 espécies compráveis; Wigglytuff só por evolução.
 // Identidades e tipagens do elenco; valores de combate vêm de config/status-pokemon.mjs.
 // Os tipos numéricos são os IDs canônicos veekun. Formas derivadas fora da lista
@@ -193,7 +201,7 @@ const make = ([num,name,rarity,[vida,atk,def,spa,spd,vel],typeIds]) => {
     stage,collisionRadius:stage===3?23:stage===2?19:16,
     evolutionPath:evolution,
     spriteAvailable:!!SPRITES[id],
-    sprites: SPRITES[id] ? Object.fromEntries(Object.entries(SPRITES[id]).map(([key,[width,height,durations]]) => [key,{width,height,durations,hitFrame:Math.floor(durations.length*.55),asset:key}])) : {...BASE_SPRITES}
+    sprites: SPRITES[id] ? Object.fromEntries(Object.entries(SPRITES[id]).map(([key,[width,height,durations,hitFrame]]) => [key,{width,height,durations,hitFrame:hitFrame??Math.floor(durations.length*.55),asset:key}])) : {...BASE_SPRITES}
   };
 };
 export const SHOP_POKEMON = CATALOG.map(make);

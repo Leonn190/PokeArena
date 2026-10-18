@@ -77,13 +77,14 @@ export function typeMultiplier(attackType, defendingTypes) {
     return mult*(relation===2 ? 1.25 : (relation===.5||relation===0) ? .8 : 1);
   },1);
 }
-function damageBreakdown(attacker, defender, kind, random, baseDamage, attackType, scaledByAttribute) {
+function damageBreakdown(attacker, defender, kind, random, baseDamage, attackType, scaledByAttribute, fractional=false) {
   const a = attacker.stats[kind === 'atk' ? 'atk' : 'spa'];
   const d = defender.stats[kind === 'atk' ? 'def' : 'spd'];
   const multiplier = typeMultiplier(attackType, defender.type.types) * (1+(attacker.environmentMods?.damage||0));
   const power=baseDamage * (scaledByAttribute?1:(.62 + a / 105));
   const roll=.92 + random() * .16;
-  const damage=Math.max(1,Math.round(power*(100/(80+d))*multiplier*roll));
+  const raw=power*(100/(80+d))*multiplier*roll;
+  const damage=fractional?Math.max(0,raw):Math.max(1,Math.round(raw));
   // Compara a mesma rolagem com defesa zero; não conta excesso de dano como mitigação.
   return {damage,mitigated:Math.max(0,Math.round(power*(100/80)*multiplier*roll)-damage)};
 }
@@ -238,10 +239,23 @@ function beginAttack(b, u, target, move) {
   const natural = durations.reduce((s, n) => s + n, 0) / 60;
   let length = clamp(natural, .28, 1.15);
   const hitFrame = clamp(meta?.hitFrame ?? Math.floor(durations.length * .55), 0, durations.length - 1);
-  const hitAt = clamp(durations.slice(0, hitFrame).reduce((s, n) => s + n, 0) / 60, .08, length * .92);
+  let hitAt = clamp(durations.slice(0, hitFrame).reduce((s, n) => s + n, 0) / 60, .08, length * .92);
+  const extended=['0004','0005','0006','0007','0008','0009'].includes(move.id);
+  if(extended){
+    length=natural;
+    hitAt=durations.slice(0,hitFrame).reduce((s,n)=>s+n,0)/60;
+  }
+  // Transição curta para a concha; não conservar os 20 ticks do primeiro frame.
+  if(move.behavior==='water-spin')hitAt=.1;
+  // Shoot: frame 1 prepara os canhões; frame 2 mostra a emissão de água.
+  if(move.behavior==='double-jet'&&animation==='Shoot')hitAt=durations.slice(0,2).reduce((s,n)=>s+n,0)/60;
+  if(move.duration)length=hitAt+move.duration+.16;
+  if(move.behavior==='ricochet')length=hitAt+2.5;
   if(move.shots)length=Math.max(length,hitAt+(move.shots-1)*move.shotInterval+.08);
   u.energy=clamp(u.energy-(move.kind==='charged'?move.energyCost:0)+ENERGY_PER_ATTACK,0,u.maxEnergy);
-  u.cast = { moveId:move.id, animation, length, hitAt, elapsed:0, fired:false, shotsFired:0, targetId:target.uid, destination };
+  u.cast = { moveId:move.id, animation, length, hitAt, elapsed:0, fired:false, shotsFired:0, targetId:target.uid, destination,
+    behavior:move.behavior, duration:move.duration, pulses:0, hitIds:[],
+    angle:Math.atan2(target.y-u.y,target.x-u.x), startedAt:b.elapsed };
   u.vx = 0;
   u.vy = 0;
   u.facing = getDirection(target.x - u.x, target.y - u.y);
@@ -279,19 +293,29 @@ function applyHit(b, attacker, target, move, random) {
   if (target.dead) return;
   const coefficient=move.category==='atk'?move.atkCoefficient:move.spaCoefficient;
   const scaled=coefficient!==undefined;
-  const base=scaled?attacker.stats[move.category]*coefficient:move.damage;
-  const {damage,mitigated} = damageBreakdown(attacker, target, move.category, random, base, move.type, scaled);
+  const base=scaled?attacker.stats[move.category]*coefficient+attacker.stats.def*(move.defCoefficient||0):move.damage;
+  const result = damageBreakdown(attacker, target, move.category, random, base, move.type, scaled,move.fractional);
+  const spin=target.cast?.behavior==='water-spin'?target.cast:null;
+  const spinMove=spin?MOVES_BY_ID[spin.moveId]:null;
+  const protectedNow=spin&&!target.dead&&b.phase==='fighting'&&
+    b.elapsed+1e-6>=spin.startedAt+spin.hitAt&&b.elapsed<spin.startedAt+spin.hitAt+spin.duration-1e-6;
+  const reduction=protectedNow?Math.min(spinMove.reductionCap,spinMove.reductionBase+target.stats.atk*spinMove.reductionPerAtk):0;
+  const damage=result.damage*(1-reduction),mitigated=result.mitigated+result.damage*reduction;
   attacker.damageDealt += Math.min(target.health,damage);
   attacker[move.category==='atk'?'damagePhysical':'damageSpecial']+=Math.min(target.health,damage);
   target[move.category==='atk'?'mitigatedPhysical':'mitigatedSpecial']+=mitigated;
   target.health = Math.max(0, target.health - damage);
   target.hitFlash = .20;
   target.hurtTime = .16;
-  b.floaters.push({ x:target.x, y:target.y - 40, text:`-${damage}`, time:.85, total:.85, kind:move.category });
-  b.effects.push({ x:target.x, y:target.y - 15, color:move.color, time:.35, total:.35, style:move.effect });
+  const floater=move.fractional?b.floaters.find(f=>f.targetId===target.uid&&f.ownerId===attacker.uid&&f.time>.55):null;
+  if(floater){floater.amount+=damage;floater.text=`-${Math.round(floater.amount)}`;}
+  else b.floaters.push({ x:target.x, y:target.y - 40, text:`-${Math.round(damage)}`, amount:damage,
+    targetId:move.fractional?target.uid:null,ownerId:attacker.uid,time:.85,total:.85,kind:move.category });
+  if(!move.fractional)b.effects.push({ x:target.x, y:target.y - 15, color:move.color, time:.35, total:.35, style:move.effect });
   b.events.push({ type:'attack', name:attacker.type.name, target:target.type.name, damage, move:move.name });
   if (target.health === 0) {
     target.dead = true;
+    target.cast=null;
     setState(target, 'Hurt');
     b.kills[attacker.team]++;
     b.events.push({ type:'ko', name:target.type.name, by:attacker.type.name });
@@ -303,6 +327,11 @@ function handleCast(b, u, dt, random) {
   cast.elapsed += dt;
   u.vx = 0;
   u.vy = 0;
+  if(move.duration||move.behavior==='ricochet'){
+    handleExtendedCast(b,u,move,dt,random);
+    if(u.cast&&cast.elapsed>=cast.length)finishCast(u,random);
+    return;
+  }
   while (cast.shotsFired<(move.shots||1) && cast.elapsed+1e-6 >= cast.hitAt+cast.shotsFired*(move.shotInterval||0)) {
     cast.shotsFired++;
     cast.fired = true;
@@ -319,9 +348,99 @@ function handleCast(b, u, dt, random) {
     }
   }
   if (cast.elapsed >= cast.length) {
-    u.cast = null;
-    setState(u, 'Idle');
-    u.cooldown = attackInterval(u.stats) / (1+(u.environmentMods?.attackSpeed||0)) * (.88 + random() * .24);
+    finishCast(u,random);
+  }
+}
+function finishCast(u,random){
+  u.cast=null;u.vx=0;u.vy=0;setState(u,'Idle');
+  u.cooldown=attackInterval(u.stats)/(1+(u.environmentMods?.attackSpeed||0))*(.88+random()*.24);
+}
+function finishChannel(cast){
+  if(cast.recoveryAt===undefined){cast.recoveryAt=cast.elapsed;cast.length=cast.elapsed+.16;}
+}
+function beamContact(u,v,cast,move){
+  const dx=Math.cos(cast.angle),dy=Math.sin(cast.angle);
+  const x=v.x-u.x-dx*u.radius,y=v.y-u.y-dy*u.radius,reach=move.range*BOARD.tile;
+  const t=clamp(x*dx+y*dy,0,reach);
+  return Math.hypot(x-t*dx,y-t*dy)<=v.radius+move.beamWidth*BOARD.tile/2;
+}
+function handleExtendedCast(b,u,move,dt,random){
+  const cast=u.cast;
+  if(cast.recoveryAt!==undefined||cast.elapsed<cast.hitAt)return;
+  if(move.behavior==='ricochet'){advanceRicochet(b,u,move,dt,random);return;}
+  const target=b.units.find(v=>v.uid===cast.targetId&&!v.dead);
+  if(move.behavior==='double-jet'){
+    if(!target){finishChannel(cast);return;}
+    cast.angle=Math.atan2(target.y-u.y,target.x-u.x);
+    u.facing=getDirection(target.x-u.x,target.y-u.y);
+  }
+  const active=Math.min(move.duration,cast.elapsed-cast.hitAt);
+  const pulseCount=Math.round(move.duration/move.tickInterval);
+  while(cast.pulses<pulseCount&&active+1e-6>=(cast.pulses+1)*move.tickInterval){
+    cast.pulses++;
+    const pulse={...move,spaCoefficient:move.spaCoefficient/pulseCount,fractional:true};
+    if(move.behavior==='double-jet'){
+      if(!target||target.dead){finishChannel(cast);return;}
+      // Os dois fluxos compartilham UM orçamento de dano por pulso.
+      applyHit(b,u,target,pulse,random);
+      if(target.dead){finishChannel(cast);return;}
+    }else{
+      for(const enemy of b.units){
+        if(enemy.dead||enemy.team===u.team)continue;
+        const inside=move.behavior==='water-spin'
+          ? dist(u,enemy)<=move.areaRadius*BOARD.tile+enemy.radius
+          : beamContact(u,enemy,cast,move);
+        if(inside)applyHit(b,u,enemy,pulse,random);
+      }
+      if(move.behavior==='water-spin')b.effects.push({ownerId:u.uid,x:u.x,y:u.y,radius:move.areaRadius*BOARD.tile,color:move.color,style:'water-wave',time:.4,total:.4});
+    }
+  }
+}
+// Distância de um centro ao segmento; permite recusar trajetórias bloqueadas
+// antes de escolher o próximo ricochete, sem usar dimensões de sprites.
+function segmentDistance(point,a,c){
+  const dx=c.x-a.x,dy=c.y-a.y,length=dx*dx+dy*dy;
+  const t=length?clamp(((point.x-a.x)*dx+(point.y-a.y)*dy)/length,0,1):0;
+  return Math.hypot(point.x-a.x-t*dx,point.y-a.y-t*dy);
+}
+function ricochetDestination(u,target){
+  const distance=dist(u,target)||1,stop=u.radius+target.radius+3;
+  const travel=Math.max(0,distance-stop);
+  return {x:u.x+(target.x-u.x)/distance*travel,y:u.y+(target.y-u.y)/distance*travel};
+}
+function clearRicochetPath(b,u,target){
+  const end=ricochetDestination(u,target),bounds=b.bounds;
+  if(end.x<bounds.minX+u.radius||end.x>bounds.maxX-u.radius||end.y<bounds.minY+u.radius||end.y>bounds.maxY-u.radius)return false;
+  return !b.units.some(v=>v!==u&&v!==target&&!v.dead&&segmentDistance(v,u,end)<u.radius+v.radius+2.9);
+}
+function nextRicochetTarget(b,u,move){
+  return b.units.filter(v=>!v.dead&&v.team!==u.team&&!u.cast.hitIds.includes(v.uid)&&
+    edgeDistance(u,v)<=move.range*BOARD.tile&&clearRicochetPath(b,u,v))
+    .sort((a,c)=>dist(u,a)-dist(u,c)||a.uid.localeCompare(c.uid))[0];
+}
+function advanceRicochet(b,u,move,dt,random){
+  const cast=u.cast;
+  if(cast.elapsed>=cast.hitAt+2.5){finishChannel(cast);cast.length=cast.elapsed+7/30;return;}
+  let target=b.units.find(v=>v.uid===cast.targetId&&!v.dead&&!cast.hitIds.includes(v.uid));
+  if(!target||edgeDistance(u,target)>move.range*BOARD.tile||!clearRicochetPath(b,u,target))target=nextRicochetTarget(b,u,move);
+  if(!target){finishChannel(cast);cast.length=cast.elapsed+7/30;return;}
+  cast.targetId=target.uid;
+  let budget=move.dashSpeed*Math.min(dt,Math.max(0,cast.elapsed-cast.hitAt));
+  while(budget>1e-6){
+    const end=ricochetDestination(u,target),distance=dist(u,end);
+    const step=Math.min(3,budget,distance);
+    if(step>1e-6){
+      const next={x:u.x+(end.x-u.x)/distance*step,y:u.y+(end.y-u.y)/distance*step};
+      if(b.units.some(v=>v!==u&&v!==target&&!v.dead&&dist(next,v)<u.radius+v.radius+2.9)){
+        finishChannel(cast);cast.length=cast.elapsed+7/30;return;
+      }
+      u.facing=getDirection(end.x-u.x,end.y-u.y);u.x=next.x;u.y=next.y;budget-=step;
+    }
+    if(distance>step+1e-6)continue;
+    cast.hitIds.push(target.uid);applyHit(b,u,target,move,random);
+    target=cast.hitIds.length<move.maxTargets?nextRicochetTarget(b,u,move):null;
+    if(!target){finishChannel(cast);cast.length=cast.elapsed+7/30;return;}
+    cast.targetId=target.uid;
   }
 }
 function strikeVines(b,u,move,random){
@@ -358,6 +477,15 @@ function explodePollen(b,owner,p,move,random){
     owner.healingDone+=healing;
     b.floaters.push({x:unit.x,y:unit.y-40,text:`+${Math.round(healing)}`,kind:'heal',time:.85,total:.85});
     b.events.push({type:'heal',name:owner.type.name,target:unit.type.name,healing,move:move.name});
+  }
+}
+function explodeFireball(b,owner,target,move,random){
+  const center={x:target.x,y:target.y},radius=move.areaRadius*BOARD.tile;
+  applyHit(b,owner,target,move,random);
+  b.effects.push({...center,radius,color:move.color,style:'fire-explosion',time:.4,total:.4});
+  for(const enemy of b.units){
+    if(enemy===target||enemy.dead||enemy.team===owner.team||dist(center,enemy)>radius+enemy.radius)continue;
+    applyHit(b,owner,enemy,{...move,spaCoefficient:move.splashCoefficient},random);
   }
 }
 function updateAbilityProjectile(b,p,dt,random){
@@ -435,6 +563,9 @@ function resolveBattle(b,timeout=false) {
   b.ranking=scores.map(s=>s.team);b.phase='finished';
   b.winner=b.lineups.length===2&&Math.abs(scores[0].ratio-scores[1].ratio)<1e-6?null:scores[0].team;
   b.events.push({type:'finish',winner:b.winner,reason:timeout?'timeout':'elimination'});
+  for(const unit of b.units)if(unit.cast?.duration||unit.cast?.behavior==='ricochet'){
+    unit.cast=null;unit.vx=0;unit.vy=0;setState(unit,'Idle');
+  }
 }
 export function updateBattle(b, seconds, random = Math.random) {
   const dt = clamp(seconds, 0, .05);
@@ -513,7 +644,11 @@ export function updateBattle(b, seconds, random = Math.random) {
     if (d < step + target.radius * .75) {
       b.projectiles.splice(i, 1);
       const owner = b.units.find(u => u.uid === p.owner);
-      if (owner) applyHit(b, owner, target, MOVES_BY_ID[p.moveId], random);
+      const move=MOVES_BY_ID[p.moveId];
+      if(owner){
+        if(move.behavior==='fireball')explodeFireball(b,owner,target,move,random);
+        else applyHit(b,owner,target,move,random);
+      }
     } else {
       p.vx = dx / d;
       p.vy = dy / d;

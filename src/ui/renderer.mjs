@@ -76,21 +76,58 @@ export function createSpriteRenderer(ctx, getImageMeta) {
     }
   }
   function drawUnitSprite(type,x,y,stateName,facing,stateTime,castElapsed=0,cast=null) {
+    let shellAlpha=1;
+    if(cast?.behavior==='water-spin'&&stateName===cast.animation){
+      const active=castElapsed-cast.hitAt;
+      shellAlpha=active<0?clamp(castElapsed/Math.max(.01,cast.hitAt),0,1)
+        :active>=cast.duration?clamp(1-(active-cast.duration)/.16,0,1):1;
+      if(shellAlpha<1){
+        ctx.save();ctx.globalAlpha*=1-shellAlpha;
+        drawUnitSprite(type,x,y,'Idle',facing,stateTime);
+        ctx.restore();
+      }
+    }
+    ctx.save();ctx.globalAlpha*=shellAlpha;
     const {image,meta}=getImageMeta(type,stateName);
     if(image?.naturalWidth&&meta&&meta.width>0&&meta.height>0&&image.naturalWidth>=meta.width&&image.naturalHeight>=meta.height){
-      const direction=Math.floor(image.naturalHeight/meta.height)===8?facing:0;
-      const declared=getFrame(meta.durations,cast?castElapsed:stateTime,!cast&&stateName!=='Hurt');
+      let direction=Math.floor(image.naturalHeight/meta.height)===8?facing:0;
+      let declared=getFrame(meta.durations,cast?castElapsed:stateTime,!cast&&stateName!=='Hurt');
+      const specialized=cast&&meta.asset===cast.animation;
+      const active=castElapsed-(cast?.hitAt||0);
+      let visualOffset=0;
+      if(specialized&&cast.animation==='Withdraw'&&cast.behavior==='water-spin'){
+        // Só sprite/efeitos mudam de direção; a unidade e suas barras não giram.
+        if(active>=0&&active<cast.duration){
+          direction=(facing+Math.floor(active*24))%8;
+          declared=1+Math.floor(active*30)%Math.max(1,meta.durations.length-1);
+          visualOffset=Math.sin(active*TAU*8)*1.2;
+        }else declared=0;
+      }
+      if(specialized&&cast.animation==='Charge'&&cast.behavior==='flamethrower'&&active>=0){
+        declared=active<cast.duration?5+Math.floor(active*18)%4:9;
+      }
+      if(specialized&&cast.animation==='Shoot'&&cast.behavior==='double-jet'&&active>=0){
+        const recovery=cast.recoveryAt??cast.hitAt+cast.duration;
+        declared=castElapsed<recovery?2:3+getFrame(meta.durations.slice(3),castElapsed-recovery,false);
+      }
+      if(specialized&&cast.animation==='Ricochet'&&cast.behavior==='ricochet'&&active>=0){
+        declared=cast.recoveryAt===undefined?6+Math.floor(active*30)%4
+          :10+getFrame(meta.durations.slice(10),castElapsed-cast.recoveryAt,false);
+      }
       // Validar dimensões reais da folha: metadados incompatíveis jamais
       // recortam o frame vizinho e o exibem como outro Pokémon.
       const columns=Math.floor(image.naturalWidth/meta.width);
       const frame=clamp(declared,0,Math.max(0,columns-1));
       const scale=unitScale(type);
       const hover=floaters.has(type.name)?9:0;
-      const footY=y+3-hover;
-      const anchor=stableFoot(type,stateName,direction,meta);
+      const footY=y+3-hover+visualOffset;
+      const normalizedShell=specialized&&cast.animation==='Ricochet'&&cast.behavior==='ricochet';
+      const bounds=normalizedShell?visibleFrameBounds(type,stateName,frame,direction):null;
+      const anchor=bounds?.bottom??stableFoot(type,stateName,direction,meta);
+      const center=bounds?(bounds.left+bounds.right)/2:meta.width/2;
       ctx.imageSmoothingEnabled=false;
       ctx.drawImage(image,frame*meta.width,direction*meta.height,meta.width,meta.height,
-        Math.round(x-meta.width*scale/2),Math.round(footY-anchor*scale),
+        Math.round(x-center*scale),Math.round(footY-anchor*scale),
         Math.round(meta.width*scale),Math.round(meta.height*scale));
       ctx.imageSmoothingEnabled=true;
     } else {
@@ -98,6 +135,27 @@ export function createSpriteRenderer(ctx, getImageMeta) {
       ctx.fillStyle='#17331f';ctx.font='bold 10px system-ui';ctx.textAlign='center';
       ctx.fillText(type.name.slice(0,3).toUpperCase(),x,y);
     }
+    ctx.restore();
   }
-  return {visibleFrameBounds,unitScale,groundShadow,drawUnitSprite};
+  function castEmitters(unit){
+    const {type,facing,x,y}=unit,cast=unit.cast;
+    const action=cast?.animation||'Idle';
+    const {meta}=getImageMeta(type,action),scale=unitScale(type);
+    // Pontos na folha Shoot do Blastoise, frame 2, por direção PMD.
+    // Aplicar a MESMA escala e âncora usadas para desenhar esse frame.
+    if(cast?.behavior==='double-jet'&&meta?.asset==='Shoot'&&type.id==='0009'){
+      const cannons=[[[14,26],[32,26]],[[17,24],[32,20]],[[22,22],[33,19]],[[22,16],[33,19]],
+        [[14,14],[33,14]],[[15,19],[26,16]],[[15,19],[26,22]],[[16,20],[31,24]]][facing];
+      const anchor=stableFoot(type,action,facing,meta);
+      return cannons.map(([cx,cy])=>({x:x+(cx-meta.width/2)*scale,y:y+3+(cy-anchor)*scale}));
+    }
+    if(cast?.behavior==='flamethrower'&&meta?.asset==='Charge'&&type.id==='0006'){
+      const mouths=[[24,21],[33,24],[38,24],[34,19],[24,14],[14,19],[10,24],[15,24]];
+      const [mx,my]=mouths[facing],anchor=stableFoot(type,action,facing,meta);
+      return [{x:x+(mx-meta.width/2)*scale,y:y+3+(my-anchor)*scale}];
+    }
+    const angle=cast?.angle||0,dx=Math.cos(angle),dy=Math.sin(angle);
+    return [{x:x+dx*12,y:y-24+dy*6}];
+  }
+  return {visibleFrameBounds,unitScale,groundShadow,drawUnitSprite,castEmitters};
 }
