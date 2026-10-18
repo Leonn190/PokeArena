@@ -105,12 +105,16 @@ function finishCombat(match,combat,random) {
   const battle=combat.battle,kind=battleKind(match.round),special=kind==='quadruple',pve=['pve','legendary'].includes(kind);
   const winner=battle.winner,survivors=battle.units.filter(u=>!u.dead&&u.team===winner);
   combat.status='finished';combat.result={winnerId:combat.members[winner]?.id||null,damage:0,survivors:survivors.length,ranking:battle.ranking.map(t=>combat.members[t].id),outcomes:{}};
+  const reports=combat.members.map((member,team)=>({playerId:member.id,name:member.name||'PvE',round:match.round,
+    units:battle.units.filter(u=>u.team===team).map(u=>({instanceId:u.uid,speciesId:u.type.id,damage:u.damageDealt,
+      damagePhysical:u.damagePhysical,damageSpecial:u.damageSpecial,mitigatedPhysical:u.mitigatedPhysical,
+      mitigatedSpecial:u.mitigatedSpecial,healingDone:u.healingDone,health:u.health,maxHealth:u.maxHealth,energy:u.energy,maxEnergy:u.maxEnergy}))}));
   for(const [team,member] of combat.members.entries()){
     if(member.clone||member.pve)continue;
     const player=findPlayer(match,member.id),place=battle.ranking.indexOf(team)+1;
     const result=special?(place===1?'win':place===combat.members.length?'loss':'neutral'):winner===null?'neutral':winner===team?'win':'loss';
     const damage=pve?0:special?placementDamage(match.round,place,match.roomModifier):result==='loss'?defeatDamage(match.round,survivors,match.roomModifier):0;
-    player.lastRoundDamage={round:match.round,units:battle.units.filter(u=>u.team===team).map(u=>({instanceId:u.uid,speciesId:u.type.id,damage:u.damageDealt}))};
+    player.lastRoundDamage={...reports[team],opponents:reports.filter((_,index)=>index!==team)};
     if(kind==='gold')player.gold+=(result==='win'?3:0)+battle.units.filter(u=>u.team===team&&!u.dead).length;
     if(pve&&result==='win')grantLocalLoot(match,player,kind==='legendary'?4:match.chapter+PVE_DIFFICULTIES[player.pveDifficulty].points,random,kind==='legendary');
     recordLocalResult(match,player,result,damage,special?place:null);

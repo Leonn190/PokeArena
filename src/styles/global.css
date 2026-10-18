@@ -430,25 +430,6 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .type-tooltip-heading strong{margin-left:auto;font-size:20px}
 .type-tooltip-heading small{font-size:9px;color:#c4d8c9}
 .type-tooltip p{font-size:11px;line-height:1.65;color:#dce9d9;margin:10px 0 0}
-.damage-panel{position:absolute;z-index:3;right:254px;top:84px;display:flex;align-items:flex-start;flex-direction:row-reverse;gap:5px;max-height:calc(100dvh - 270px)}
-#toggle-damage{display:flex;align-items:center;gap:6px;padding:9px 8px;color:#ffe6a6;border:1px solid #bda66c75;border-radius:7px;background:linear-gradient(#2c4035,#14221d);font-size:11px;box-shadow:0 5px 20px #0005}
-#damage-content{width:220px;padding:12px;border:1px solid #bda66c75;border-radius:9px;background:linear-gradient(150deg,#213b30f5,#0d1c19f2);box-shadow:0 12px 35px #0006;max-height:calc(100dvh - 270px);overflow-y:auto}
-.damage-heading{display:flex;flex-direction:column;gap:4px;padding-bottom:10px;margin-bottom:8px;border-bottom:1px solid #ffffff21}
-.damage-heading b{font-size:13px;color:#ffe6a6}.damage-heading small{font-size:10px;color:#b4cbbb}
-#damage-ranking{font-size:11px;color:#b4cbbb;line-height:1.5}
-.damage-row{display:grid;grid-template-columns:14px 34px minmax(0,1fr);align-items:center;gap:5px;padding:6px 0}
-.damage-position{font-size:10px;color:#bda66c}.damage-row canvas{width:34px;height:34px}
-.damage-name{display:flex;justify-content:space-between;gap:6px;align-items:center;font-size:10px;color:#e7efdd}
-.damage-name b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.damage-name strong{color:#ffe6a6;font-variant-numeric:tabular-nums}
-.damage-bar{display:block;height:5px;margin-top:6px;background:#ffffff12;border-radius:3px;overflow:hidden}.damage-bar i{display:block;height:100%;border-radius:3px}
-@media(max-width:720px){
-  .damage-panel{top:61px;right:182px}
-  #toggle-damage{padding:7px 6px;font-size:10px}#toggle-damage>span:first-of-type{display:none}
-  #damage-content{width:min(195px,calc(100vw - 226px));min-width:110px;padding:8px;max-height:calc(100dvh - 190px)}
-  .damage-row{grid-template-columns:10px 24px minmax(0,1fr);gap:3px}.damage-row canvas{width:24px;height:24px}
-  .damage-name{flex-wrap:wrap;gap:1px}.damage-heading b{font-size:11px}
-}
-@media(max-width:510px){.damage-panel{top:104px}}
 
 /* =======================================================================
    PokeArena: partida, lobby e HUD inspirados em auto battlers (13/10/2026)
@@ -680,3 +661,42 @@ button:focus-visible,canvas:focus-visible{outline:3px solid #f9e06d;outline-offs
 .side-hud .attack-actions button{min-height:26px;font-size:10px;padding:3px 8px}
 .side-hud .attack-actions small{font-size:9px;color:#b5cba9}
 @media(max-width:700px){.game-shell[data-mode="local"] .side-hud{width:200px;max-width:200px;max-height:calc(100dvh - 175px);padding:7px;left:7px}.side-hud .stat-title{font-size:9px;gap:3px}.side-hud .stat-title svg{width:13px;height:13px}}
+
+/* Ranking e relatório compartilham o mesmo espaço no HUD. */
+.match-panel{width:280px;padding:0;overflow:hidden;background:linear-gradient(145deg,#18362ef5,#091b1af5);border-color:#c6ad7070;max-height:calc(100dvh - 260px)}
+.match-panel.comparing{width:min(566px,calc(100vw - 24px))}
+.report-top-tabs{display:flex;justify-content:center;gap:8px;padding:8px;border-bottom:1px solid #d8c18b35;background:#071b1b80}
+.report-top-tabs button,.report-bottom button{display:grid;place-items:center;width:38px;height:32px;padding:5px;border:1px solid transparent;border-radius:5px;color:#9fbdb0;background:transparent;font-size:19px}
+.report-top-tabs svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round;stroke-linecap:round}
+.report-top-tabs button[aria-pressed="true"],.report-bottom button[aria-pressed="true"]{background:linear-gradient(#43604a,#253f32);border-color:#d6bb73;color:#ffe8ac;box-shadow:inset 0 0 12px #e6c56d12}
+.report-top-tabs button:hover,.report-bottom button:hover{color:#ffe8ac;background:#385244}
+#players-content{padding:14px;max-height:calc(100dvh - 312px);overflow-y:auto}
+.combat-report{display:flex;flex-direction:column;min-height:min(350px,calc(100dvh - 320px));max-height:calc(100dvh - 312px)}
+.report-columns{display:flex;min-height:0;flex:1;overflow:hidden}
+.report-team{flex:1;min-width:0;padding:12px;display:flex;flex-direction:column}
+#enemy-content{border-left:1px solid #c6ad7040;background:#122a2c80}
+.damage-heading{display:flex;flex-direction:column;gap:5px;min-height:69px;padding-bottom:10px;border-bottom:1px solid #ffffff1c}
+.damage-heading b{font-size:14px;color:#ffe6a6}.damage-heading small,.damage-heading>span{font-size:10px;color:#b4cbbb}
+.report-rows{overflow-y:auto;min-height:0;padding-top:7px;font-size:11px;color:#b4cbbb;line-height:1.5;scrollbar-width:thin}
+.damage-row{display:grid;grid-template-columns:12px 40px minmax(0,1fr);align-items:center;gap:6px;padding:9px 0;border-bottom:1px solid #ffffff08}
+.damage-position{font-size:10px;color:#bda66c}.damage-row canvas{width:40px;height:40px;image-rendering:pixelated}
+.damage-name{display:flex;justify-content:space-between;gap:6px;align-items:center;font-size:11px;color:#e7efdd}
+.damage-name b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.damage-name strong{color:#ffe6a6;font-size:10px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.damage-bar{display:flex;height:8px;margin-top:5px;background:#ffffff12;border-radius:2px;overflow:hidden}
+.damage-bar i{display:block;height:100%;flex-shrink:0;transition:width .2s}
+.fill-physical{background:#f39a43}.fill-special{background:#b67afa}.fill-armor{background:#f1d15d}.fill-resistance{background:#55a8ef}.fill-healing,.fill-health{background:#62d99b}.fill-energy{background:#55b9f2}
+.report-legend{display:flex;justify-content:center;gap:12px;font-size:10px;color:#c2d2c5;padding:8px 4px}
+.report-legend span::before{content:'';display:inline-block;width:7px;height:7px;margin-right:4px;border-radius:1px;background:var(--legend)}
+.legend-physical{--legend:#f39a43}.legend-special{--legend:#b67afa}.legend-armor{--legend:#f1d15d}.legend-resistance{--legend:#55a8ef}.legend-health,.legend-healing{--legend:#62d99b}.legend-energy{--legend:#55b9f2}
+.report-bottom{display:flex;align-items:center;justify-content:space-between;padding:8px;border-top:1px solid #c6ad7040;background:#071b1b80}
+.report-metrics{display:flex;gap:5px}.report-bottom #toggle-enemy{border-color:#b6caac40}
+.enemy-picker{display:flex;align-items:center;gap:5px;color:#b4cbbb;font-size:10px}
+.enemy-picker select{min-width:0;max-width:100%;width:100%;color:#e7efdd;background:#102b24;border:1px solid #b6caac40;border-radius:4px;padding:4px;font:inherit}
+@media(max-width:720px){
+  .match-panel{width:240px;right:8px;top:61px;max-height:calc(100dvh - 195px)}
+  .match-panel.comparing{width:min(488px,calc(100vw - 16px))}
+  .combat-report,#players-content{max-height:calc(100dvh - 245px)}
+  .report-team{padding:8px}.damage-row{grid-template-columns:10px 30px minmax(0,1fr);gap:4px}.damage-row canvas{width:30px;height:30px}
+  .damage-name{flex-wrap:wrap;gap:1px}.damage-heading b{font-size:12px}
+}
+@media(max-width:510px){.match-panel{top:104px;max-height:calc(100dvh - 285px)}.combat-report,#players-content{max-height:calc(100dvh - 337px)}.report-team{padding:6px}.damage-row{grid-template-columns:26px minmax(0,1fr)}.damage-position{display:none}.damage-row canvas{width:26px;height:26px}.damage-name{font-size:10px}}

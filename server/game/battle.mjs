@@ -77,11 +77,18 @@ export function typeMultiplier(attackType, defendingTypes) {
     return mult*(relation===2 ? 1.25 : (relation===.5||relation===0) ? .8 : 1);
   },1);
 }
-export function physicalOrSpecialDamage(attacker, defender, kind, random = Math.random, baseDamage = 30, attackType = 'Normal', scaledByAttribute = false) {
+function damageBreakdown(attacker, defender, kind, random, baseDamage, attackType, scaledByAttribute) {
   const a = attacker.stats[kind === 'atk' ? 'atk' : 'spa'];
   const d = defender.stats[kind === 'atk' ? 'def' : 'spd'];
   const multiplier = typeMultiplier(attackType, defender.type.types) * (1+(attacker.environmentMods?.damage||0));
-  return Math.max(1, Math.round(baseDamage * (scaledByAttribute?1:(.62 + a / 105)) * (100 / (80 + d)) * multiplier * (.92 + random() * .16)));
+  const power=baseDamage * (scaledByAttribute?1:(.62 + a / 105));
+  const roll=.92 + random() * .16;
+  const damage=Math.max(1,Math.round(power*(100/(80+d))*multiplier*roll));
+  // Compara a mesma rolagem com defesa zero; não conta excesso de dano como mitigação.
+  return {damage,mitigated:Math.max(0,Math.round(power*(100/80)*multiplier*roll)-damage)};
+}
+export function physicalOrSpecialDamage(attacker, defender, kind, random = Math.random, baseDamage = 30, attackType = 'Normal', scaledByAttribute = false) {
+  return damageBreakdown(attacker,defender,kind,random,baseDamage,attackType,scaledByAttribute).damage;
 }
 export function normalizeEntry(entry, team) {
   const speciesId = entry.speciesId ?? entry.id;
@@ -145,6 +152,11 @@ function makeUnits(lineups,environment=[{},{}]) {
       row: entry.row,
       health: hp,
       damageDealt: 0,
+      damagePhysical: 0,
+      damageSpecial: 0,
+      mitigatedPhysical: 0,
+      mitigatedSpecial: 0,
+      healingDone: 0,
       maxHealth: hp,
       dead: false,
       vx: 0,
@@ -268,8 +280,10 @@ function applyHit(b, attacker, target, move, random) {
   const coefficient=move.category==='atk'?move.atkCoefficient:move.spaCoefficient;
   const scaled=coefficient!==undefined;
   const base=scaled?attacker.stats[move.category]*coefficient:move.damage;
-  const damage = physicalOrSpecialDamage(attacker, target, move.category, random, base, move.type, scaled);
+  const {damage,mitigated} = damageBreakdown(attacker, target, move.category, random, base, move.type, scaled);
   attacker.damageDealt += Math.min(target.health,damage);
+  attacker[move.category==='atk'?'damagePhysical':'damageSpecial']+=Math.min(target.health,damage);
+  target[move.category==='atk'?'mitigatedPhysical':'mitigatedSpecial']+=mitigated;
   target.health = Math.max(0, target.health - damage);
   target.hitFlash = .20;
   target.hurtTime = .16;
@@ -341,6 +355,7 @@ function explodePollen(b,owner,p,move,random){
     const healing=Math.min(unit.maxHealth-unit.health,owner.stats.spa*move.healCoefficient);
     if(healing<=0)continue;
     unit.health+=healing;
+    owner.healingDone+=healing;
     b.floaters.push({x:unit.x,y:unit.y-40,text:`+${Math.round(healing)}`,kind:'heal',time:.85,total:.85});
     b.events.push({type:'heal',name:owner.type.name,target:unit.type.name,healing,move:move.name});
   }

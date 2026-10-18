@@ -113,9 +113,7 @@ function startMatch() {
   evolutionEffects.length=0;
   summonEffects.length=0;
   damageSignature='';
-  $('damage-content').hidden=true;
-  $('toggle-damage').setAttribute('aria-expanded','false');
-  $('damage-chevron').textContent='‹';
+  combatPanel=false;reportMetric='status';enemyPanel=false;enemyReportId=null;
   returnAnimation=null;
   lastReturnedBattle=null;
   $('entry-screen').hidden=true;
@@ -687,22 +685,95 @@ function drawAvatarAndLoot(){
   }
 }
 let damageSignature='';
+let combatPanel=false,reportMetric='status',enemyPanel=false,enemyReportId=null;
+const REPORT_METRICS={
+  status:{title:'Status dos Pokémon',legend:[['Vida','health'],['Mana / energia','energy']]},
+  damage:{title:'Dano causado',fields:['damagePhysical','damageSpecial'],legend:[['Físico','physical'],['Especial','special']]},
+  mitigated:{title:'Dano mitigado',fields:['mitigatedPhysical','mitigatedSpecial'],legend:[['Físico','armor'],['Especial','resistance']]},
+  healing:{title:'Cura realizada',fields:['healingDone'],legend:[['Cura efetiva','healing']]}
+};
+function combatReports(){
+  const player=observedParticipant(),combat=observedCombat(),battle=displayedBattle();
+  if(battle&&combat){
+    const reports=combat.members.map((member,team)=>({playerId:member.id,name:member.name||'PvE',round:localMatch.round,
+      units:battle.units.filter(u=>u.team===team).map(u=>({instanceId:u.uid,speciesId:u.type.id,health:u.health,maxHealth:u.maxHealth,
+        energy:u.energy,maxEnergy:u.maxEnergy,damagePhysical:u.damagePhysical,damageSpecial:u.damageSpecial,
+        mitigatedPhysical:u.mitigatedPhysical,mitigatedSpecial:u.mitigatedSpecial,healingDone:u.healingDone}))}));
+    return {own:reports.find(r=>r.playerId===observedId),enemies:reports.filter(r=>r.playerId!==observedId),live:localMatch.phase==='combat'};
+  }
+  const last=player?.lastRoundDamage;
+  const units=reportMetric==='status'?(player?.board||[]).map(mon=>{
+    const species=BY_ID[mon.speciesId],stats=effectiveUnitStats(species,mon);
+    const health=Math.round(maxHealth(applyStructureStats(stats,structureModifiers([{structures:player.structures||[]}],{type:species,...tilePosition(mon.col,mon.row)})),mon.pveModifiers?.hp||1));
+    return {instanceId:mon.instanceId,speciesId:mon.speciesId,health,maxHealth:health,energy:0,maxEnergy:equippedAbility(mon.speciesId,mon).energyCost};
+  }):last?.units||[];
+  // Preserva os adversários da última fase, inclusive clones e PvE.
+  const enemies=last?.opponents||[];
+  return {own:{units,name:player?.name||'Você',round:reportMetric==='status'?localMatch?.round:last?.round},enemies,live:false};
+}
 function renderDamageRanking() {
-  $('damage-panel').hidden=!localMatch;
-  const report=humanParticipant()?.lastRoundDamage;
-  const signature=JSON.stringify(report||null);
+  $('players-content').hidden=combatPanel;
+  $('damage-panel').hidden=!localMatch||!combatPanel;
+  $('match-panel').classList.toggle('comparing',combatPanel&&enemyPanel);
+  $('show-players').setAttribute('aria-pressed',String(!combatPanel));
+  $('show-combat').setAttribute('aria-pressed',String(combatPanel));
+  if(!localMatch||!combatPanel)return;
+  const reports=combatReports(),metric=REPORT_METRICS[reportMetric];
+  const signature=JSON.stringify([reports,reportMetric,enemyPanel,enemyReportId,localMatch.phase]);
   if(signature===damageSignature)return;
   damageSignature=signature;
-  $('damage-round').textContent=report?`Fase ${chapterForBattle(report.round)}-${stageForBattle(report.round)}`:'Última fase';
-  const rows=(report?.units||[]).slice().sort((a,b)=>b.damage-a.damage);
-  const peak=Math.max(1,...rows.map(row=>row.damage));
-  $('damage-ranking').replaceChildren();
-  if(!rows.length){$('damage-ranking').textContent=report?'Sem dano nesta fase.':'Conclua uma fase para ver o dano.';return;}
+  $('damage-title').textContent=metric.title;
+  const round=reports.own?.round;
+  const moment=reports.live?'Ao vivo':localMatch.phase==='intro'?'Entrada':reportMetric==='status'&&localMatch.phase==='preparation'?'Preparação':'Resultado';
+  $('damage-round').textContent=round?`Fase ${chapterForBattle(round)}-${stageForBattle(round)} · ${moment}`:'Aguardando combate';
+  $('damage-team').textContent=observedId===localMatch.ownerId?'Sua equipe':reports.own?.name;
+  $('enemy-content').hidden=!enemyPanel;
+  $('toggle-enemy').setAttribute('aria-expanded',String(enemyPanel));
+  $('toggle-enemy').setAttribute('aria-label',enemyPanel?'Fechar painel inimigo':'Mostrar painel inimigo');
+  $('toggle-enemy').textContent=enemyPanel?'‹':'›';
+  document.querySelectorAll('[data-report]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.report===reportMetric)));
+  $('report-legend').replaceChildren(...metric.legend.map(([label,color])=>{const span=document.createElement('span');span.className=`legend-${color}`;span.textContent=label;return span;}));
+  const enemy=reports.enemies.find(r=>r.playerId===enemyReportId)||reports.enemies[0];
+  $('enemy-round').textContent=enemy?`Fase ${chapterForBattle(enemy.round)}-${stageForBattle(enemy.round)} · ${displayedBattle()?moment:'Resultado'}`:'Aguardando adversário';
+  const enemyOptions=JSON.stringify(reports.enemies.map(report=>[report.playerId,report.name]));
+  if($('enemy-team').dataset.options!==enemyOptions){
+    $('enemy-team').replaceChildren(...reports.enemies.map(report=>{const option=document.createElement('option');option.value=report.playerId;option.textContent=report.name;return option;}));
+    $('enemy-team').dataset.options=enemyOptions;
+  }
+  $('enemy-team').value=enemy?.playerId||'';
+  $('enemy-team').title=!displayedBattle()?'Adversários da última fase; status ao fim do combate':'Adversários do combate atual';
+  const value=row=>metric.fields?.reduce((sum,key)=>sum+(row[key]||0),0)||0;
+  const peak=Math.max(1,...[...(reports.own?.units||[]),...(enemyPanel?enemy?.units||[]:[])].map(value));
+  renderReportRows($('damage-ranking'),reports.own?.units||[],metric,peak);
+  if(enemyPanel)renderReportRows($('enemy-ranking'),enemy?.units||[],metric,peak);
+}
+function renderReportRows(container,units,metric,peak){
+  const value=row=>metric.fields?.reduce((sum,key)=>sum+(row[key]||0),0)||0;
+  const rows=units.slice().sort((a,b)=>value(b)-value(a));
+  container.replaceChildren();
+  if(!rows.length){container.textContent='Nenhum Pokémon registrado. Os dados aparecem ao combater.';return;}
+  const number=value=>Math.round(value||0).toLocaleString('pt-BR');
+  function bar(parts,total,label){
+    const element=document.createElement('span');element.className='damage-bar';element.setAttribute('role','img');element.setAttribute('aria-label',label);element.title=label;
+    parts.forEach(([amount,color])=>{const fill=document.createElement('i');fill.className=`fill-${color}`;fill.style.width=`${clamp(amount/Math.max(1,total)*100,0,100)}%`;element.append(fill);});
+    return element;
+  }
   for(const [index,row] of rows.entries()) {
     const species=BY_ID[row.speciesId];if(!species)continue;
     const item=document.createElement('div');item.className='damage-row';
-    item.innerHTML=`<span class="damage-position">${index+1}</span><canvas width="40" height="40" aria-hidden="true"></canvas><div><div class="damage-name"><b>${species.name}</b><strong>${Math.round(row.damage).toLocaleString('pt-BR')}</strong></div><span class="damage-bar"><i style="width:${row.damage/peak*100}%;background:${RARITY_COLORS[species.rarity]}"></i></span></div>`;
-    $('damage-ranking').append(item);drawPortrait(item.querySelector('canvas'),species);
+    const position=document.createElement('span');position.className='damage-position';position.textContent=index+1;
+    const portrait=document.createElement('canvas');portrait.width=40;portrait.height=40;portrait.setAttribute('aria-hidden','true');
+    const content=document.createElement('div'),heading=document.createElement('div');heading.className='damage-name';
+    const name=document.createElement('b'),amount=document.createElement('strong');name.textContent=species.name;
+    amount.textContent=reportMetric==='status'?`${number(row.health)} / ${number(row.maxHealth)}`:number(value(row));
+    heading.append(name,amount);content.append(heading);
+    if(reportMetric==='status'){
+      content.append(bar([[row.health,'health']],row.maxHealth,`Vida: ${number(row.health)} de ${number(row.maxHealth)}`),bar([[row.energy,'energy']],row.maxEnergy,`Mana / energia: ${number(row.energy)} de ${number(row.maxEnergy)}`));
+    }else{
+      const label=metric.legend.map(([text],i)=>`${text}: ${number(row[metric.fields[i]])}`).join(' · ');
+      content.append(bar(metric.fields.map((key,i)=>[row[key]||0,metric.legend[i][1]]),peak,label));
+    }
+    item.append(position,portrait,content);container.append(item);drawPortrait(portrait,species);
   }
 }
 function hideTypeTooltip() { $('type-tooltip').hidden=true; }
@@ -1430,11 +1501,11 @@ $('pve-difficulty').addEventListener('change',()=>{if(localMatch)selectPveDiffic
 $('return-menu').addEventListener('click',openMenu);
 $('again').addEventListener('click',openMenu);
 $('back-own-arena').addEventListener('click',()=>observePlayer(localMatch?.ownerId));
-$('toggle-damage').addEventListener('click',()=>{
-  const content=$('damage-content');content.hidden=!content.hidden;
-  $('toggle-damage').setAttribute('aria-expanded',String(!content.hidden));
-  $('damage-chevron').textContent=content.hidden?'‹':'›';
-});
+$('show-players').addEventListener('click',()=>{combatPanel=false;renderDamageRanking();});
+$('show-combat').addEventListener('click',()=>{combatPanel=true;damageSignature='';renderDamageRanking();});
+document.querySelectorAll('[data-report]').forEach(button=>button.addEventListener('click',()=>{reportMetric=button.dataset.report;renderDamageRanking();}));
+$('toggle-enemy').addEventListener('click',()=>{enemyPanel=!enemyPanel;renderDamageRanking();});
+$('enemy-team').addEventListener('change',()=>{enemyReportId=$('enemy-team').value;renderDamageRanking();});
 $('reroll-shop').addEventListener('click',()=>{
   if(!canManage())return;
   if(!refreshLocalShop(localMatch,humanParticipant(),Math.random,true))showToast('Reroll indisponível.');

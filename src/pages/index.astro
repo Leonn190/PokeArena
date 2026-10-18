@@ -46,15 +46,39 @@ const base = import.meta.env.BASE_URL;
       <div class="phase-progress" role="progressbar" aria-label="Tempo restante da etapa" aria-valuemin="0" aria-valuemax="100" id="phase-progress"><i id="phase-progress-fill"></i></div>
     </section>
 
-    <aside id="damage-panel" class="damage-panel" hidden aria-label="Dano dos seus Pokémon na última fase">
-      <button id="toggle-damage" type="button" aria-expanded="false" aria-controls="damage-content">⚔ <span>Dano</span><span id="damage-chevron">‹</span></button>
-      <div id="damage-content" hidden><div class="damage-heading"><b>Dano causado</b><small id="damage-round">Última fase</small></div><div id="damage-ranking"></div></div>
-    </aside>
     <aside id="match-panel" class="match-panel" hidden aria-label="Participantes da partida local">
+      <div class="report-top-tabs" role="group" aria-label="Painel lateral">
+        <button id="show-players" type="button" aria-label="Ranking dos jogadores" title="Ranking dos jogadores" aria-pressed="true" aria-controls="players-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8v5a4 4 0 0 1-8 0V3ZM8 5H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 1v6m-5 3h10m-8-3h6"/></svg></button>
+        <button id="show-combat" type="button" aria-label="Estatísticas de combate" title="Estatísticas de combate" aria-pressed="false" aria-controls="damage-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10h4v10m2 0V4h4v16m2 0v-7h4v7M2 20h20"/></svg></button>
+      </div>
+      <div id="players-content">
       <div class="match-panel-heading"><div><b>Participantes</b><small id="observed-label">Sua arena</small></div><small id="match-id-label">Offline</small></div>
       <div id="match-players" class="match-players"></div>
       <button id="back-own-arena" class="back-own-arena" type="button" hidden>Voltar à minha arena</button>
       <p class="match-pending" id="match-panel-note">Partida local com bots.</p>
+      </div>
+      <section id="damage-panel" class="combat-report" hidden aria-label="Estatísticas dos Pokémon">
+        <div class="report-columns">
+          <div id="damage-content" class="report-team">
+            <div class="damage-heading"><b id="damage-title">Status dos Pokémon</b><small id="damage-round"></small><span id="damage-team"></span></div>
+            <div id="damage-ranking" class="report-rows"></div>
+          </div>
+          <div id="enemy-content" class="report-team" hidden>
+            <div class="damage-heading"><b>Inimigo</b><small id="enemy-round"></small><label class="enemy-picker">Equipe <select id="enemy-team" aria-label="Equipe inimiga"></select></label></div>
+            <div id="enemy-ranking" class="report-rows"></div>
+          </div>
+        </div>
+        <div id="report-legend" class="report-legend"></div>
+        <div class="report-bottom">
+          <div class="report-metrics" role="group" aria-label="Visualização de combate">
+            <button type="button" data-report="status" aria-pressed="true" aria-label="Status dos Pokémon" title="Status dos Pokémon">♥</button>
+            <button type="button" data-report="damage" aria-pressed="false" aria-label="Dano causado" title="Dano causado">⚔</button>
+            <button type="button" data-report="mitigated" aria-pressed="false" aria-label="Dano mitigado" title="Dano mitigado">⛨</button>
+            <button type="button" data-report="healing" aria-pressed="false" aria-label="Cura realizada" title="Cura realizada">✚</button>
+          </div>
+          <button id="toggle-enemy" type="button" aria-label="Mostrar painel inimigo" title="Comparar com o inimigo" aria-expanded="false" aria-controls="enemy-content">›</button>
+        </div>
+      </section>
     </aside>
 
     <aside id="environment-panel" class="environment-panel" hidden aria-label="Tipos e vantagens do campo">
