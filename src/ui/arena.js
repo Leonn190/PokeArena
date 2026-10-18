@@ -1276,8 +1276,9 @@ function drawBattleUnit(u) {
   const celebratoryCast=!!target&&u.team===observedCombat()?.battle?.winner&&resultTime<1.03;
   const resultAnimation=celebratoryCast
     ? chooseMoveAnimation(resolvedMoves(u.type.id,u)[0],u.type.sprites) : 'Idle';
-  const sustained=!!(u.cast?.duration||u.cast?.behavior==='ricochet');
-  const gotHit=u.hurtTime>0&&!intro&&!result&&!sustained;
+  // Um acerto mantém o brilho, mas não esconde Kick/Shoot nem reinicia a
+  // apresentação de uma habilidade que já está sendo executada.
+  const gotHit=u.hurtTime>0&&!intro&&!result&&!u.cast;
   const state=intro?'Idle':result?resultAnimation:gotHit?'Hurt':u.state;
   const facing=intro?(u.team===0?Math.round(progress*4):0)
     :result?(celebratoryCast?getDirection(target.x-u.x,target.y-u.y):0):u.facing;

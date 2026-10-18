@@ -4,13 +4,17 @@ import { POKEMON_ATTACK_OVERRIDES, DEFAULT_POKEMON_REGULAR, POKEMON_ABILITY_OVER
 import { BY_ID, EVOLUTION_OPTIONS } from './pokemon.mjs';
 export const MOVES = ATTACKS;
 export const MOVES_BY_ID = Object.freeze(Object.fromEntries(MOVES.map(move=>[move.id,move])));
+// Tolerância numérica em pixels do mundo, compartilhada pela IA e pelo combate.
+export const RANGE_EPSILON = 1e-4;
 const rangedTypes = new Set(['Elétrico','Água','Fogo','Grama','Gelo','Psíquico','Fantasma','Fada','Dragão','Voador']);
 const ancestorsBySpecies=Object.create(null);
 for(const [id,next] of Object.entries(EVOLUTION_OPTIONS)){
   for(const child of next)(ancestorsBySpecies[child]??=[]).push(id);
 }
 const abilityOptions=Object.create(null);
+const speciesKey=id=>String(id??'').padStart(4,'0');
 export function regularForPokemon(speciesId) {
+  speciesId=speciesKey(speciesId);
   const override=POKEMON_ATTACK_OVERRIDES[speciesId]?.regular;
   if(MOVES_BY_ID[override]?.kind==='regular')return override;
   const p=BY_ID[speciesId];
@@ -20,7 +24,13 @@ export function regularForPokemon(speciesId) {
   return special?(ranged?'tiro-energia':'energia'):(ranged?'disparo':'tapa');
 }
 export function abilityForPokemon(speciesId) {
-  return POKEMON_ABILITY_OVERRIDES[speciesId]??DEFAULT_POKEMON_ABILITY??{
+  speciesId=speciesKey(speciesId);
+  const configured=POKEMON_ABILITY_OVERRIDES[speciesId];
+  if(MOVES_BY_ID[configured]?.kind==='charged')return configured;
+  // Os exclusivos usam o ID da espécie no catálogo. Um cadastro de default
+  // ausente não pode convertê-los silenciosamente em um carregado genérico.
+  if(MOVES_BY_ID[speciesId]?.kind==='charged')return speciesId;
+  return DEFAULT_POKEMON_ABILITY??{
     disparo:'disparo-carregado',tapa:'tapa-carregado',energia:'energia-carregada',
     'tiro-energia':'tiro-energia-carregado'
   }[regularForPokemon(speciesId)]??'tapa-carregado';
@@ -30,6 +40,7 @@ export function initialLoadout(speciesId) {
 }
 // Apenas ancestrais da forma atual: evoluções futuras e ramos irmãos não entram.
 export function availableAbilities(speciesId, visited=new Set()) {
+  speciesId=speciesKey(speciesId);
   if(abilityOptions[speciesId])return abilityOptions[speciesId];
   if(visited.has(speciesId))return [];
   visited.add(speciesId);
@@ -37,7 +48,9 @@ export function availableAbilities(speciesId, visited=new Set()) {
   return abilityOptions[speciesId]=Object.freeze([...new Set([abilityForPokemon(speciesId),...ancestors.flatMap(id=>availableAbilities(id,visited))])]);
 }
 export function equippedAbility(speciesId,entry={}) {
-  const id=entry.abilityId??entry.activeMoves?.[1];
+  speciesId=speciesKey(speciesId);
+  const rawId=entry.abilityId??entry.activeMoves?.[1];
+  const id=/^\d+$/.test(String(rawId))?speciesKey(rawId):rawId;
   return MOVES_BY_ID[availableAbilities(speciesId).includes(id)?id:abilityForPokemon(speciesId)];
 }
 export function validLoadout(speciesId,entry={}) {

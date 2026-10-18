@@ -5,7 +5,7 @@ import { RULES, fieldLimitForBattle, battleKind } from './rules.mjs';
 import { purchaseLocalOffer, refreshLocalShop, sellLocalUnit, confirmLocalBet, selectPveDifficulty, cloneLocalPokemon, moveLocalUnit, feedLocalUnit, canFeedLocalUnit, BALLS } from './roster.mjs';
 import { buyStructure, placeStructure } from './structures.mjs';
 import {calculateCompass} from './compass.mjs';
-import {combatRange} from './moves.mjs';
+import {combatRange,RANGE_EPSILON} from './moves.mjs';
 
 const owned = player => [...player.board, ...player.bench.filter(u=>u&&u.kind!=='structure')];
 const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
@@ -13,7 +13,7 @@ const edge = (a,b) => Math.max(0,distance(a,b)-a.radius-b.radius);
 
 export function chooseCombatTarget(unit, enemies, tileSize) {
   if (!enemies.length) return null;
-  const reach = combatRange(unit.type.id,unit)*tileSize;
+  const reach = combatRange(unit.type.id,unit)*tileSize+RANGE_EPSILON;
   const current = enemies.find(enemy=>enemy.uid===unit.targetId);
   if(current&&edge(unit,current)<=reach)return current;
   const reachable = enemies.filter(enemy=>edge(unit,enemy)<=reach);

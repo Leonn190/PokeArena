@@ -1,6 +1,6 @@
 import { BY_ID, getDirection } from './pokemon.mjs';
 import { RULES } from './rules.mjs';
-import { MOVES_BY_ID, validLoadout, equippedAbility, resolvedMoves, combatRange, chooseMoveAnimation } from './moves.mjs';
+import { MOVES_BY_ID, validLoadout, equippedAbility, resolvedMoves, combatRange, chooseMoveAnimation, RANGE_EPSILON } from './moves.mjs';
 import { ENERGY_PER_ATTACK } from '../../config/ataques.mjs';
 import { chooseCombatTarget } from './ai.mjs';
 import {structureModifiers} from './structures.mjs';
@@ -92,7 +92,7 @@ export function physicalOrSpecialDamage(attacker, defender, kind, random = Math.
   return damageBreakdown(attacker,defender,kind,random,baseDamage,attackType,scaledByAttribute).damage;
 }
 export function normalizeEntry(entry, team) {
-  const speciesId = entry.speciesId ?? entry.id;
+  const speciesId = String(entry.speciesId ?? entry.id).padStart(4,'0');
   const col = clamp(entry.col ?? (team ? 5 : 4), 0, 19);
   const row = clamp(entry.row ?? (team ? 3 : 8), 0, BOARD.rows - 1);
   const p = tilePosition(col, row);
@@ -522,26 +522,62 @@ function collideAndClamp(b, u) {
   u.x = clamp(u.x, fieldBounds.minX + u.radius, fieldBounds.maxX - u.radius);
   u.y = clamp(u.y, fieldBounds.minY + u.radius, fieldBounds.maxY - u.radius);
 }
-function moveToTarget(b, u, target, dt, ideal) {
-  const dx = target.x - u.x;
-  const dy = target.y - u.y;
-  const d = Math.hypot(dx, dy) || 1;
-  const edge = Math.max(0, d - u.radius - target.radius);
-  const intensity = clamp((edge - ideal) / Math.max(1,moveSpeed(u.stats)*dt), 0, 1);
-  if (intensity === 0) {
-    u.vx = 0;
-    u.vy = 0;
-    setState(u, 'Idle');
-    return;
+function clearWalkPath(b,u,end){
+  const bounds=b.bounds;
+  if(end.x<bounds.minX+u.radius||end.x>bounds.maxX-u.radius||end.y<bounds.minY+u.radius||end.y>bounds.maxY-u.radius)return false;
+  return !b.units.some(other=>{
+    if(other===u||other.dead)return false;
+    const separation=u.radius+other.radius+3;
+    // Sobreposição herdada de um empurrão pode ser desfeita, nunca agravada.
+    const initial=dist(u,other),minimum=Math.min(separation,initial);
+    return segmentDistance(other,u,end)<minimum-RANGE_EPSILON||
+      (initial<separation-RANGE_EPSILON&&dist(end,other)<=initial);
+  });
+}
+function walkDestination(b,u,target,ideal){
+  const distance=dist(u,target)||1;
+  // Entrar ligeiramente no alcance evita terminar em uma fronteira flutuante.
+  const travel=Math.max(0,edgeDistance(u,target)-Math.max(0,ideal-.5));
+  const end={x:u.x+(target.x-u.x)/distance*travel,y:u.y+(target.y-u.y)/distance*travel};
+  if(clearWalkPath(b,u,end)){u.detour=null;return end;}
+  const blockers=b.units.filter(other=>other!==u&&other!==target&&!other.dead&&
+    segmentDistance(other,u,end)<u.radius+other.radius+3)
+    .sort((a,c)=>dist(u,a)-dist(u,c));
+  for(const blocker of blockers){
+    const angle=Math.atan2(u.y-blocker.y,u.x-blocker.x);
+    const radius=u.radius+blocker.radius+11;
+    const preferred=u.detour?.blockerId===blocker.uid?u.detour.side:null;
+    const choices=[-1,1].map(side=>{
+      const point={x:blocker.x+Math.cos(angle+side*.65)*radius,y:blocker.y+Math.sin(angle+side*.65)*radius};
+      return {point,side,score:dist(u,point)+dist(point,end)};
+    }).filter(choice=>clearWalkPath(b,u,choice.point))
+      .sort((a,c)=>(a.side===preferred?-1:c.side===preferred?1:0)||a.score-c.score);
+    if(choices.length){
+      u.detour={blockerId:blocker.uid,side:choices[0].side};
+      return choices[0].point;
+    }
   }
+  return end;
+}
+function moveToTarget(b, u, target, dt, ideal) {
   const oldX = u.x;
   const oldY = u.y;
   const speed = moveSpeed(u.stats) * (1+(u.environmentMods?.moveSpeed||0));
-  u.vx = dx / d * speed * intensity;
-  u.vy = dy / d * speed * intensity;
-  u.x += u.vx * dt;
-  u.y += u.vy * dt;
+  const destination=walkDestination(b,u,target,ideal);
+  let remaining=Math.min(speed*dt,dist(u,destination));
+  while(remaining>RANGE_EPSILON){
+    const angle=Math.atan2(destination.y-u.y,destination.x-u.x),step=Math.min(3,remaining);
+    const side=u.detour?.side??1;
+    // Se o corredor se fecha por uma unidade em movimento, procurar um passo
+    // lateral válido em vez de empurrar indefinidamente o mesmo obstáculo.
+    const offsets=[0,side*Math.PI/8,-side*Math.PI/8,side*Math.PI/4,-side*Math.PI/4,side*Math.PI/2,-side*Math.PI/2];
+    const next=offsets.map(offset=>({x:u.x+Math.cos(angle+offset)*step,y:u.y+Math.sin(angle+offset)*step}))
+      .find(point=>clearWalkPath(b,u,point));
+    if(!next)break;
+    u.x=next.x;u.y=next.y;remaining-=step;
+  }
   collideAndClamp(b, u);
+  u.vx=dt>0?(u.x-oldX)/dt:0;u.vy=dt>0?(u.y-oldY)/dt:0;
   if (Math.hypot(u.x - oldX, u.y - oldY) > .03) {
     u.facing = getDirection(u.x - oldX, u.y - oldY);
     setState(u, 'Walk');
@@ -603,12 +639,8 @@ export function updateBattle(b, seconds, random = Math.random) {
       handleCast(b, u, dt, random);
       continue;
     }
-    if (u.hurtTime > 0) {
-      u.vx = 0;
-      u.vy = 0;
-      setState(u, 'Hurt');
-      continue;
-    }
+    // Hurt é reação visual, não atordoamento. Acertos sucessivos não podem
+    // bloquear aproximação, recarga nem a prioridade da habilidade carregada.
     const [regular,charged]=getMoves(u);
     const chargedReady=!!charged&&u.energy+1e-6>=charged.energyCost;
     // Com energia cheia o carregado é obrigatório: inclusive quando ele
@@ -617,7 +649,7 @@ export function updateBattle(b, seconds, random = Math.random) {
     const target=getTarget(b,u);
     u.targetId=target?.uid||null;
     if(!target||!selectedMove){u.vx=0;u.vy=0;setState(u,'Idle');continue;}
-    const inRange=edgeDistance(u,target)<=effectiveAttackRange(u);
+    const inRange=edgeDistance(u,target)<=effectiveAttackRange(u)+RANGE_EPSILON;
     u.cooldown-=dt;
     if(inRange&&(chargedReady||u.cooldown<=0)){
       if(beginAttack(b,u,target,selectedMove))continue;
